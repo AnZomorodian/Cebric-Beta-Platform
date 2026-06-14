@@ -1,5 +1,6 @@
+import { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Compass, ExternalLink, Navigation } from 'lucide-react';
+import { MapPin, Compass, ExternalLink, Navigation, Search, SlidersHorizontal } from 'lucide-react';
 import { Race } from '../types';
 
 const TRACK_DETAILS: Record<string, { length: string; laps: number; record: string; capacity: string; corners: number; path: string }> = {
@@ -213,18 +214,70 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
     );
   }
 
-  // Extract unique circuits from season's races
-  const uniqueCircuits = races.reduce((acc: any[], race) => {
-    const exists = acc.some((c) => c.circuitId === race.Circuit.circuitId);
-    if (!exists) {
-      acc.push({
-        ...race.Circuit,
-        visitedRound: race.round,
-        raceName: race.raceName,
-      });
-    }
-    return acc;
-  }, []);
+  const getTrackLengthNum = (circuitId: string) => {
+    const info = TRACK_DETAILS[circuitId];
+    if (!info) return 5.1;
+    return parseFloat(info.length) || 5.1;
+  };
+
+  const getTrackCornersNum = (circuitId: string) => {
+    const info = TRACK_DETAILS[circuitId];
+    if (!info) return 15;
+    return info.corners;
+  };
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [lengthFilter, setLengthFilter] = useState<'all' | 'short' | 'long'>('all');
+  const [cornersFilter, setCornersFilter] = useState<'all' | 'flowing' | 'technical'>('all');
+  const [sortBy, setSortBy] = useState<'round' | 'length' | 'corners' | 'name'>('round');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Filter and Sort in useMemo
+  const filteredCircuits = useMemo(() => {
+    const unique = races.reduce((acc: any[], race) => {
+      const exists = acc.some((c) => c.circuitId === race.Circuit.circuitId);
+      if (!exists) {
+        acc.push({
+          ...race.Circuit,
+          visitedRound: parseInt(race.round) || 1,
+          raceName: race.raceName,
+        });
+      }
+      return acc;
+    }, []);
+
+    let result = unique.filter((circuit) => {
+      const q = searchQuery.toLowerCase();
+      const matchText = `${circuit.circuitName} ${circuit.Location.locality} ${circuit.Location.country} ${circuit.raceName}`.toLowerCase();
+      if (q && !matchText.includes(q)) return false;
+
+      const len = getTrackLengthNum(circuit.circuitId);
+      if (lengthFilter === 'short' && len >= 5.0) return false;
+      if (lengthFilter === 'long' && len < 5.0) return false;
+
+      const corners = getTrackCornersNum(circuit.circuitId);
+      if (cornersFilter === 'flowing' && corners >= 15) return false;
+      if (cornersFilter === 'technical' && corners < 15) return false;
+
+      return true;
+    });
+
+    result.sort((a, b) => {
+      let comp = 0;
+      if (sortBy === 'round') {
+        comp = a.visitedRound - b.visitedRound;
+      } else if (sortBy === 'length') {
+        comp = getTrackLengthNum(a.circuitId) - getTrackLengthNum(b.circuitId);
+      } else if (sortBy === 'corners') {
+        comp = getTrackCornersNum(a.circuitId) - getTrackCornersNum(b.circuitId);
+      } else if (sortBy === 'name') {
+        comp = a.circuitName.localeCompare(b.circuitName);
+      }
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+
+    return result;
+  }, [races, searchQuery, lengthFilter, cornersFilter, sortBy, sortOrder]);
 
   return (
     <motion.div
@@ -247,16 +300,87 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
         </p>
       </header>
 
-      {uniqueCircuits.length === 0 ? (
+      {/* Search and Filters Deck */}
+      <div 
+        id="circuits-filter-bar"
+        className="bg-white border border-gray-150 rounded-2xl p-5 flex flex-col lg:flex-row items-center gap-4 shadow-sm"
+      >
+        {/* Search input field */}
+        <div className="relative w-full lg:flex-1">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold" />
+          <input
+            type="text"
+            placeholder="Search venue names, locations, countries..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-gray-50 text-xs font-semibold text-black placeholder-gray-400 outline-none border border-gray-200 focus:border-black rounded-lg transition-colors"
+          />
+        </div>
+
+        {/* Filters and sorting layout */}
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          {/* Length Filter */}
+          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
+            <span className="text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Length</span>
+            <select
+              value={lengthFilter}
+              onChange={(e) => setLengthFilter(e.target.value as any)}
+              className="bg-transparent text-xs font-bold outline-none cursor-pointer text-gray-800"
+            >
+              <option value="all">All Tracks</option>
+              <option value="short">Short (&lt; 5km)</option>
+              <option value="long">Long (&ge; 5km)</option>
+            </select>
+          </div>
+
+          {/* Corners Filter */}
+          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
+            <span className="text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Type</span>
+            <select
+              value={cornersFilter}
+              onChange={(e) => setCornersFilter(e.target.value as any)}
+              className="bg-transparent text-xs font-bold outline-none cursor-pointer text-gray-800"
+            >
+              <option value="all">All Styles</option>
+              <option value="flowing">Flowing (&lt; 15 Corners)</option>
+              <option value="technical">Technical (&ge; 15 Corners)</option>
+            </select>
+          </div>
+
+          {/* Sorting */}
+          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
+            <span className="text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Sort By</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent text-xs font-bold outline-none cursor-pointer text-gray-800 animate-none"
+            >
+              <option value="round">GP Round</option>
+              <option value="length">Track Length</option>
+              <option value="corners">Turn Count</option>
+              <option value="name">Track Name</option>
+            </select>
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="hover:bg-gray-150 p-1 rounded-md transition-colors flex items-center justify-center text-gray-650 shrink-0"
+              title="Reverse layout order"
+            >
+              <SlidersHorizontal size={10} className="transform rotate-90" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {filteredCircuits.length === 0 ? (
         <div className="py-20 text-center text-gray-400 border border-dashed border-gray-150 rounded-2xl bg-gray-50/20">
-          No circuits metadata available for current season context.
+          No circuits match your filter criteria. Try expanding search or resetting filters.
         </div>
       ) : (
         <div 
           id="circuits-grid"
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
-          {uniqueCircuits.map((circuit) => {
+          {filteredCircuits.map((circuit) => {
             return (
               <div
                 key={circuit.circuitId}

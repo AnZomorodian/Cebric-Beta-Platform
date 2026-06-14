@@ -25,6 +25,7 @@ export const TEAM_BG: Record<string, string> = {
   rb: 'bg-[#18003C] text-[#6600CC] bg-opacity-10',
   williams: 'bg-[#0E2C33] text-[#37BEDD] bg-opacity-10',
   sauber: 'bg-[#113111] text-[#52e252] bg-opacity-10',
+  audi: 'bg-[#1F0404] text-[#E60000] bg-opacity-10',
   unknown: 'bg-gray-100 text-gray-400'
 };
 
@@ -39,6 +40,7 @@ export const TEAM_HEX: Record<string, string> = {
   rb: '#6600CC',
   williams: '#37BEDD',
   sauber: '#52e252',
+  audi: '#E60000',
   unknown: '#9ca3af'
 };
 
@@ -264,6 +266,142 @@ export const mock2026Data: SeasonData = {
         nationality: 'Thai'
       },
       Constructors: [{ constructorId: 'williams', name: 'Williams', nationality: 'British', url: '' }]
+    },
+    {
+      position: '13',
+      positionText: '13',
+      points: '14',
+      wins: '0',
+      Driver: {
+        driverId: 'sainz',
+        permanentNumber: '55',
+        code: 'SAI',
+        url: 'https://en.wikipedia.org/wiki/Carlos_Sainz_Jr.',
+        givenName: 'Carlos',
+        familyName: 'Sainz',
+        dateOfBirth: '1994-09-01',
+        nationality: 'Spanish'
+      },
+      Constructors: [{ constructorId: 'williams', name: 'Williams', nationality: 'British', url: '' }]
+    },
+    {
+      position: '14',
+      positionText: '14',
+      points: '10',
+      wins: '0',
+      Driver: {
+        driverId: 'stroll',
+        permanentNumber: '18',
+        code: 'STR',
+        url: 'https://en.wikipedia.org/wiki/Lance_Stroll',
+        givenName: 'Lance',
+        familyName: 'Stroll',
+        dateOfBirth: '1998-10-29',
+        nationality: 'Canadian'
+      },
+      Constructors: [{ constructorId: 'aston_martin', name: 'Aston Martin', nationality: 'British', url: '' }]
+    },
+    {
+      position: '15',
+      positionText: '15',
+      points: '8',
+      wins: '0',
+      Driver: {
+        driverId: 'ocon',
+        permanentNumber: '31',
+        code: 'OCO',
+        url: 'https://en.wikipedia.org/wiki/Esteban_Ocon',
+        givenName: 'Esteban',
+        familyName: 'Ocon',
+        dateOfBirth: '1996-09-17',
+        nationality: 'French'
+      },
+      Constructors: [{ constructorId: 'haas', name: 'Haas F1 Team', nationality: 'American', url: '' }]
+    },
+    {
+      position: '16',
+      positionText: '16',
+      points: '6',
+      wins: '0',
+      Driver: {
+        driverId: 'tsunoda',
+        permanentNumber: '22',
+        code: 'TSU',
+        url: 'https://en.wikipedia.org/wiki/Yuki_Tsunoda',
+        givenName: 'Yuki',
+        familyName: 'Tsunoda',
+        dateOfBirth: '2000-05-11',
+        nationality: 'Japanese'
+      },
+      Constructors: [{ constructorId: 'rb', name: 'RB F1 Team', nationality: 'Italian', url: '' }]
+    },
+    {
+      position: '17',
+      positionText: '17',
+      points: '4',
+      wins: '0',
+      Driver: {
+        driverId: 'doohan',
+        permanentNumber: '12',
+        code: 'DOO',
+        url: 'https://en.wikipedia.org/wiki/Jack_Doohan_(racing_driver)',
+        givenName: 'Jack',
+        familyName: 'Doohan',
+        dateOfBirth: '2003-01-20',
+        nationality: 'Australian'
+      },
+      Constructors: [{ constructorId: 'alpine', name: 'Alpine F1 Team', nationality: 'French', url: '' }]
+    },
+    {
+      position: '18',
+      positionText: '18',
+      points: '2',
+      wins: '0',
+      Driver: {
+        driverId: 'hulkenberg',
+        permanentNumber: '27',
+        code: 'HUL',
+        url: 'https://en.wikipedia.org/wiki/Nico_H%C3%BClkenberg',
+        givenName: 'Nico',
+        familyName: 'Hülkenberg',
+        dateOfBirth: '1987-08-19',
+        nationality: 'German'
+      },
+      Constructors: [{ constructorId: 'audi', name: 'Audi F1 Team', nationality: 'German', url: '' }]
+    },
+    {
+      position: '19',
+      positionText: '19',
+      points: '1',
+      wins: '0',
+      Driver: {
+        driverId: 'bearman',
+        permanentNumber: '87',
+        code: 'BEA',
+        url: 'https://en.wikipedia.org/wiki/Oliver_Bearman',
+        givenName: 'Oliver',
+        familyName: 'Bearman',
+        dateOfBirth: '2005-05-08',
+        nationality: 'British'
+      },
+      Constructors: [{ constructorId: 'haas', name: 'Haas F1 Team', nationality: 'American', url: '' }]
+    },
+    {
+      position: '20',
+      positionText: '20',
+      points: '0',
+      wins: '0',
+      Driver: {
+        driverId: 'bortoleto',
+        permanentNumber: '5',
+        code: 'BOR',
+        url: 'https://en.wikipedia.org/wiki/Gabriel_Bortoleto',
+        givenName: 'Gabriel',
+        familyName: 'Bortoleto',
+        dateOfBirth: '2004-10-14',
+        nationality: 'Brazilian'
+      },
+      Constructors: [{ constructorId: 'audi', name: 'Audi F1 Team', nationality: 'German', url: '' }]
     }
   ],
   constructorStandings: [

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchSeasonData } from './services/ergast';
+import { fetchSeasonData, fetchSeasonsList } from './services/ergast';
 import { SeasonData } from './types';
 
 // Components
@@ -15,8 +15,22 @@ import CompareTab from './components/CompareTab';
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [selectedSeason, setSelectedSeason] = useState<string>('2026');
+  const [seasons, setSeasons] = useState<string[]>([]);
   const [seasonData, setSeasonData] = useState<SeasonData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Fetch dynamic seasons list once on app start
+  useEffect(() => {
+    async function loadSeasons() {
+      try {
+        const list = await fetchSeasonsList();
+        setSeasons(list);
+      } catch (err) {
+        console.error('Error fetching dynamic seasons', err);
+      }
+    }
+    loadSeasons();
+  }, []);
 
   // Fetch season statistics on selectedSeason change
   useEffect(() => {
@@ -60,6 +74,7 @@ export default function App() {
         <SeasonSelector 
           selectedSeason={selectedSeason} 
           onSelectSeason={setSelectedSeason} 
+          seasons={seasons}
         />
 
         {/* Content Wrapper Container */}
@@ -116,6 +131,11 @@ export default function App() {
             />
           )}
         </main>
+
+        {/* Brand Attribution Footer */}
+        <footer className="py-6 px-6 md:px-12 border-t border-gray-150 text-center text-xs text-gray-400 font-mono mt-auto">
+          DeepInk Team - Cebric Beta
+        </footer>
       </div>
     </div>
   );

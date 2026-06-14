@@ -11,14 +11,79 @@ interface TrackConfig {
   s1Bench: number; // percentage of total
   s2Bench: number; // percentage of total
   s3Bench: number; // percentage of total
+  type: string;
+  turns: number;
+  length: string;
+  downforce: string;
+  svgPath: string;
 }
 
 const COMPARISON_TRACKS: Record<string, TrackConfig> = {
-  monaco: { name: 'Monaco GP (Monte Carlo)', benchTime: 72.4, topSpeed: 295, s1Bench: 0.28, s2Bench: 0.42, s3Bench: 0.30 },
-  spa: { name: 'Belgian GP (Spa-Francorchamps)', benchTime: 104.8, topSpeed: 345, s1Bench: 0.29, s2Bench: 0.38, s3Bench: 0.33 },
-  monza: { name: 'Italian GP (Monza)', benchTime: 80.2, topSpeed: 358, s1Bench: 0.33, s2Bench: 0.31, s3Bench: 0.36 },
-  silverstone: { name: 'British GP (Silverstone)', benchTime: 87.0, topSpeed: 332, s1Bench: 0.31, s2Bench: 0.37, s3Bench: 0.32 },
-  bahrain: { name: 'Bahrain GP (Sakhir)', benchTime: 91.2, topSpeed: 328, s1Bench: 0.32, s2Bench: 0.40, s3Bench: 0.28 }
+  monaco: { 
+    name: 'Monaco GP (Monte Carlo)', 
+    benchTime: 72.4, 
+    topSpeed: 295, 
+    s1Bench: 0.28, 
+    s2Bench: 0.42, 
+    s3Bench: 0.30,
+    type: 'Street Track',
+    turns: 19,
+    length: '3.337 km',
+    downforce: 'Maximum',
+    svgPath: 'M 20,45 C 25,15, 60,15, 70,30 C 80,45, 65,65, 55,55 C 45,45, 30,75, 10,50 Z'
+  },
+  spa: { 
+    name: 'Belgian GP (Spa-Francorchamps)', 
+    benchTime: 104.8, 
+    topSpeed: 345, 
+    s1Bench: 0.29, 
+    s2Bench: 0.38, 
+    s3Bench: 0.33,
+    type: 'Elevation Speed',
+    turns: 19,
+    length: '7.004 km',
+    downforce: 'Medium-Low',
+    svgPath: 'M 20,30 L 65,20 Q 85,35 75,55 L 50,75 L 35,50 L 15,45 Z'
+  },
+  monza: { 
+    name: 'Italian GP (Monza)', 
+    benchTime: 80.2, 
+    topSpeed: 358, 
+    s1Bench: 0.33, 
+    s2Bench: 0.31, 
+    s3Bench: 0.36,
+    type: 'Temple of Speed',
+    turns: 11,
+    length: '5.793 km',
+    downforce: 'Minimal',
+    svgPath: 'M 15,35 H 85 Q 90,45 80,50 L 45,55 L 25,50 Z'
+  },
+  silverstone: { 
+    name: 'British GP (Silverstone)', 
+    benchTime: 87.0, 
+    topSpeed: 332, 
+    s1Bench: 0.31, 
+    s2Bench: 0.37, 
+    s3Bench: 0.32,
+    type: 'Lateral G-Force',
+    turns: 18,
+    length: '5.891 km',
+    downforce: 'High',
+    svgPath: 'M 20,40 Q 35,15 70,25 T 85,65 T 50,75 T 15,55 Z'
+  },
+  bahrain: { 
+    name: 'Bahrain GP (Sakhir)', 
+    benchTime: 91.2, 
+    topSpeed: 328, 
+    s1Bench: 0.32, 
+    s2Bench: 0.40, 
+    s3Bench: 0.28,
+    type: 'Traction & Power',
+    turns: 15,
+    length: '5.412 km',
+    downforce: 'Medium-High',
+    svgPath: 'M 15,25 H 70 L 80,55 L 45,75 L 25,55 Z'
+  }
 };
 
 interface DriverLapDetails {
@@ -125,6 +190,35 @@ export default function CompareTab({ driverStandings, isLoading, season }: Compa
   const [selectedTrack, setSelectedTrack] = useState<string>('monaco');
   const [tireCompound, setTireCompound] = useState<'soft' | 'medium' | 'hard'>('soft');
   const [fuelLoad, setFuelLoad] = useState<'low' | 'high'>('low');
+  const [isSimulating, setIsSimulating] = useState<boolean>(false);
+  const [simulationLogStr, setSimulationLogStr] = useState<string>('SIM READY');
+
+  // Trigger mini telemetry computation effect
+  useEffect(() => {
+    setIsSimulating(true);
+    setSimulationLogStr('RESOLVING APEX TRAPS...');
+    
+    const logs = [
+      'RESOLVING CORNER APEX SPEEDS...',
+      'CALCULATING SPEED TRAP INTEGRALS...',
+      'MODELLING TIRE COMPOUND TEMPERATURE COUPLING...',
+      'MAPPING LIVE GRAPH POINTS...',
+      'TELEMETRY DATA ALIGNED'
+    ];
+    
+    let timerIdx = 0;
+    const interval = setInterval(() => {
+      if (timerIdx < logs.length) {
+        setSimulationLogStr(logs[timerIdx]);
+        timerIdx++;
+      } else {
+        clearInterval(interval);
+        setIsSimulating(false);
+      }
+    }, 150);
+
+    return () => clearInterval(interval);
+  }, [selectedTrack, tireCompound, fuelLoad, driverAId, driverBId]);
 
   // Auto-select top two drivers on mount / standings change
   useEffect(() => {
@@ -404,8 +498,8 @@ export default function CompareTab({ driverStandings, isLoading, season }: Compa
 
           {/* LAP TIME & TELEMETRY BATTLE SECTION */}
           <div className="md:col-span-12 space-y-6 pt-6 border-t border-gray-150" id="lap-time-analysis-section">
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white border border-gray-150 rounded-2xl p-6 shadow-sm">
-              <div className="space-y-1 select-none">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white border border-gray-150 rounded-2xl p-6 shadow-sm select-none">
+              <div className="space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-red-500 font-bold uppercase tracking-wider font-mono">
                   <Clock size={13} className="animate-pulse" />
                   <span>Interactive Battle Lab</span>
@@ -414,43 +508,30 @@ export default function CompareTab({ driverStandings, isLoading, season }: Compa
                   Lap Time & Sector Telemetry Simulator
                 </h3>
                 <p className="text-xs text-gray-400">
-                  Contrast real-time qualifying benchmarks, sector splits, speed trap V-Max, and tire wear degradations.
+                  Select a circuit card below and adjust strategy parameters to simulate and compare real-time sector splits, speed trap speeds, and tyre degradation logs.
                 </p>
               </div>
 
-              {/* Simulation Selectors */}
-              <div className="flex flex-wrap items-center gap-4">
-                {/* Circuit selector */}
-                <div className="space-y-1 min-w-[150px]">
-                  <span className="block text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Select Circuit</span>
-                  <select
-                    value={selectedTrack}
-                    onChange={(e) => setSelectedTrack(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 text-xs font-semibold rounded-lg py-2 px-3 outline-none focus:ring-1 focus:ring-black"
-                  >
-                    {Object.entries(COMPARISON_TRACKS).map(([key, value]) => (
-                      <option key={key} value={key}>{value.name}</option>
-                    ))}
-                  </select>
-                </div>
-
+              {/* Strategy Parameters Panel */}
+              <div className="flex flex-wrap items-center gap-4 bg-gray-50 border border-gray-200/80 p-3 rounded-xl">
                 {/* Tire compound */}
-                <div className="space-y-1 min-w-[125px]">
-                  <span className="block text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Tire Compound</span>
-                  <div className="flex bg-gray-50 border border-gray-200 rounded-lg p-0.5">
+                <div className="space-y-1 min-w-[130px]">
+                  <span className="block text-[8px] font-bold font-mono text-gray-400 uppercase tracking-widest leading-none mb-1">Tyre Compound</span>
+                  <div className="flex bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
                     {(['soft', 'medium', 'hard'] as const).map((t) => (
                       <button
                         key={t}
                         onClick={() => setTireCompound(t)}
-                        className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded transition-all duration-150 flex-1 ${
+                        className={`text-[9px] uppercase font-bold px-2 py-1 rounded transition-all duration-150 flex-1 ${
                           tireCompound === t
                             ? t === 'soft'
-                              ? 'bg-[#EF1A2D] text-white shadow-sm'
+                              ? 'bg-[#EF1A2D] text-white shadow-sm font-black scale-105'
                               : t === 'medium'
-                              ? 'bg-[#FFB703] text-black shadow-sm'
-                              : 'bg-[#5B5D5C] text-white shadow-sm'
-                            : 'text-gray-400 hover:text-black'
+                              ? 'bg-[#FFB703] text-black shadow-sm font-black scale-105'
+                              : 'bg-[#5B5D5C] text-white shadow-sm font-black scale-105'
+                            : 'text-gray-400 hover:text-black hover:bg-gray-50'
                         }`}
+                        title={`${t.toUpperCase()} Compound`}
                       >
                         {t[0].toUpperCase()}
                       </button>
@@ -459,25 +540,89 @@ export default function CompareTab({ driverStandings, isLoading, season }: Compa
                 </div>
 
                 {/* Fuel Load */}
-                <div className="space-y-1 min-w-[110px]">
-                  <span className="block text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Fuel Strategy</span>
-                  <div className="flex bg-gray-50 border border-gray-200 rounded-lg p-0.5">
+                <div className="space-y-1 min-w-[120px]">
+                  <span className="block text-[8px] font-bold font-mono text-gray-400 uppercase tracking-widest leading-none mb-1">Fuel Weight</span>
+                  <div className="flex bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm">
                     {(['low', 'high'] as const).map((f) => (
                       <button
                         key={f}
                         onClick={() => setFuelLoad(f)}
-                        className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded transition-all duration-150 flex-1 ${
+                        className={`text-[9px] uppercase font-bold px-2.5 py-1 rounded transition-all duration-150 flex-1 ${
                           fuelLoad === f
-                            ? 'bg-black text-white shadow-sm'
-                            : 'text-gray-400 hover:text-black'
+                            ? 'bg-black text-white shadow-sm font-black scale-105'
+                            : 'text-gray-400 hover:text-black hover:bg-gray-50'
                         }`}
                       >
-                        {f === 'low' ? 'QUALY' : 'HEAVY'}
+                        {f === 'low' ? 'Low' : 'High'}
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {/* Live Sim Status Tracker */}
+                <div className="pl-2 border-l border-gray-200 flex flex-col justify-center min-w-[140px]">
+                  <span className="block text-[8px] font-bold font-mono text-gray-400 uppercase tracking-widest leading-none mb-1">Telemetry Sync</span>
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <span className={`w-2 h-2 rounded-full ${isSimulating ? 'bg-amber-500 animate-ping' : 'bg-emerald-500'}`} />
+                    <span className="text-[10px] font-bold font-mono text-gray-700 uppercase tracking-tight truncate max-w-[130px]" title={simulationLogStr}>
+                      {simulationLogStr.replace('TELEMETRY ', '')}
+                    </span>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            {/* Interactive Circuit Quick-Select Grid (Ultimate visual upgrade) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="circuit-quick-select-cards">
+              {Object.entries(COMPARISON_TRACKS).map(([key, config]) => {
+                const isSelected = selectedTrack === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedTrack(key)}
+                    className={`relative overflow-hidden text-left p-4 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col justify-between h-36 group outline-none ${
+                      isSelected 
+                        ? 'bg-neutral-950 border-neutral-900 text-white shadow-lg scale-[1.03] ring-2 ring-red-500 ring-offset-2' 
+                        : 'bg-white border-gray-150 text-black hover:border-gray-350 hover:bg-gray-50/40 hover:scale-[1.01]'
+                    }`}
+                  >
+                    {/* SVG Map Background overlay styling */}
+                    <div className="absolute right-0 bottom-0 opacity-15 group-hover:opacity-25 transition-opacity duration-200 pointer-events-none w-20 h-20 p-2">
+                      <svg viewBox="0 0 100 90" className="w-full h-full fill-none stroke-[3] stroke-current" style={{ color: isSelected ? '#EF1A2D' : '#9ca3af' }}>
+                        <path d={config.svgPath} strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+
+                    <div className="space-y-0.5 z-10 leading-none">
+                      <span className={`block text-[8px] font-mono font-bold tracking-widest uppercase ${isSelected ? 'text-red-400' : 'text-gray-400'}`}>
+                        {config.type}
+                      </span>
+                      <h4 className="text-xs font-black truncate leading-tight pr-6">
+                        {config.name.split(' (')[0]}
+                      </h4>
+                      <p className={`text-[10px] font-mono leading-none pt-0.5 ${isSelected ? 'text-gray-300' : 'text-gray-400'}`}>
+                        {config.length}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-1 z-10 select-none">
+                      <span className={`text-[8.5px] font-mono font-black px-1.5 py-0.5 rounded leading-none ${isSelected ? 'bg-neutral-800 text-red-300' : 'bg-gray-100 text-gray-600'}`}>
+                        {config.turns} Turns
+                      </span>
+                      <span className={`text-[8.5px] font-mono font-black px-1.5 py-0.5 rounded leading-none ${isSelected ? 'bg-neutral-800 text-red-300' : 'bg-gray-100 text-gray-600'}`}>
+                        {config.downforce} DF
+                      </span>
+                    </div>
+
+                    {/* Miniature Selection Status Triangle */}
+                    {isSelected && (
+                      <span className="absolute top-0 right-0 bg-red-500 text-white font-mono font-black text-[7px] px-1 py-0.5 rounded-bl">
+                        ACTIVE
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Performance analysis charts/grids */}
@@ -673,8 +818,21 @@ export default function CompareTab({ driverStandings, isLoading, season }: Compa
                             <span className="text-gray-400 font-bold uppercase tracking-wider text-[9px]">LOWER LINE IS BETTER PACING</span>
                           </div>
 
-                          {/* Responsive SVG */}
-                          <div className="w-full bg-neutral-950 border border-neutral-850 rounded-xl p-3 h-56 select-none overflow-hidden hover:border-neutral-800 transition-colors">
+                          {/* Responsive SVG with simulation overlay */}
+                          <div className="relative w-full bg-neutral-950 border border-neutral-850 rounded-xl p-3 h-56 select-none overflow-hidden hover:border-neutral-800 transition-colors">
+                            {isSimulating && (
+                              <div className="absolute inset-0 bg-neutral-950/85 backdrop-blur-[2px] rounded-xl flex flex-col items-center justify-center space-y-2.5 z-20">
+                                <div className="flex items-center gap-2">
+                                  <RefreshCw size={18} className="animate-spin text-red-500" />
+                                  <span className="text-xs font-mono font-bold uppercase text-white tracking-widest leading-none">
+                                    {simulationLogStr}
+                                  </span>
+                                </div>
+                                <div className="w-1/3 h-1 bg-neutral-800/60 rounded-full overflow-hidden">
+                                  <div className="h-full bg-red-600 animate-[pulse_1s_infinite] w-full" />
+                                </div>
+                              </div>
+                            )}
                             <svg viewBox="0 0 500 180" className="w-full h-full overflow-visible">
                               {/* Horizontal Grid lines */}
                               {Array.from({ length: 4 }).map((_, i) => {

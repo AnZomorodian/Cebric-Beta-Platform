@@ -1,6 +1,6 @@
 {
-  "name": "F1 Stats Explorer",
-  "description": "An elegant, interactive Formula 1 stats dashboard featuring race results, driver standings, and session statistics powered by the Ergast API.",
+  "name": "Cebric Beta",
+  "description": "Cebric Beta: An elegant, interactive Formula 1 stats dashboard featuring race results, driver standings, head-to-head lap times, and simulator telemetry.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

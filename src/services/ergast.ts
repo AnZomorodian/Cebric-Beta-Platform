@@ -6,6 +6,22 @@ const BASE_URL = 'https://api.jolpi.ca/ergast/f1';
 // We list years from 2026 down to 1950 (or similar) to make the horizontal scroll immediate and zero-latency!
 export const SEASONS_LIST = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => String(2026 - i));
 
+// Dynamic season list fetcher from Jolpi's Ergast API.
+export async function fetchSeasonsList(): Promise<string[]> {
+  try {
+    const res = await safeFetch(`${BASE_URL}/seasons.json?limit=1000`);
+    if (res?.MRData?.SeasonTable?.Seasons) {
+      const apiSeasons: string[] = res.MRData.SeasonTable.Seasons.map((s: any) => s.season);
+      // Ensure 2026 is top listed
+      const combined = Array.from(new Set(['2026', ...apiSeasons]));
+      return combined.sort((a, b) => parseInt(b) - parseInt(a));
+    }
+  } catch (error) {
+    console.error('Failed to fetch seasons list dynamically', error);
+  }
+  return SEASONS_LIST;
+}
+
 // Defensive helper to parse standard JSON response from Jolpi Ergast
 async function safeFetch(url: string) {
   try {
@@ -28,41 +44,47 @@ async function safeFetch(url: string) {
 export async function fetchSeasonData(season: string): Promise<SeasonData> {
   const mockData = getSeasonMockData(season);
   
-  // For the future season 2026 (or if we want instant mockup results), default to mock data first.
-  if (season === '2026') {
-    return mockData!;
-  }
-
   try {
-    const [standingsRes, constructorRes, racesRes] = await Promise.all([
+    const [standingsRes, constructorRes, racesRes, driversRes] = await Promise.all([
       safeFetch(`${BASE_URL}/${season}/driverstandings.json`),
       safeFetch(`${BASE_URL}/${season}/constructorstandings.json`),
-      safeFetch(`${BASE_URL}/${season}.json`)
+      safeFetch(`${BASE_URL}/${season}.json`),
+      safeFetch(`${BASE_URL}/${season}/drivers.json?limit=100`)
     ]);
 
     let driverStandings: DriverStanding[] = [];
     let constructorStandings: ConstructorStanding[] = [];
     let races: Race[] = [];
+    let apiDrivers: any[] = [];
 
     // Parse Driver Standings
-    if (standingsRes?.MRData?.StandingsTable?.StandingsList?.[0]?.DriverStandings) {
-      driverStandings = standingsRes.MRData.StandingsTable.StandingsList[0].DriverStandings;
-    } else if (standingsRes?.MRData?.StandingsTable?.StandingsList?.[0]?.driverStandings) {
-      driverStandings = standingsRes.MRData.StandingsTable.StandingsList[0].driverStandings;
+    const sTable = standingsRes?.MRData?.StandingsTable || standingsRes?.MRData?.standingsTable;
+    const sLists = sTable?.StandingsLists || sTable?.standingsLists || sTable?.StandingsList || sTable?.standingsList;
+    if (sLists?.[0]) {
+      driverStandings = sLists[0].DriverStandings || sLists[0].driverStandings || [];
     }
 
     // Parse Constructor Standings
-    if (constructorRes?.MRData?.StandingsTable?.StandingsList?.[0]?.ConstructorStandings) {
-      constructorStandings = constructorRes.MRData.StandingsTable.StandingsList[0].ConstructorStandings;
-    } else if (constructorRes?.MRData?.StandingsTable?.StandingsList?.[0]?.constructorStandings) {
-      constructorStandings = constructorRes.MRData.StandingsTable.StandingsList[0].constructorStandings;
+    const cTable = constructorRes?.MRData?.StandingsTable || constructorRes?.MRData?.standingsTable;
+    const cLists = cTable?.StandingsLists || cTable?.standingsLists || cTable?.StandingsList || cTable?.standingsList;
+    if (cLists?.[0]) {
+      constructorStandings = cLists[0].ConstructorStandings || cLists[0].constructorstandings || cLists[0].constructorStandings || [];
     }
 
     // Parse Race schedule
-    if (racesRes?.MRData?.RaceTable?.Races) {
-      races = racesRes.MRData.RaceTable.Races;
-    } else if (racesRes?.MRData?.raceTable?.races) {
-      races = racesRes.MRData.raceTable.races;
+    const rTable = racesRes?.MRData?.RaceTable || racesRes?.MRData?.raceTable;
+    if (rTable?.Races) {
+      races = rTable.Races;
+    } else if (rTable?.races) {
+      races = rTable.races;
+    }
+
+    // Parse Drivers list (Roster)
+    const dTable = driversRes?.MRData?.DriverTable || driversRes?.MRData?.driverTable;
+    if (dTable?.Drivers) {
+      apiDrivers = dTable.Drivers;
+    } else if (dTable?.drivers) {
+      apiDrivers = dTable.drivers;
     }
 
     // Determine Last Race & Results
@@ -99,23 +121,117 @@ export async function fetchSeasonData(season: string): Promise<SeasonData> {
       nextRace = upcomingRaces[0];
     }
 
-    // If API returned nothing or partial (e.g. current season might have missing standings on this proxy)
-    // merge or fallback to mock data if it exists for recent years 2024/2025.
+    // If API provided no driver standings (e.g. current future season 2026), but we have the active driver roster,
+    // let's build the standings list from the active roster!
+    if (driverStandings.length === 0 && apiDrivers.length > 0) {
+      driverStandings = apiDrivers.map((item, index) => {
+        const mockDriver = mockData?.driverStandings.find(
+          md => md.Driver.driverId === item.driverId || 
+                (md.Driver.driverId === 'max_verstappen' && item.driverId === 'verstappen') ||
+                (md.Driver.driverId === 'verstappen' && item.driverId === 'max_verstappen')
+        );
+
+        return {
+          position: mockDriver?.position || String(index + 1),
+          positionText: mockDriver?.positionText || String(index + 1),
+          points: mockDriver?.points || '0',
+          wins: mockDriver?.wins || '0',
+          Driver: {
+            driverId: item.driverId || mockDriver?.Driver.driverId || '',
+            permanentNumber: item.permanentNumber || mockDriver?.Driver.permanentNumber || '',
+            code: item.code || mockDriver?.Driver.code || '',
+            url: item.url || mockDriver?.Driver.url || '',
+            givenName: item.givenName || mockDriver?.Driver.givenName || '',
+            familyName: item.familyName || mockDriver?.Driver.familyName || '',
+            dateOfBirth: item.dateOfBirth || mockDriver?.Driver.dateOfBirth || '',
+            nationality: item.nationality || mockDriver?.Driver.nationality || ''
+          },
+          Constructors: mockDriver?.Constructors || [
+            {
+              constructorId: getConstructorId(item.familyName), 
+              name: getConstructorId(item.familyName).replace('_', ' ').toUpperCase(),
+              nationality: 'Unknown',
+              url: ''
+            }
+          ]
+        };
+      });
+
+      // Sort drivers by points descending
+      driverStandings.sort((a, b) => parseInt(b.points) - parseInt(a.points));
+      // Re-index position to match points order precisely
+      driverStandings.forEach((item, index) => {
+        item.position = String(index + 1);
+        item.positionText = String(index + 1);
+      });
+    }
+
+    // Default driverStandings fallback
     if (driverStandings.length === 0 && mockData) {
       return mockData;
     }
 
-    // If we have races but no results yet (e.g. offseason or season starting), let's construct placeholders
+    // If constructor standings from API are empty, build them from driver standings or fallback to mock
+    if (constructorStandings.length === 0) {
+      if (mockData?.constructorStandings && mockData.constructorStandings.length > 0) {
+        constructorStandings = mockData.constructorStandings;
+      } else {
+        // Aggregate points from driver standings dynamically!
+        const pointsMap: Record<string, { name: string; points: number; wins: number; nationality: string }> = {};
+        driverStandings.forEach(d => {
+          const c = d.Constructors?.[0];
+          if (c) {
+            if (!pointsMap[c.constructorId]) {
+              pointsMap[c.constructorId] = {
+                name: c.name,
+                points: 0,
+                wins: 0,
+                nationality: c.nationality || 'Unknown'
+              };
+            }
+            pointsMap[c.constructorId].points += parseInt(d.points) || 0;
+            pointsMap[c.constructorId].wins += parseInt(d.wins) || 0;
+          }
+        });
+
+        constructorStandings = Object.entries(pointsMap).map(([id, info]) => ({
+          position: '',
+          positionText: '',
+          points: String(info.points),
+          wins: String(info.wins),
+          Constructor: {
+            constructorId: id,
+            name: info.name,
+            nationality: info.nationality,
+            url: ''
+          }
+        }));
+
+        constructorStandings.sort((a, b) => parseInt(b.points) - parseInt(a.points));
+        constructorStandings.forEach((item, index) => {
+          item.position = String(index + 1);
+          item.positionText = String(index + 1);
+        });
+      }
+    }
+
+    // If races schedule is empty from API, use mock
+    if (races.length === 0 && mockData?.races) {
+      races = mockData.races;
+    }
+
     return {
       season,
-      driverStandings: driverStandings.map(item => ({
-        ...item,
-        // Make sure Constructor IDs are populated correctly
-        Constructors: item.Constructors?.map(c => ({
-          ...c,
-          constructorId: c.constructorId || getConstructorId(c.name)
-        })) || []
-      })),
+      driverStandings: driverStandings.map(item => {
+        const itemCons = item.Constructors || (item as any).constructors || [];
+        return {
+          ...item,
+          Constructors: itemCons.map((c: any) => ({
+            ...c,
+            constructorId: c.constructorId || getConstructorId(c.name)
+          }))
+        };
+      }),
       constructorStandings: constructorStandings.map(item => ({
         ...item,
         Constructor: {
@@ -124,9 +240,9 @@ export async function fetchSeasonData(season: string): Promise<SeasonData> {
         }
       })),
       races,
-      nextRace: nextRace || upcomingRaces[0] || races[races.length - 1],
-      lastRace: lastRace || completedRaces[completedRaces.length - 1] || races[0],
-      lastResults: lastResults.length > 0 ? lastResults : mockData?.lastResults
+      nextRace: nextRace || upcomingRaces[0] || races[races.length - 1] || mockData?.nextRace,
+      lastRace: lastRace || completedRaces[completedRaces.length - 1] || races[0] || mockData?.lastRace,
+      lastResults: lastResults.length > 0 ? lastResults : (mockData?.lastResults || [])
     };
 
   } catch (error) {

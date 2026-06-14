@@ -4,9 +4,10 @@ import { SEASONS_LIST } from '../services/ergast';
 interface SeasonSelectorProps {
   selectedSeason: string;
   onSelectSeason: (season: string) => void;
+  seasons?: string[];
 }
 
-export default function SeasonSelector({ selectedSeason, onSelectSeason }: SeasonSelectorProps) {
+export default function SeasonSelector({ selectedSeason, onSelectSeason, seasons = SEASONS_LIST }: SeasonSelectorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll selected year into center view on mount/change
@@ -28,7 +29,7 @@ export default function SeasonSelector({ selectedSeason, onSelectSeason }: Seaso
     onSelectSeason(season);
   };
 
-  const reversedSeasons = [...SEASONS_LIST].reverse(); // Start with 1950 upwards to 2026 to mirror the image left-to-right
+  const sortedSeasons = [...seasons].sort((a, b) => parseInt(a) - parseInt(b)); // Ascending scroll timeline (1950 to 2026)
 
   return (
     <div 
@@ -43,7 +44,7 @@ export default function SeasonSelector({ selectedSeason, onSelectSeason }: Seaso
         className="flex-1 flex gap-5 overflow-x-auto scrollbar-none scroll-smooth pr-10"
         style={{ scrollbarWidth: 'none' }}
       >
-        {reversedSeasons.map((season) => {
+        {sortedSeasons.map((season) => {
           const isSelected = selectedSeason === season;
           return (
             <button

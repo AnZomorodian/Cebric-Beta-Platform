@@ -11,6 +11,7 @@ export const TEAM_COLORS: Record<string, string> = {
   rb: 'text-[#6600CC] border-[#6600CC]',
   williams: 'text-[#37BEDD] border-[#37BEDD]',
   sauber: 'text-[#52e252] border-[#52e252]',
+  audi: 'text-[#E60000] border-[#E60000]',
   unknown: 'text-gray-400 border-gray-400'
 };
 
@@ -55,6 +56,7 @@ export const getConstructorId = (name: string): string => {
   if (norm.includes('aston martin')) return 'aston_martin';
   if (norm.includes('rb ') || norm.includes('visa') || norm.includes('racing bulls')) return 'rb';
   if (norm.includes('sauber') || norm.includes('kick') || norm.includes('stake')) return 'sauber';
+  if (norm.includes('audi')) return 'audi';
   if (norm.includes('williams')) return 'williams';
   return 'unknown';
 };
@@ -171,7 +173,7 @@ export const mock2026Data: SeasonData = {
       points: '55',
       wins: '0',
       Driver: {
-        driverId: 'verstappen',
+        driverId: 'max_verstappen',
         permanentNumber: '1',
         code: 'VER',
         url: 'https://en.wikipedia.org/wiki/Max_Verstappen',
@@ -402,6 +404,40 @@ export const mock2026Data: SeasonData = {
         nationality: 'Brazilian'
       },
       Constructors: [{ constructorId: 'audi', name: 'Audi F1 Team', nationality: 'German', url: '' }]
+    },
+    {
+      position: '21',
+      positionText: '21',
+      points: '0',
+      wins: '0',
+      Driver: {
+        driverId: 'bottas',
+        permanentNumber: '77',
+        code: 'BOT',
+        url: 'https://en.wikipedia.org/wiki/Valtteri_Bottas',
+        givenName: 'Valtteri',
+        familyName: 'Bottas',
+        dateOfBirth: '1989-08-28',
+        nationality: 'Finnish'
+      },
+      Constructors: [{ constructorId: 'sauber', name: 'Kick Sauber F1 Team', nationality: 'Swiss', url: '' }]
+    },
+    {
+      position: '22',
+      positionText: '22',
+      points: '0',
+      wins: '0',
+      Driver: {
+        driverId: 'zhou',
+        permanentNumber: '24',
+        code: 'ZHO',
+        url: 'https://en.wikipedia.org/wiki/Zhou_Guanyu',
+        givenName: 'Guanyu',
+        familyName: 'Zhou',
+        dateOfBirth: '1999-05-30',
+        nationality: 'Chinese'
+      },
+      Constructors: [{ constructorId: 'sauber', name: 'Kick Sauber F1 Team', nationality: 'Swiss', url: '' }]
     }
   ],
   constructorStandings: [
@@ -436,7 +472,7 @@ export const mock2026Data: SeasonData = {
     {
       position: '5',
       positionText: '5',
-      points: '41',
+      points: '45',
       wins: '0',
       Constructor: { constructorId: 'alpine', name: 'Alpine F1 Team', nationality: 'French', url: '' }
     },
@@ -450,16 +486,37 @@ export const mock2026Data: SeasonData = {
     {
       position: '7',
       positionText: '7',
-      points: '24',
+      points: '34',
       wins: '0',
       Constructor: { constructorId: 'aston_martin', name: 'Aston Martin', nationality: 'British', url: '' }
     },
     {
       position: '8',
       positionText: '8',
-      points: '18',
+      points: '32',
       wins: '0',
       Constructor: { constructorId: 'williams', name: 'Williams Racing', nationality: 'British', url: '' }
+    },
+    {
+      position: '9',
+      positionText: '9',
+      points: '9',
+      wins: '0',
+      Constructor: { constructorId: 'haas', name: 'Haas F1 Team', nationality: 'American', url: '' }
+    },
+    {
+      position: '10',
+      positionText: '10',
+      points: '2',
+      wins: '0',
+      Constructor: { constructorId: 'audi', name: 'Audi F1 Team', nationality: 'German', url: '' }
+    },
+    {
+      position: '11',
+      positionText: '11',
+      points: '0',
+      wins: '0',
+      Constructor: { constructorId: 'sauber', name: 'Kick Sauber F1 Team', nationality: 'Swiss', url: '' }
     }
   ],
   races: [
@@ -872,7 +929,7 @@ export const mock2026Data: SeasonData = {
       positionText: '4',
       points: '12',
       Driver: {
-        driverId: 'verstappen',
+        driverId: 'max_verstappen',
         permanentNumber: '1',
         code: 'VER',
         url: '',
@@ -984,7 +1041,7 @@ export const mock2025Data: SeasonData = {
       points: '410',
       wins: '9',
       Driver: {
-        driverId: 'verstappen',
+        driverId: 'max_verstappen',
         permanentNumber: '1',
         code: 'VER',
         url: '',
@@ -1200,7 +1257,7 @@ export const mock2025Data: SeasonData = {
       positionText: '1',
       points: '25',
       Driver: {
-        driverId: 'verstappen',
+        driverId: 'max_verstappen',
         permanentNumber: '1',
         code: 'VER',
         url: '',
@@ -1270,7 +1327,7 @@ export const mock2024Data: SeasonData = {
       points: '437',
       wins: '9',
       Driver: {
-        driverId: 'verstappen',
+        driverId: 'max_verstappen',
         permanentNumber: '1',
         code: 'VER',
         url: '',
@@ -1486,7 +1543,7 @@ export const mock2024Data: SeasonData = {
       positionText: '1',
       points: '25',
       Driver: {
-        driverId: 'verstappen',
+        driverId: 'max_verstappen',
         permanentNumber: '1',
         code: 'VER',
         url: '',

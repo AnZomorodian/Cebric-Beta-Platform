@@ -21,8 +21,9 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       className="fixed left-0 top-0 bottom-0 w-16 bg-[#111] border-r border-[#222] flex flex-col items-center py-6 z-50 text-white"
     >
       {/* Brand Logo/Emblem */}
-      <div className="mb-8 flex items-center justify-center">
-        <span className="text-xl font-bold tracking-tighter text-red-500 font-mono">F1</span>
+      <div className="mb-8 flex flex-col items-center justify-center select-none">
+        <span className="text-xl font-black tracking-tighter text-red-500 font-mono">CB</span>
+        <span className="text-[7px] font-semibold text-gray-400 font-mono tracking-widest leading-none mt-0.5">BETA</span>
       </div>
 
       {/* Navigation Links */}

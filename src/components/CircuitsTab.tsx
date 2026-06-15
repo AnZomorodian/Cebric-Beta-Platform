@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Compass, ExternalLink, Navigation, Search, SlidersHorizontal } from 'lucide-react';
+import { MapPin, Compass, ExternalLink, Navigation, Search, SlidersHorizontal, Sun, CloudRain, Award, Activity } from 'lucide-react';
 import { Race } from '../types';
 
 const TRACK_DETAILS: Record<string, { length: string; laps: number; record: string; capacity: string; corners: number; path: string }> = {
@@ -226,11 +226,59 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
     return info.corners;
   };
 
+  const getGenericTurns = (circuitName: string, cornersCount: number) => {
+    return Array.from({ length: cornersCount || 12 }).map((_, i) => {
+      const turnNum = i + 1;
+      const speeds = ["115 km/h", "240 km/h", "85 km/h", "290 km/h", "160 km/h", "215 km/h", "140 km/h", "265 km/h"];
+      const gears = ["3rd", "6th", "2nd", "8th", "4th", "5th", "4th", "7th"];
+      const gforces = ["2.8G", "4.5G", "1.1G", "5.0G", "3.2G", "3.8G", "2.4G", "4.1G"];
+      const types = ["Apex Left", "Apex Right", "Slow Hairpin", "High-Speed Sweep", "Braking Chicane", "Traction Zone", "Double Apex Right", "Chute Straight"];
+      
+      return {
+        id: turnNum,
+        name: `Turn ${turnNum}`,
+        type: types[i % types.length],
+        speed: speeds[i % speeds.length],
+        gear: gears[i % gears.length],
+        gforce: gforces[i % gforces.length]
+      };
+    });
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [lengthFilter, setLengthFilter] = useState<'all' | 'short' | 'long'>('all');
   const [cornersFilter, setCornersFilter] = useState<'all' | 'flowing' | 'technical'>('all');
   const [sortBy, setSortBy] = useState<'round' | 'length' | 'corners' | 'name'>('round');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const [selectedCircuitId, setSelectedCircuitId] = useState<string>('bahrain');
+  const [weatherPreset, setWeatherPreset] = useState<'dry' | 'damp' | 'wet'>('dry');
+  const [hoveredTurn, setHoveredTurn] = useState<any | null>(null);
+
+  useEffect(() => {
+    setHoveredTurn(null);
+  }, [selectedCircuitId]);
+
+  const silverstoneTurns = useMemo(() => [
+    { id: 1, name: "Abbey", type: "High-Speed Right", speed: "285 km/h", gear: "7th", gforce: "4.2G", x: 370, y: 170 },
+    { id: 2, name: "Arena", type: "Traction Right", speed: "160 km/h", gear: "4th", gforce: "2.1G", x: 410, y: 210 },
+    { id: 3, name: "Loop", type: "First Hairpin Left", speed: "80 km/h", gear: "2nd", gforce: "1.2G", x: 430, y: 260 },
+    { id: 4, name: "Aintree", type: "Full-Power Left", speed: "275 km/h", gear: "6th", gforce: "3.5G", x: 460, y: 280 },
+    { id: 5, name: "Wellington Straight", type: "DRS Acceleration Zone", speed: "310 km/h", gear: "8th", gforce: "0.2G", x: 480, y: 320 },
+    { id: 6, name: "Brooklands", type: "Hard Braking Left", speed: "165 km/h", gear: "4th", gforce: "3.1G", x: 450, y: 410 },
+    { id: 7, name: "Luffield", type: "Sweeping Right Loop", speed: "115 km/h", gear: "3rd", gforce: "2.5G", x: 300, y: 355 },
+    { id: 8, name: "Woodcote", type: "Acceleration Sweep", speed: "240 km/h", gear: "5th", gforce: "2.8G", x: 160, y: 300 },
+    { id: 9, name: "Copse", type: "Legendary High-Speed Right", speed: "290 km/h", gear: "8th", gforce: "5.1G", x: 140, y: 240 },
+    { id: 10, name: "Maggotts", type: "Ultra-fast S-Curve Left", speed: "295 km/h", gear: "8th", gforce: "4.8G", x: 210, y: 180 },
+    { id: 11, name: "Becketts", type: "Aerodynamic Right Sweep", speed: "235 km/h", gear: "6th", gforce: "4.5G", x: 300, y: 150 },
+    { id: 12, name: "Chapel", type: "Hangar Entrance Left", speed: "250 km/h", gear: "7th", gforce: "3.8G", x: 370, y: 140 },
+    { id: 13, name: "Hangar Straight", type: "Velocity DRS Straight", speed: "328 km/h", gear: "8th", gforce: "0.2G", x: 435, y: 150 },
+    { id: 14, name: "Stowe", type: "Downhill Fast Right", speed: "210 km/h", gear: "5th", gforce: "3.6G", x: 520, y: 140 },
+    { id: 15, name: "Vale", type: "Heavy Braking Left Chicane", speed: "95 km/h", gear: "2nd", gforce: "1.8G", x: 640, y: 400 },
+    { id: 16, name: "Club Entry", type: "Double-Apex Right", speed: "140 km/h", gear: "4th", gforce: "2.2G", x: 750, y: 310 },
+    { id: 17, name: "Club Exit", type: "Main Straight Traction", speed: "185 km/h", gear: "5th", gforce: "2.4G", x: 790, y: 200 },
+    { id: 18, name: "Hamilton Straight", type: "Finish Line Full Power", speed: "295 km/h", gear: "7th", gforce: "1.1G", x: 730, y: 110 }
+  ], []);
 
   // Filter and Sort in useMemo
   const filteredCircuits = useMemo(() => {
@@ -279,6 +327,60 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
     return result;
   }, [races, searchQuery, lengthFilter, cornersFilter, sortBy, sortOrder]);
 
+  const selectedCircuitData = useMemo(() => {
+    const found = filteredCircuits.find(c => c.circuitId === selectedCircuitId);
+    if (found) return found;
+    return filteredCircuits[0] || null;
+  }, [filteredCircuits, selectedCircuitId]);
+
+  const activeTrackInfo = useMemo(() => {
+    if (!selectedCircuitData) return null;
+    return TRACK_DETAILS[selectedCircuitData.circuitId] || {
+      length: '5.10 km',
+      laps: 55,
+      record: 'N/A',
+      capacity: '80,000',
+      corners: 16,
+      path: 'M 15,15 L 75,25 L 85,45 L 35,50 Z'
+    };
+  }, [selectedCircuitData]);
+
+  const weatherMetrics = {
+    dry: {
+      temp: "34°C Track Temp",
+      grip: "High Dry Grip (95%)",
+      gripColor: "text-emerald-500",
+      tires: "🔴 Soft (C5) / 🟡 Medium (C4)",
+      aero: "Low-Drag Straight-Line Configuration",
+      pitStrategy: "1-Stop Strategy: Medium ➔ Hard (Lap 22)",
+      frictionCoef: "0.92 Track Friction",
+      status: "Optimal racing surface with excellent traction and zero puddling.",
+      timeDelta: "Baseline pace"
+    },
+    damp: {
+      temp: "22°C Damp Temp",
+      grip: "Slippery Inter-Grip (60%)",
+      gripColor: "text-amber-500",
+      tires: "🟢 Intermediate Compounds",
+      aero: "High-Downforce Balanced Wings",
+      pitStrategy: "Reactive Strategy: Wet ➔ Inter (Lap 12) / Dry ➔ Inter if Rain Start",
+      frictionCoef: "0.65 Track Friction",
+      status: "Moisture on track limits traction. Slick kerbs, damp braking lines.",
+      timeDelta: "+5.420s Humidity drag"
+    },
+    wet: {
+      temp: "16°C Monsoon Temp",
+      grip: "Low Hydroplane Grip (25%)",
+      gripColor: "text-rose-550",
+      tires: "🔵 Full Monsoon Blue Wet",
+      aero: "Extreme AoA Rain-Wings Setup",
+      pitStrategy: "Safety: Wet ➔ Intermediate after safety car restart (Lap 16)",
+      frictionCoef: "0.31 Track Friction",
+      status: "Heavy standing water and dynamic aquaplaning risk in Sector 2/3.",
+      timeDelta: "+12.860s standing water delay"
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -299,6 +401,375 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
           Complete listing of global circuits hosting Grand Prix battles during the {season} F1 Championship.
         </p>
       </header>
+
+      {/* NEW: Dynamic Strategy & Weather Commander Dashboard */}
+      {selectedCircuitData && activeTrackInfo && (
+        <div 
+          id="circuit-commander-hud"
+          className="bg-neutral-950 text-white rounded-3xl p-6 border border-neutral-800 shadow-xl space-y-6 select-none"
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800 pb-4">
+            <div className="space-y-1">
+              <span className="text-[9px] font-mono tracking-widest text-red-500 font-bold uppercase">
+                ROUND {selectedCircuitData.visitedRound} COCKPIT PILOT COMMANDER
+              </span>
+              <h2 className="text-2xl font-black font-mono tracking-tight text-white">
+                {selectedCircuitData.circuitName}
+              </h2>
+              <p className="text-xs text-neutral-400">
+                Location: <strong className="text-neutral-200">{selectedCircuitData.Location.locality}, {selectedCircuitData.Location.country}</strong>
+              </p>
+            </div>
+
+            {/* Weather Regulator Buttons */}
+            <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 rounded-xl p-1.5">
+              <button
+                onClick={() => setWeatherPreset('dry')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all outline-none cursor-pointer ${
+                  weatherPreset === 'dry' 
+                    ? 'bg-red-650 text-white shadow-md' 
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <Sun size={13} /> DRY HEAT
+              </button>
+              <button
+                onClick={() => setWeatherPreset('damp')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all outline-none cursor-pointer ${
+                  weatherPreset === 'damp' 
+                    ? 'bg-amber-500 text-black shadow-md' 
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <CloudRain size={13} /> DAMP SHOWERS
+              </button>
+              <button
+                onClick={() => setWeatherPreset('wet')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all outline-none cursor-pointer ${
+                  weatherPreset === 'wet' 
+                    ? 'bg-blue-605 text-white shadow-md' 
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <CloudRain size={13} /> MONSOON WET
+              </button>
+            </div>
+          </div>
+
+          {/* Grid Layout of HUD Cockpit parameters */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch pt-2">
+            
+            {/* Left Column: Interactive Telemetry/Route Mapping Panel */}
+            <div className="xl:col-span-6 flex flex-col bg-[#0b0b0c] border border-neutral-800 rounded-2xl overflow-hidden relative" style={{ minHeight: '420px' }} id="interactive-radar-hud">
+              {/* Header title badge */}
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-neutral-900/90 border border-neutral-800 px-3 py-1.5 rounded-lg select-none font-mono text-[9px]">
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                <span className="text-gray-300 font-extrabold uppercase">LIVE CIRCUIT GEOMETRY OVERLAY</span>
+                <span className="text-gray-500 text-[8px]">•</span>
+                <span className="text-gray-400">ACTIVE TELEMETRY</span>
+              </div>
+
+              {selectedCircuitData.circuitId === 'silverstone' ? (
+                /* High-Fidelity Silverstone Circuit Overlay matching user-supplied image layout CONCEPT */
+                <div className="w-full h-full flex items-center justify-center p-4 pt-16 relative">
+                  <svg viewBox="0 0 1000 650" className="w-full h-full max-h-[380px] fill-none stroke-linecap-round stroke-linejoin-round select-none">
+                    <defs>
+                      <pattern id="inner-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#222" stroke-width="0.5"/>
+                      </pattern>
+                      <filter id="glow-s1" x="-10%" y="-10%" width="120%" height="120%">
+                        <feGaussianBlur stdDeviation="5" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                      <filter id="glow-s2" x="-10%" y="-10%" width="120%" height="120%">
+                        <feGaussianBlur stdDeviation="5" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                      <filter id="glow-s3" x="-10%" y="-10%" width="120%" height="120%">
+                        <feGaussianBlur stdDeviation="5" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
+
+                    <rect width="1000" height="650" fill="url(#inner-grid)" opacity="0.3" pointer-events="none" />
+
+                    {/* DRS Active Dash Zones */}
+                    <path d="M 450 410 L 160 300" stroke="#10b981" stroke-width="4" stroke-dasharray="8 6" opacity="0.4" />
+                    <path d="M 640 400 L 750 310" stroke="#10b981" stroke-width="4" stroke-dasharray="8 6" opacity="0.4" />
+
+                    {/* Sector Track paths */}
+                    {/* Sector 1: Red */}
+                    <path d="M 370 170 Q 380 230 430 260 L 460 280 Q 500 300 450 320 T 400 370 T 450 410" 
+                          stroke="#ef4444" stroke-width="12" filter="url(#glow-s1)" opacity="0.9" />
+                    {/* Sector 2: Blue */}
+                    <path d="M 450 410 L 160 300 Q 120 280 140 240 T 210 180 Q 255 120 300 150 Q 320 180 370 140 T 435 150 Q 520 140 640 400" 
+                          stroke="#3b82f6" stroke-width="12" filter="url(#glow-s2)" opacity="0.9" />
+                    {/* Sector 3: Yellow */}
+                    <path d="M 640 400 T 750 310 Q 790 270 790 200 T 730 110 T 670 130 T 610 200 T 510 120 L 370 170" 
+                          stroke="#eab308" stroke-width="12" filter="url(#glow-s3)" opacity="0.9" />
+
+                    {/* DRS Detection Zone labels */}
+                    <g transform="translate(510, 210) scale(0.95)" className="pointer-events-none opacity-80">
+                      <rect width="150" height="52" rx="6" fill="#10b981" />
+                      <text x="75" y="20" fill="#fff" font-family="monospace" font-weight="900" font-size="10" text-anchor="middle">DRS DETECTION</text>
+                      <text x="75" y="38" fill="#fff" font-family="monospace" font-weight="900" font-size="14" text-anchor="middle">ZONE 1</text>
+                      <path d="M 75 52 L 75 75" stroke="#10b981" stroke-width="2" />
+                      <circle cx="75" cy="75" r="4" fill="#10b981" />
+                    </g>
+
+                    <g transform="translate(630, 480) scale(0.95)" className="pointer-events-none opacity-80">
+                      <rect width="150" height="52" rx="6" fill="#10b981" />
+                      <text x="75" y="20" fill="#fff" font-family="monospace" font-weight="900" font-size="10" text-anchor="middle">DRS DETECTION</text>
+                      <text x="75" y="38" fill="#fff" font-family="monospace" font-weight="900" font-size="14" text-anchor="middle">ZONE 2</text>
+                      <path d="M 75 0 L 75 -35" stroke="#10b981" stroke-width="2" />
+                      <circle cx="75" cy="-35" r="4" fill="#10b981" />
+                    </g>
+
+                    {/* Speed Trap pink badge */}
+                    <g transform="translate(140, 360) scale(0.95)" className="pointer-events-none opacity-80">
+                      <rect width="110" height="36" rx="6" fill="#ec4899" />
+                      <text x="55" y="22" fill="#fff" font-family="monospace" font-weight="950" font-size="12" text-anchor="middle">SPEED TRAP</text>
+                      <path d="M 55 0 L 55 -45" stroke="#ec4899" stroke-width="2" />
+                      <circle cx="55" cy="-45" r="4" fill="#ec4899" />
+                    </g>
+
+                    {/* Checker start line */}
+                    <g transform="translate(415, 145) rotate(-15)">
+                      <rect width="20" height="12" fill="#ffffff" />
+                      <rect x="0" y="0" width="5" height="6" fill="#000000" />
+                      <rect x="10" y="0" width="5" height="6" fill="#000000" />
+                      <rect x="5" y="6" width="5" height="6" fill="#000000" />
+                      <rect x="15" y="6" width="5" height="6" fill="#000000" />
+                    </g>
+
+                    {/* Interactive Turn Circles */}
+                    {silverstoneTurns.map((turn) => {
+                      const isHovered = hoveredTurn?.id === turn.id;
+                      return (
+                        <g 
+                          key={turn.id} 
+                          className="cursor-pointer group/node"
+                          onMouseEnter={() => setHoveredTurn(turn)}
+                          onMouseLeave={() => setHoveredTurn(null)}
+                        >
+                          <circle 
+                            cx={turn.x} 
+                            cy={turn.y} 
+                            r={isHovered ? 14 : 9} 
+                            fill={isHovered ? "#ffffff" : "#111112"} 
+                            stroke={isHovered ? "#ef4444" : "#ffffff"} 
+                            strokeWidth={isHovered ? 4 : 2} 
+                            className="transition-all duration-200" 
+                          />
+                          <text 
+                            x={turn.x} 
+                            y={turn.y + 3} 
+                            fill={isHovered ? "#000000" : "#ffffff"} 
+                            fontSize="9" 
+                            fontWeight="900" 
+                            fontFamily="monospace" 
+                            textAnchor="middle"
+                            className="pointer-events-none"
+                          >
+                            {turn.id.toString().padStart(2, '0')}
+                          </text>
+
+                          {/* Instant small tooltip above turn */}
+                          <g transform={`translate(${turn.x - 60}, ${turn.y - 45})`} className={`pointer-events-none transition-all duration-200 ${isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}>
+                            <rect width="120" height="24" rx="4" fill="#000" stroke="#444" strokeWidth="1" />
+                            <text x="60" y="15" fill="#fff" font-family="monospace" fontSize="9" fontWeight="bold" text-anchor="middle">T{turn.id} • {turn.name}</text>
+                          </g>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  
+                  {/* Watermark sector designations */}
+                  <span className="absolute bottom-3 left-4 text-[8px] font-mono text-neutral-500 uppercase tracking-widest font-black flex gap-3 select-none">
+                    <span className="text-red-500 font-extrabold">SECTOR 1 (Turns 01-05)</span>
+                    <span className="text-blue-500 font-extrabold">SECTOR 2 (Turns 06-14)</span>
+                    <span className="text-yellow-500 font-extrabold">SECTOR 3 (Turns 15-18)</span>
+                  </span>
+                </div>
+              ) : (
+                /* Dynamic generic trace styled visual overlay for any other track */
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 pt-16 relative">
+                  <div className="w-full flex-1 flex items-center justify-center relative">
+                    <svg viewBox="0 0 100 60" className="w-full h-full max-h-[220px] stroke-red-550 fill-none stroke-[2.8] stroke-linejoin-round stroke-linecap-round filter drop-shadow-[0_0_10px_rgba(239,26,45,0.55)]" style={{ stroke: '#EF1A2D' }}>
+                      <path d={activeTrackInfo.path} />
+                    </svg>
+
+                    {/* Hotspot indicators over the layout */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <span className="text-[10px] font-mono uppercase font-black tracking-widest text-white/5 rotate-12 select-none">
+                        ELECTRONIC RADAR CAPTURE
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Horizontal scrollable directory list of track corners */}
+                  <div className="w-full z-10 pt-4 border-t border-neutral-800/80 bg-neutral-900/40 p-3 rounded-xl">
+                    <span className="block text-[8px] font-mono text-neutral-500 uppercase tracking-wider font-extrabold mb-2 text-center">
+                      TRACK CORNERS DIRECTORY (HOVER TO RUN INDEPENDENT TELEMETRY SENSORS)
+                    </span>
+                    <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-neutral-850 scrollbar-track-transparent">
+                      {getGenericTurns(selectedCircuitData.circuitName, activeTrackInfo.corners).map((turn) => {
+                        const isHovered = hoveredTurn?.id === turn.id;
+                        return (
+                          <button
+                            key={turn.id}
+                            onMouseEnter={() => setHoveredTurn(turn)}
+                            onMouseLeave={() => setHoveredTurn(null)}
+                            className={`px-3 py-1.5 rounded-lg border font-mono text-[10px] whitespace-nowrap transition-all outline-none cursor-pointer ${
+                              isHovered 
+                                ? "bg-white text-black border-white font-extrabold scale-102" 
+                                : "bg-neutral-900/80 text-neutral-300 border-neutral-800 hover:text-white"
+                            }`}
+                          >
+                            T{turn.id} {turn.name.replace("Turn ", "")}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Readouts, Strategy and Live telemetry HUD */}
+            <div className="xl:col-span-6 flex flex-col justify-between gap-6">
+              
+              {/* Dynamic Turn Telemetry Cockpit (Our hot element!) */}
+              <div 
+                className="bg-neutral-900/65 border border-neutral-800 rounded-2xl p-5 min-h-[170px] flex flex-col justify-between relative overflow-hidden font-mono"
+                id="turn-telemetry-screener"
+              >
+                <div className="flex justify-between items-center border-b border-neutral-800/80 pb-2">
+                  <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
+                    <Activity size={12} className="text-red-500" />
+                    LIVE ELECTRONIC TELEMETRY READOUT
+                  </span>
+                  <span className="text-[7.5px] bg-red-650/20 text-red-500 px-2 py-0.5 rounded uppercase font-black">
+                    ONLINE ANALYZER
+                  </span>
+                </div>
+
+                {hoveredTurn ? (
+                  <div className="grid grid-cols-12 gap-4 pt-3.5 z-10">
+                    <div className="col-span-4 border-r border-neutral-800 pr-2">
+                      <span className="text-[8px] text-neutral-500 uppercase tracking-widest block font-bold">ACTIVE NODE</span>
+                      <strong className="text-2xl font-black text-white block leading-none mt-1">
+                        T{hoveredTurn.id.toString().padStart(2, '0')}
+                      </strong>
+                      <span className="text-[9.5px] font-bold text-[#FF9E00] block mt-1 uppercase tracking-tight truncate">
+                        {hoveredTurn.name}
+                      </span>
+                    </div>
+
+                    <div className="col-span-8 space-y-3 pl-2">
+                      <div className="grid grid-cols-3 gap-2 text-center text-[10.5px]">
+                        <div className="bg-neutral-950 p-2 rounded-lg border border-neutral-800">
+                          <span className="text-[7px] text-neutral-500 block uppercase">APEX SPEED</span>
+                          <strong className="text-white font-bold block mt-0.5">{hoveredTurn.speed}</strong>
+                        </div>
+                        <div className="bg-neutral-950 p-2 rounded-lg border border-neutral-800">
+                          <span className="text-[7px] text-neutral-500 block uppercase">GEAR LEVEL</span>
+                          <strong className="text-emerald-400 font-extrabold block mt-0.5">{hoveredTurn.gear}</strong>
+                        </div>
+                        <div className="bg-neutral-950 p-2 rounded-lg border border-neutral-800">
+                          <span className="text-[7px] text-neutral-500 block uppercase">LAT LIB G</span>
+                          <strong className="text-amber-500 font-bold block mt-0.5">{hoveredTurn.gforce}</strong>
+                        </div>
+                      </div>
+
+                      <div className="leading-tight">
+                        <span className="text-[7px] text-neutral-500 uppercase tracking-widest block mb-1">GEOMETRIC ACCENT DESCRIPTION</span>
+                        <div className="text-[10px] text-neutral-300 font-medium">
+                          Apex characteristic utilizes <strong className="text-white font-semibold">{hoveredTurn.type || "standard apex curves"}</strong> style. Downforce loadings test chassis limits under extreme F1 stress.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center space-y-2 z-10 select-none">
+                    <span className="inline-block text-neutral-500 animate-pulse text-[15px] font-mono leading-none">█ ▄ █ ▄ ▄ █ ▄ █ ▄</span>
+                    <p className="text-[9.5px] text-neutral-450 font-bold uppercase tracking-wider">
+                      HOVER OVER FIELD PINPOINTS OR USE SENSOR MENU TO INITIATE LIVE TELEMETRY APEX READOUT
+                    </p>
+                    <p className="text-[8.5px] text-neutral-500 font-medium">
+                      Monitored measurements: estimated speeds, G-loadings, target gears and corner profiles.
+                    </p>
+                  </div>
+                )}
+
+                {/* Decorative retro grid watermark trace element */}
+                <div className="absolute right-2 bottom-2 font-mono text-[7px] text-neutral-700/60 leading-none text-right select-none pointer-events-none">
+                  F1_COMMAND_BRIDGE_AISTUDIO_SYS
+                </div>
+              </div>
+
+              {/* Strategy Parameters layout */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                
+                <div className="bg-neutral-900/60 p-4 border border-neutral-800 rounded-2xl space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-neutral-400 font-bold uppercase text-[9px]">
+                    <Activity size={12} className="text-red-500" />
+                    <span>TACTICAL SURFACE FRICTION</span>
+                  </div>
+                  <div>
+                    <div className={`text-base font-black ${weatherMetrics[weatherPreset].gripColor}`}>
+                      {weatherMetrics[weatherPreset].grip}
+                    </div>
+                    <span className="text-[10px] text-neutral-450 font-medium block mt-0.5">
+                      {weatherMetrics[weatherPreset].temp} • {weatherMetrics[weatherPreset].frictionCoef}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-neutral-900/60 p-4 border border-neutral-800 rounded-2xl space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-neutral-400 font-bold uppercase text-[9px]">
+                    <Award size={12} className="text-amber-500" />
+                    <span>TIRES CONFIGS & WINGS APEX</span>
+                  </div>
+                  <div>
+                    <div className="text-white text-xs font-bold font-mono">
+                      {weatherMetrics[weatherPreset].tires}
+                    </div>
+                    <span className="text-[10px] text-neutral-450 font-medium block mt-0.5 truncate">
+                      {weatherMetrics[weatherPreset].aero}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-neutral-900/60 p-4 border border-neutral-800 rounded-2xl space-y-2.5 sm:col-span-2">
+                  <span className="text-neutral-400 font-bold uppercase text-[9px] block">
+                    RECOMMENDED TELEMETRIC RACE STRATEGY
+                  </span>
+                  <p className="font-bold text-gray-205 leading-relaxed text-[11px] text-white">
+                    {weatherMetrics[weatherPreset].pitStrategy}
+                  </p>
+                  <div className="pt-2.5 border-t border-neutral-800 text-[10px] text-neutral-450 flex flex-col sm:flex-row justify-between gap-1.5">
+                    <span>Performance impact: <strong className="text-red-400 font-bold">{weatherMetrics[weatherPreset].timeDelta}</strong></span>
+                    <span className="truncate max-w-[320px] text-neutral-400">{weatherMetrics[weatherPreset].status}</span>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Search and Filters Deck */}
       <div 
@@ -381,11 +852,18 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
           {filteredCircuits.map((circuit) => {
+            const isSelected = selectedCircuitId === circuit.circuitId;
+
             return (
               <div
                 key={circuit.circuitId}
                 id={`circuit-card-${circuit.circuitId}`}
-                className="bg-white border border-gray-150 hover:border-gray-250 hover:shadow-md transition-all duration-300 rounded-2xl p-6 relative flex flex-col justify-between h-[210px] group cursor-default"
+                onClick={() => setSelectedCircuitId(circuit.circuitId)}
+                className={`bg-white border hover:shadow-md transition-all duration-300 rounded-2xl p-6 relative flex flex-col justify-between h-[210px] group cursor-pointer ${
+                  isSelected 
+                    ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/5 shadow-inner' 
+                    : 'border-gray-150 hover:border-gray-250'
+                }`}
               >
                 <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
@@ -451,7 +929,7 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
 
                       {/* Mini SVG Circuit Map Trace */}
                       <div className="bg-neutral-900 border border-neutral-800/60 rounded-lg p-3 flex items-center justify-center h-28 relative overflow-hidden">
-                        <svg viewBox="0 0 100 60" className="w-full h-full stroke-red-505 fill-none stroke-[2.5] stroke-linejoin-round stroke-linecap-round filter drop-shadow-[0_0_6px_rgba(239,26,45,0.4)]" style={{ stroke: '#EF1A2D' }}>
+                        <svg viewBox="0 0 100 60" className="w-full h-full stroke-red-500 fill-none stroke-[2.5] stroke-linejoin-round stroke-linecap-round filter drop-shadow-[0_0_6px_rgba(239,26,45,0.4)]" style={{ stroke: '#EF1A2D' }}>
                           <path d={info.path} />
                         </svg>
                         <span className="absolute bottom-1 right-2 text-[8px] font-mono text-gray-500 uppercase">Track Outline Map</span>
@@ -461,27 +939,27 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                       <div className="grid grid-cols-2 gap-y-2.5 gap-x-1.5 text-[11px] font-medium leading-normal">
                         <div>
                           <span className="block text-[8px] font-mono text-gray-500 uppercase tracking-wider font-bold">Track Length</span>
-                          <span className="text-gray-250 font-bold">{info.length}</span>
+                          <span className="text-gray-200 font-bold">{info.length}</span>
                         </div>
                         <div>
                           <span className="block text-[8px] font-mono text-gray-500 uppercase tracking-wider font-bold">Race Laps</span>
-                          <span className="text-gray-255 font-mono font-bold">{info.laps} Laps</span>
+                          <span className="text-gray-300 font-mono font-bold">{info.laps} Laps</span>
                         </div>
                         <div>
                           <span className="block text-[8px] font-mono text-gray-500 uppercase tracking-wider font-bold">Turns / Corners</span>
-                          <span className="text-gray-255 font-mono font-bold">{info.corners} Corners</span>
+                          <span className="text-gray-300 font-mono font-bold">{info.corners} Corners</span>
                         </div>
                         <div>
-                          <span className="block text-[8px] font-mono text-gray-550 uppercase tracking-wider font-bold">Crowd Capacity</span>
-                          <span className="text-gray-255 font-mono">{info.capacity}</span>
+                          <span className="block text-[8px] font-mono text-gray-400 uppercase tracking-wider font-bold">Crowd Capacity</span>
+                          <span className="text-gray-300 font-mono">{info.capacity}</span>
                         </div>
                         <div className="col-span-2">
-                          <span className="block text-[8px] font-mono text-gray-550 uppercase tracking-wider font-bold">Lap Record</span>
+                          <span className="block text-[8px] font-mono text-gray-400 uppercase tracking-wider font-bold">Lap Record</span>
                           <span className="text-amber-400 font-mono font-bold break-all">{info.record}</span>
                         </div>
                       </div>
 
-                      <div className="border-t border-neutral-805 pt-2 flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                      <div className="border-t border-neutral-800 pt-2 flex items-center justify-between text-[10px] text-gray-500 font-mono">
                         <span>Click Wiki icon to read more</span>
                         <span className="text-red-500 font-bold">&#10142;</span>
                       </div>

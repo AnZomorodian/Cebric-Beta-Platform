@@ -1,4 +1,4 @@
-import { Home, Calendar, Trophy, BarChart3, MapPin, ArrowLeftRight } from 'lucide-react';
+import { Home, Newspaper, Calendar, Trophy, BarChart3, MapPin, ArrowLeftRight, Timer, User } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -8,11 +8,14 @@ interface SidebarProps {
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'news', label: 'News Feed', icon: Newspaper },
     { id: 'schedule', label: 'Race Schedule', icon: Calendar },
     { id: 'standings', label: 'Standings', icon: Trophy },
     { id: 'drivers', label: 'Drivers & Teams', icon: BarChart3 },
     { id: 'circuits', label: 'Circuits', icon: MapPin },
     { id: 'compare', label: 'Head to Head', icon: ArrowLeftRight },
+    { id: 'laps', label: 'Lap Telemetry', icon: Timer },
+    { id: 'auth', label: 'User Hub', icon: User },
   ];
 
   return (
@@ -63,7 +66,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
       {/* Footer Info Accent */}
       <div className="mt-auto flex flex-col items-center text-[10px] font-mono text-gray-400 tracking-tighter">
-        <span>V1.0</span>
+        <span>V1.1</span>
       </div>
     </aside>
   );

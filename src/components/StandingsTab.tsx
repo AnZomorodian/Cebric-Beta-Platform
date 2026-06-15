@@ -109,9 +109,7 @@ export default function StandingsTab({
                     {/* Rank Bullet */}
                     <div className="w-8 shrink-0 font-mono text-center">
                       {standing.position === '1' ? (
-                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center border border-amber-200 text-amber-800 mx-auto">
-                          <Award size={16} className="text-amber-600 fill-amber-300" />
-                        </div>
+                        <span className="text-[#EF1A2D] font-black text-base">#1</span>
                       ) : (
                         <span className="text-gray-400 font-bold text-sm">#{standing.position}</span>
                       )}
@@ -238,9 +236,7 @@ export default function StandingsTab({
                     {/* Rank */}
                     <div className="w-8 shrink-0 font-mono text-center">
                       {standing.position === '1' ? (
-                        <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center border border-amber-200 text-amber-800 mx-auto">
-                          <Award size={16} className="text-amber-600 fill-amber-300" />
-                        </div>
+                        <span className="text-[#EF1A2D] font-black text-base">#1</span>
                       ) : (
                         <span className="text-gray-400 font-bold text-sm">#{standing.position}</span>
                       )}

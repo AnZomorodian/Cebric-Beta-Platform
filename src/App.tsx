@@ -6,11 +6,14 @@ import { SeasonData } from './types';
 import Sidebar from './components/Sidebar';
 import SeasonSelector from './components/SeasonSelector';
 import DashboardTab from './components/DashboardTab';
+import NewsTab from './components/NewsTab';
 import ScheduleTab from './components/ScheduleTab';
 import StandingsTab from './components/StandingsTab';
 import DriversTab from './components/DriversTab';
 import CircuitsTab from './components/CircuitsTab';
 import CompareTab from './components/CompareTab';
+import LapTimesTab from './components/LapTimesTab';
+import AuthTab from './components/AuthTab';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -90,6 +93,10 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'news' && (
+            <NewsTab />
+          )}
+
           {activeTab === 'schedule' && seasonData && (
             <ScheduleTab 
               races={seasonData.races} 
@@ -129,6 +136,17 @@ export default function App() {
               isLoading={isLoading} 
               season={selectedSeason} 
             />
+          )}
+
+          {activeTab === 'laps' && seasonData && (
+            <LapTimesTab 
+              data={seasonData} 
+              isLoading={isLoading} 
+            />
+          )}
+
+          {activeTab === 'auth' && (
+            <AuthTab />
           )}
         </main>
 

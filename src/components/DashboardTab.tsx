@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Calendar, ArrowRight, Flag, AlertTriangle, Clock } from 'lucide-react';
+import { MapPin, Calendar, ArrowRight, Flag, AlertTriangle, Clock, Shield, Download, ExternalLink } from 'lucide-react';
 import { SeasonData } from '../types';
 import { TEAM_BG, TEAM_HEX } from '../data/mockData';
 
@@ -11,7 +11,44 @@ interface DashboardTabProps {
 }
 
 export default function DashboardTab({ data, isLoading, onGoToTab }: DashboardTabProps) {
-  const { season, driverStandings, nextRace, lastResults, lastRace } = data || {};
+  const { season, driverStandings = [], constructorStandings = [], races = [], nextRace, lastResults, lastRace } = data || {};
+
+  const downloadSeasonCSV = () => {
+    if (!data) return;
+    let csvRows = [];
+    csvRows.push(`--- FORMULA 1 SEASON ${season} STATISTICS REPORT ---`);
+    csvRows.push(`Generated on: ${new Date().toLocaleDateString()}`);
+    csvRows.push("");
+
+    csvRows.push("--- GENERAL DRIVER STANDINGS ---");
+    csvRows.push("Position,Name,Code,Country,Points,Wins");
+    driverStandings.forEach((d) => {
+      csvRows.push(`${d.position},"${d.Driver.givenName} ${d.Driver.familyName}",${d.Driver.code || 'N/A'},${d.Driver.nationality},${d.points},${d.wins || 0}`);
+    });
+    csvRows.push("");
+
+    csvRows.push("--- GENERAL CONSTRUCTOR STANDINGS ---");
+    csvRows.push("Position,Team,Nationality,Points,Wins");
+    constructorStandings.forEach((c) => {
+      csvRows.push(`${c.position},"${c.Constructor.name}",${c.Constructor.nationality},${c.points},${c.wins || 0}`);
+    });
+    csvRows.push("");
+
+    csvRows.push("--- GP SCHEDULE LIST ---");
+    csvRows.push("Round,Race Name,Circuit name,Locality,Country,Race Date");
+    races.forEach((r) => {
+      csvRows.push(`${r.round},"${r.raceName}","${r.Circuit.circuitName}","${r.Circuit.Location.locality}","${r.Circuit.Location.country}",${r.date}`);
+    });
+
+    const csvContent = csvRows.join("\n");
+    const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `F1_Season_${season}_Full_Statistics_Report.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -19,9 +56,11 @@ export default function DashboardTab({ data, isLoading, onGoToTab }: DashboardTa
     if (!nextRace) return;
 
     const computeTimeLeft = () => {
-      const targetDateStr = nextRace.time 
-        ? `${nextRace.date}T${nextRace.time}` 
-        : `${nextRace.date}T13:00:00Z`;
+      let fullTime = nextRace.time || '13:00:00Z';
+      if (!fullTime.endsWith('Z') && !fullTime.includes('+') && !fullTime.includes('-')) {
+        fullTime += 'Z';
+      }
+      const targetDateStr = `${nextRace.date}T${fullTime}`;
       
       let targetTime = new Date(targetDateStr).getTime();
       const now = Date.now();
@@ -75,14 +114,83 @@ export default function DashboardTab({ data, isLoading, onGoToTab }: DashboardTa
       className="space-y-10"
     >
       {/* Title Header */}
-      <header id="dashboard-header" className="space-y-1.5 select-none">
-        <span className="text-[11px] font-bold tracking-widest text-gray-400 font-mono uppercase">
-          SEASON {season}
-        </span>
-        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-black font-sans">
-          F1 Stats Explorer
-        </h1>
+      <header id="dashboard-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-150 pb-6 select-none">
+        <div className="space-y-1">
+          <span className="text-[11px] font-bold tracking-widest text-gray-400 font-mono uppercase">
+            SEASON {season}
+          </span>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-black font-sans">
+            F1 Stats Explorer
+          </h1>
+        </div>
+        <button
+          id="download-stats-csv-btn"
+          onClick={downloadSeasonCSV}
+          className="inline-flex items-center gap-2 px-5 py-3 bg-neutral-950 hover:bg-neutral-850 active:scale-95 text-white text-xs font-bold font-mono tracking-wider rounded-xl shadow-md shadow-neutral-950/20 transition-all outline-none cursor-pointer self-start sm:self-auto"
+        >
+          <Download size={15} /> DOWNLOAD CSV REPORT
+        </button>
       </header>
+
+      {/* Hero Showcase: Live Race Countdown Timer */}
+      {nextRace && (
+        <div 
+          id="dashboard-hero-countdown" 
+          onClick={() => onGoToTab('schedule')}
+          className="bg-neutral-950 text-white rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden border border-neutral-800 cursor-pointer hover:border-red-500/40 transition-all select-none group shadow-lg"
+        >
+          {/* Neon glow effect background */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_right,_rgba(239,26,45,0.08),_transparent_60%)] pointer-events-none" />
+
+          <div className="space-y-3 z-10 w-full md:w-1/2 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <span className="text-[9px] font-mono tracking-widest bg-red-600 text-white py-0.5 px-2.5 rounded-full uppercase font-black">
+                UPCOMING GRAND PRIX
+              </span>
+              <span className="text-[9px] font-mono tracking-widest bg-neutral-800 text-gray-300 py-0.5 px-2.5 rounded-full uppercase font-bold">
+                ROUND {nextRace.round}
+              </span>
+            </div>
+            <div>
+              <h2 className="text-2xl md:text-3.5xl font-black tracking-tight text-white leading-tight group-hover:text-red-500 transition-colors">
+                {nextRace.raceName}
+              </h2>
+              <div className="flex items-center justify-center md:justify-start gap-2 text-xs text-neutral-400 mt-1 font-medium">
+                <MapPin size={13} className="text-red-500 shrink-0" />
+                <span>{nextRace.Circuit.circuitName}, {nextRace.Circuit.Location.locality}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Time digits */}
+          <div className="grid grid-cols-4 gap-3 z-10 text-center w-full md:w-auto" id="hero-countdown-timer">
+            <div className="bg-neutral-900 border border-neutral-801/80 rounded-2xl p-3 md:px-5 md:py-3.5 shadow-md min-w-[70px] md:min-w-[85px]">
+              <span className="block text-2xl md:text-3.5xl font-black font-mono leading-none tracking-tight text-white">
+                {String(timeLeft.days).padStart(2, '0')}
+              </span>
+              <span className="text-[8px] font-mono text-neutral-400 uppercase font-bold tracking-widest mt-1.5 block">DAYS</span>
+            </div>
+            <div className="bg-neutral-900 border border-neutral-801/80 rounded-2xl p-3 md:px-5 md:py-3.5 shadow-md min-w-[70px] md:min-w-[85px]">
+              <span className="block text-2xl md:text-3.5xl font-black font-mono leading-none tracking-tight text-white">
+                {String(timeLeft.hours).padStart(2, '0')}
+              </span>
+              <span className="text-[8px] font-mono text-neutral-400 uppercase font-bold tracking-widest mt-1.5 block">HOURS</span>
+            </div>
+            <div className="bg-neutral-900 border border-neutral-810/80 rounded-2xl p-3 md:px-5 md:py-3.5 shadow-md min-w-[70px] md:min-w-[85px]">
+              <span className="block text-2xl md:text-3.5xl font-black font-mono leading-none tracking-tight text-white">
+                {String(timeLeft.minutes).padStart(2, '0')}
+              </span>
+              <span className="text-[8px] font-mono text-neutral-400 uppercase font-bold tracking-widest mt-1.5 block">MINS</span>
+            </div>
+            <div className="bg-neutral-900 border border-neutral-810/80 rounded-2xl p-3 md:px-5 md:py-3.5 shadow-md min-w-[70px] md:min-w-[85px]">
+              <span className="block text-2xl md:text-3.5xl font-black font-mono leading-none tracking-tight text-red-550 animate-pulse">
+                {String(timeLeft.seconds).padStart(2, '0')}
+              </span>
+              <span className="text-[8px] font-mono text-neutral-400 uppercase font-bold tracking-widest mt-1.5 block">SECS</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Grid Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
@@ -310,6 +418,7 @@ export default function DashboardTab({ data, isLoading, onGoToTab }: DashboardTa
         </div>
 
       </div>
+
     </motion.div>
   );
 }

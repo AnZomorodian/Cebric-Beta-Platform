@@ -1,0 +1,12 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Pull the published image instead of building by setting IMAGE, e.g.
+    #   IMAGE=ghcr.io/<owner>/cebric-beta-platform:latest docker compose up
+    image: ${IMAGE:-cebric-beta-platform:local}
+    container_name: cebric-beta-platform
+    ports:
+      - "${PORT:-8080}:80"
+    restart: unless-stopped

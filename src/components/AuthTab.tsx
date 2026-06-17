@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle } from 'lucide-react';
 
 interface UserSession {
   username: string;
@@ -8,24 +8,35 @@ interface UserSession {
   familyName: string;
   email: string;
   passportNumber: string;
+  isAdmin?: boolean;
 }
 
 const TEAM_COLORS: Record<string, string> = {
   'Ferrari': '#EF1A2D',
   'Red Bull Racing': '#3671C6',
-  'Mercedes AMG': '#27F4D2',
+  'Mercedes': '#27F4D2',
   'McLaren': '#FF8700',
   'Aston Martin': '#229971',
   'Alpine': '#0093CC',
   'Williams': '#64C4FF',
-  'Sauber': '#52E252',
-  'RB': '#6692FF',
-  'Haas': '#B6BABD',
+  'Racing Bulls': '#6692FF',
+  'Haas F1 Team': '#B6BABD',
+  'Audi': '#F20000',
+  'Cadillac Formula 1 Team': '#E5A93B',
 };
 
-export default function AuthTab() {
+interface AuthTabProps {
+  onSessionUpdate?: (user: UserSession | null) => void;
+}
+
+export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+
+  // Synchronize dynamic updates back to App.tsx instantly
+  useEffect(() => {
+    onSessionUpdate?.(currentUser);
+  }, [currentUser, onSessionUpdate]);
 
   // Form Fields
   const [username, setUsername] = useState<string>('');
@@ -38,6 +49,148 @@ export default function AuthTab() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
+
+  // Change Email Fields & Statuses
+  const [newEmail, setNewEmail] = useState<string>('');
+  const [emailSubmitting, setEmailSubmitting] = useState<boolean>(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailSuccess, setEmailSuccess] = useState<string | null>(null);
+
+  // Account Security states
+  const [oldPassword, setOldPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [secLoading, setSecLoading] = useState<boolean>(false);
+  const [secSuccess, setSecSuccess] = useState<string | null>(null);
+  const [secError, setSecError] = useState<string | null>(null);
+
+  // 2FA details
+  const [is2FAEnabled, setIs2FAEnabled] = useState<boolean>(false);
+  const [totpCode, setTotpCode] = useState<string>('582 914');
+  const [totpSecondsLeft, setTotpSecondsLeft] = useState<number>(30);
+
+  // Biometric toggle
+  const [biometricEnabled, setBiometricEnabled] = useState<boolean>(false);
+
+  // Active sessions logs list
+  const [sessions, setSessions] = useState<any[]>([
+    { id: 1, location: 'Monaco Paddock Suite Lounge (Current)', device: 'AI Studio Sandbox Environment', ip: '172.56.230.14', time: 'Active now', icon: 'Cpu' },
+    { id: 2, location: 'Silverstone Timing Wall Hub', device: 'Ubuntu Terminal Agent', ip: '93.184.216.34', time: '4 hours ago', icon: 'Settings' },
+    { id: 3, location: 'Singapore Marina Bay Command', device: 'iPad Timing Monitor', ip: '104.244.42.1', time: 'Yesterday', icon: 'Gauge' }
+  ]);
+
+  // Admin Panel states
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [loadingAdmin, setLoadingAdmin] = useState<boolean>(false);
+  const [predLockSetting, setPredLockSetting] = useState<boolean>(false);
+  const [pointsToAward, setPointsToAward] = useState<string>('25');
+  const [adminActionSuccess, setAdminActionSuccess] = useState<string | null>(null);
+  const [adminActionError, setAdminActionError] = useState<string | null>(null);
+
+  const fetchAdminUsers = async () => {
+    setLoadingAdmin(true);
+    setAdminActionError(null);
+    try {
+      const res = await fetch('/api/admin/users');
+      if (!res.ok) throw new Error('Failed to load registered F1 users roster');
+      const data = await res.json();
+      setAdminUsers(data);
+    } catch (err: any) {
+      setAdminActionError(err.message || 'Error loading users.');
+    } finally {
+      setLoadingAdmin(false);
+    }
+  };
+
+  const handleTogglePredictionsLock = () => {
+    const nextState = !predLockSetting;
+    setPredLockSetting(nextState);
+    localStorage.setItem('f1_predictions_globallock', String(nextState));
+    setAdminActionSuccess(`Prediction lock status is now set to: ${nextState ? 'LOCKED' : 'OPEN'}`);
+    setTimeout(() => setAdminActionSuccess(null), 3500);
+  };
+
+  const handleAwardAdminPoints = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pts = parseInt(pointsToAward);
+    if (isNaN(pts) || pts < 0) {
+      setAdminActionError('Please enter a valid numeric points value.');
+      return;
+    }
+    localStorage.setItem('f1_predictions_score_system', String(pts));
+    setAdminActionSuccess(`Successfully awarded ${pts} points to all fantasy prediction accounts!`);
+    setTimeout(() => setAdminActionSuccess(null), 4000);
+  };
+
+  const handleDeleteUser = async (userToDel: string) => {
+    if (userToDel === 'Admin') {
+      alert("Cannot delete the system Administrator!");
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete user @${userToDel}? This action is irreversible.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/users/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usernameToDelete: userToDel })
+      });
+      if (!res.ok) throw new Error('Failed to delete user.');
+      setAdminActionSuccess(`Successfully removed user account @${userToDel}!`);
+      fetchAdminUsers();
+      setTimeout(() => setAdminActionSuccess(null), 3000);
+    } catch (err: any) {
+      setAdminActionError(err.message || 'Error occurred.');
+    }
+  };
+
+  const handleToggleBanUser = async (userToToggle: string) => {
+    if (userToToggle === 'Admin') {
+      alert("The Admin account cannot be banned.");
+      return;
+    }
+    if (!window.confirm(`Are you absolutely sure you want to toggle the block/ban status of user @${userToToggle}?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/users/toggle-ban', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usernameToToggle: userToToggle })
+      });
+      if (!res.ok) throw new Error('Failed to change user ban status.');
+      const data = await res.json();
+      setAdminActionSuccess(`Successfully changed status for @${userToToggle}: ${data.isBanned ? 'BANNED' : 'UNBANNED / ACTIVE'}`);
+      fetchAdminUsers();
+      setTimeout(() => setAdminActionSuccess(null), 3000);
+    } catch (err: any) {
+      setAdminActionError(err.message || 'Error occurred.');
+    }
+  };
+
+  const handleClearAllUsers = async () => {
+    if (!window.confirm("CRITICAL WARNING: Are you absolutely sure you want to delete ALL registered users? This cannot be undone!")) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/users/clear', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to clear database.');
+      setAdminActionSuccess("Roster Database cleared successfully!");
+      fetchAdminUsers();
+      setTimeout(() => setAdminActionSuccess(null), 3000);
+    } catch (err: any) {
+      setAdminActionError(err.message);
+    }
+  };
+
+  // OpenF1 Real Drivers and Teams cached sets
+  const [openF1Drivers, setOpenF1Drivers] = useState<string[]>([]);
+  const [openF1Teams, setOpenF1Teams] = useState<string[]>([]);
+  const [loadingDrivers, setLoadingDrivers] = useState<boolean>(false);
 
   // VIP Customizations
   const [favouriteTeam, setFavouriteTeam] = useState<string>('Ferrari');
@@ -59,7 +212,61 @@ export default function AuthTab() {
     const cachedDriver = localStorage.getItem('f1_pref_driver');
     if (cachedTeam) setFavouriteTeam(cachedTeam);
     if (cachedDriver) setFavouriteDriver(cachedDriver);
+
+    // Populates exclusive teams and drivers lists from user requirements
+    const populateDriversAndTeams = () => {
+      setLoadingDrivers(true);
+      const names = [
+        'Lando Norris',
+        'Oscar Piastri',
+        'Charles Leclerc',
+        'Lewis Hamilton',
+        'George Russell',
+        'Kimi Antonelli',
+        'Max Verstappen',
+        'Isack Hadjar',
+        'Fernando Alonso',
+        'Lance Stroll',
+        'Pierre Gasly',
+        'Franco Colapinto',
+        'Carlos Sainz Jr',
+        'Alexander Albon',
+        'Esteban Ocon',
+        'Oliver Bearman',
+        'Liam Lawson',
+        'Arvid Lindblad',
+        'Nico Hülkenberg',
+        'Gabriel Bortoleto',
+        'Sergio Pérez',
+        'Valtteri Bottas'
+      ].sort();
+      const teams = [
+        'McLaren',
+        'Ferrari',
+        'Mercedes',
+        'Red Bull Racing',
+        'Aston Martin',
+        'Alpine',
+        'Williams',
+        'Haas F1 Team',
+        'Racing Bulls',
+        'Audi',
+        'Cadillac Formula 1 Team'
+      ].sort();
+      setOpenF1Drivers(names);
+      setOpenF1Teams(teams);
+      setLoadingDrivers(false);
+    };
+    populateDriversAndTeams();
   }, []);
+
+  useEffect(() => {
+    if (currentUser?.username === 'Admin') {
+      fetchAdminUsers();
+      const cachedLock = localStorage.getItem('f1_predictions_globallock');
+      setPredLockSetting(cachedLock === 'true');
+    }
+  }, [currentUser]);
 
   const savePreferences = (team: string, driver: string) => {
     setFavouriteTeam(team);
@@ -67,6 +274,120 @@ export default function AuthTab() {
     localStorage.setItem('f1_pref_team', team);
     localStorage.setItem('f1_pref_driver', driver);
     setSuccessMsg('VIP Driver and Team profile choices updated successfully!');
+  };
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    setEmailError(null);
+    setEmailSuccess(null);
+
+    if (!newEmail.trim()) {
+      setEmailError('Please specify a valid new email address.');
+      return;
+    }
+
+    setEmailSubmitting(true);
+    try {
+      const response = await fetch('/api/change-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: currentUser.username, newEmail: newEmail.trim() })
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error || 'Failed to update email');
+      }
+
+      const updatedUser = { ...currentUser, email: resData.email };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('f1_user_session', JSON.stringify(updatedUser));
+      setEmailSuccess('Your registered email address has been successfully updated!');
+      setNewEmail('');
+    } catch (err: any) {
+      setEmailError(err.message || 'Connecting to authenticated database failed.');
+    } finally {
+      setEmailSubmitting(false);
+    }
+  };
+
+  // Account security handlers & authentications
+  useEffect(() => {
+    if (!is2FAEnabled) return;
+    const interval = setInterval(() => {
+      setTotpSecondsLeft((prev) => {
+        if (prev <= 1) {
+          const rand = Math.floor(100000 + Math.random() * 900000).toString();
+          setTotpCode(`${rand.slice(0, 3)} ${rand.slice(3)}`);
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [is2FAEnabled]);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSecError(null);
+    setSecSuccess(null);
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setSecError('Please fill in all requested fields to modify credentials.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setSecError('New passwords do not match confirm mismatch.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setSecError('Password must be at least 6 characters for optimal security.');
+      return;
+    }
+
+    setSecLoading(true);
+    try {
+      const res = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: currentUser?.username,
+          oldPassword,
+          newPassword
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to modify security credentials.');
+      }
+      setSecSuccess('Your secure paddock credentials updated successfully!');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setSecError(err.message || 'Error occurred updating password.');
+    } finally {
+      setSecLoading(false);
+    }
+  };
+
+  const handleRevokeSession = (sessionId: number, locationName: string) => {
+    if (!window.confirm(`Revoke authentication token and terminate session at ${locationName}?`)) {
+      return;
+    }
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+  };
+
+  const handleToggleBiometricSim = () => {
+    if (!biometricEnabled) {
+      const confirmation = window.confirm(`Fingerprint Passkey Vault: Would you like to bind this machine's TPM biometric device to @${currentUser?.username} paddock session identity?`);
+      if (confirmation) {
+        setBiometricEnabled(true);
+      }
+    } else {
+      setBiometricEnabled(false);
+    }
   };
 
   const clearForm = () => {
@@ -300,63 +621,73 @@ export default function AuthTab() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Favorite F1 Driver</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Favorite F1 Driver</label>
+                    {loadingDrivers && (
+                      <span className="text-[8px] font-mono bg-blue-50 text-blue-600 px-1 rounded animate-pulse">Syncing...</span>
+                    )}
+                  </div>
                   <select
                     id="fav-driver-select"
                     value={favouriteDriver}
                     onChange={(e) => savePreferences(favouriteTeam, e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 outline-none rounded-xl py-3 px-3.5 font-semibold text-xs focus:ring-1 focus:ring-black cursor-pointer transition-all"
                   >
-                    {[
-                      'Max Verstappen',
-                      'Sergio Perez',
-                      'Lewis Hamilton',
-                      'George Russell',
-                      'Charles Leclerc',
-                      'Carlos Sainz',
-                      'Lando Norris',
-                      'Oscar Piastri',
-                      'Fernando Alonso',
-                      'Lance Stroll',
-                      'Pierre Gasly',
-                      'Esteban Ocon',
+                    {(openF1Drivers.length > 0 ? openF1Drivers : [
                       'Alexander Albon',
-                      'Yuki Tsunoda',
-                      'Liam Lawson',
-                      'Valtteri Bottas',
-                      'Zhou Guanyu',
-                      'Nico Hulkenberg',
-                      'Kevin Magnussen',
+                      'Arvid Lindblad',
+                      'Carlos Sainz Jr',
+                      'Charles Leclerc',
+                      'Esteban Ocon',
+                      'Fernando Alonso',
                       'Franco Colapinto',
+                      'Gabriel Bortoleto',
+                      'George Russell',
+                      'Isack Hadjar',
+                      'Kimi Antonelli',
+                      'Lance Stroll',
+                      'Lando Norris',
+                      'Lewis Hamilton',
+                      'Liam Lawson',
+                      'Max Verstappen',
+                      'Nico Hülkenberg',
                       'Oliver Bearman',
-                      'Jack Doohan',
-                      'Kimi Antonelli'
-                    ].sort().map(d => (
+                      'Oscar Piastri',
+                      'Pierre Gasly',
+                      'Sergio Pérez',
+                      'Valtteri Bottas'
+                    ]).map(d => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Favorite F1 Team</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Favorite F1 Team</label>
+                    {loadingDrivers && (
+                      <span className="text-[8px] font-mono bg-blue-50 text-blue-600 px-1 rounded animate-pulse">Syncing...</span>
+                    )}
+                  </div>
                   <select
                     id="fav-team-select"
                     value={favouriteTeam}
                     onChange={(e) => savePreferences(e.target.value, favouriteDriver)}
                     className="w-full bg-gray-50 border border-gray-200 outline-none rounded-xl py-3 px-3.5 font-semibold text-xs focus:ring-1 focus:ring-black cursor-pointer transition-all"
                   >
-                    {[
-                      'Ferrari',
-                      'Red Bull Racing',
-                      'Mercedes AMG',
-                      'McLaren',
-                      'Aston Martin',
+                    {(openF1Teams.length > 0 ? openF1Teams : [
                       'Alpine',
-                      'Williams',
-                      'RB',
-                      'Sauber',
-                      'Haas'
-                    ].sort().map(t => (
+                      'Aston Martin',
+                      'Audi',
+                      'Cadillac Formula 1 Team',
+                      'Ferrari',
+                      'Haas F1 Team',
+                      'McLaren',
+                      'Mercedes',
+                      'Racing Bulls',
+                      'Red Bull Racing',
+                      'Williams'
+                    ]).map(t => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
@@ -390,6 +721,309 @@ export default function AuthTab() {
                 </div>
               </div>
             </div>
+
+            {/* ADVANCED PADDOCK SECURITY CONTROL HUB */}
+            <div id="paddock-security-vault" className="bg-white border border-gray-150 rounded-3xl p-6 md:p-8 space-y-6 shadow-sm select-none">
+              <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-red-500 font-mono font-black tracking-widest uppercase block mb-1">Paddock Security Vault</span>
+                  <h3 className="text-lg font-black text-black">Credentials & Terminal Safeguards</h3>
+                  <p className="text-xs text-gray-500">Configure multi-layered security protections for your Formula 1 VIP profile.</p>
+                </div>
+                <div className="p-3 bg-neutral-900 text-red-500 rounded-2xl shrink-0 hidden sm:block">
+                  <Fingerprint size={22} className="animate-pulse" />
+                </div>
+              </div>
+
+              {/* Password credentials alteration */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-black font-mono tracking-wider text-gray-400 uppercase flex items-center gap-1.5">
+                  <KeyRound size={14} className="text-red-500" />
+                  <span>Update Paddock Password</span>
+                </h4>
+
+                <form onSubmit={handleChangePassword} className="space-y-3.5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">Current Password</label>
+                      <input 
+                        type="password"
+                        placeholder="••••••••"
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-4 py-2.5 text-xs font-semibold select-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">New Password</label>
+                      <input 
+                        type="password"
+                        placeholder="Min 6 chars"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-4 py-2.5 text-xs font-semibold select-all"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-mono font-bold text-gray-450 uppercase tracking-wider block">Confirm New Password</label>
+                      <input 
+                        type="password"
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-4 py-2.5 text-xs font-semibold select-all"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      disabled={secLoading}
+                      className="px-6 py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 shrink-0"
+                    >
+                      {secLoading ? <RefreshCw size={13} className="animate-spin" /> : 'Update Password'}
+                    </button>
+                  </div>
+                </form>
+
+                {secError && (
+                  <div className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2 rounded-lg font-mono flex items-center gap-1.5">
+                    <AlertTriangle size={12} className="text-rose-500" />
+                    <span>{secError}</span>
+                  </div>
+                )}
+                {secSuccess && (
+                  <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 p-2 rounded-lg font-mono flex items-center gap-1.5">
+                    <CheckCircle2 size={12} className="text-emerald-500" />
+                    <span>{secSuccess}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Email credentials alteration */}
+              <div className="space-y-4 pt-5 border-t border-gray-100">
+                <h4 className="text-xs font-black font-mono tracking-wider text-gray-400 uppercase flex items-center gap-1.5">
+                  <User size={14} className="text-red-500" />
+                  <span>Update Registered Email Address</span>
+                </h4>
+
+                <form onSubmit={handleChangeEmail} className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">New Email Address</label>
+                    <input 
+                      type="email" 
+                      placeholder="e.g. driver@formula1.com"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-4 py-2.5 text-xs font-semibold select-all"
+                    />
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      disabled={emailSubmitting}
+                      className="px-6 py-2.5 bg-neutral-950 hover:bg-neutral-850 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 shrink-0"
+                    >
+                      {emailSubmitting ? <RefreshCw size={13} className="animate-spin" /> : 'Update Email'}
+                    </button>
+                  </div>
+                </form>
+
+                {emailError && (
+                  <div className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-2 rounded-lg font-mono flex items-center gap-1.5">
+                    <ShieldAlert size={12} className="text-rose-500" />
+                    <span>{emailError}</span>
+                  </div>
+                )}
+                {emailSuccess && (
+                  <div className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 p-2 rounded-lg font-mono flex items-center gap-1.5">
+                    <CheckCircle2 size={12} className="text-emerald-500" />
+                    <span>{emailSuccess}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Shifting 2FA & Passkey Toggles side by side */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-5 border-t border-gray-100">
+                {/* Simulated Shifting 2FA */}
+                <div className="space-y-3.5 bg-neutral-50/50 border border-gray-100 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-black font-sans text-black leading-none mb-1">Two-Factor Authentication</h4>
+                      <p className="text-[10px] text-gray-500">Enable shifting TOTP security verification.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={is2FAEnabled}
+                        onChange={(e) => {
+                          setIs2FAEnabled(e.target.checked);
+                          if(e.target.checked) {
+                            setTotpSecondsLeft(30);
+                          }
+                        }}
+                        className="sr-only peer"
+                      />
+                      <div className="w-8 h-4 bg-gray-250 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-red-650"></div>
+                    </label>
+                  </div>
+
+                  {is2FAEnabled ? (
+                    <div className="bg-neutral-900 text-white rounded-xl p-3 flex items-center justify-between border border-neutral-800">
+                      <div>
+                        <span className="text-[8px] font-mono text-neutral-450 uppercase block tracking-widest leading-none mb-1.5">VALID PADDOCK TOKEN</span>
+                        <strong className="text-base font-mono tracking-wider font-semibold text-red-500">{totpCode}</strong>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-6 h-6 rounded-full border-2 border-dashed border-red-500 animate-spin flex items-center justify-center text-[9px] font-mono font-black text-rose-400">
+                          {totpSecondsLeft}
+                        </div>
+                        <span className="text-[9px] font-mono text-neutral-450">s left</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-gray-450 bg-white border border-gray-150 rounded-xl p-3 text-center border-dashed">
+                      Disabled. Turn on checkbox to generate dynamic credentials tokens.
+                    </div>
+                  )}
+                </div>
+
+                {/* Simulated WebAuthn Fingerprint Passkey */}
+                <div className="space-y-3.5 bg-neutral-50/50 border border-gray-100 rounded-2xl p-4 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-black font-sans text-black leading-none mb-1">TPM Hardware Passkey</h4>
+                      <p className="text-[10px] text-gray-500">Sign in instantly using local client biometrics.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={biometricEnabled}
+                        onChange={handleToggleBiometricSim}
+                        className="sr-only peer"
+                      />
+                      <div className="w-8 h-4 bg-gray-250 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-red-650"></div>
+                    </label>
+                  </div>
+
+                  {biometricEnabled ? (
+                    <div className="bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-xl px-3 py-2 text-xs flex items-center gap-2">
+                      <Fingerprint size={15} className="text-emerald-600 animate-pulse" />
+                      <span className="font-mono text-[10px]">Passkey ID: key-cebric-tpm-f1-secure</span>
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-gray-450 bg-white border border-gray-150 rounded-xl p-3 text-center border-dashed">
+                      Disabled. Pair a local cryptographic security certificate.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* SPECIAL ADMIN PANEL */}
+            {currentUser.username === 'Admin' && (
+              <div id="admin-panel" className="bg-neutral-950 text-white rounded-3xl p-6 md:p-8 space-y-6 border border-neutral-800 shadow-xl relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_left,_rgba(239,26,45,0.04),_transparent_50%)] pointer-events-none" />
+                
+                <div className="border-b border-neutral-800 pb-4 flex items-center gap-2">
+                  <Settings size={20} className="text-red-500 animate-[spin_5s_linear_infinite]" />
+                  <div>
+                    <span className="text-[10px] text-red-500 font-mono font-black tracking-widest uppercase block leading-none mb-1">Cebric Engine Cockpit</span>
+                    <h3 className="text-lg font-black tracking-tight text-white leading-none">System Administration Controls</h3>
+                  </div>
+                </div>
+
+                {adminActionSuccess && (
+                  <div className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 p-3 rounded-xl flex items-center gap-2">
+                    <ShieldCheck size={16} />
+                    <span>{adminActionSuccess}</span>
+                  </div>
+                )}
+
+                {adminActionError && (
+                  <div className="text-xs bg-red-500/10 text-rose-400 border border-red-500/20 p-3 rounded-xl flex items-center gap-2">
+                    <ShieldAlert size={16} />
+                    <span>{adminActionError}</span>
+                  </div>
+                )}
+
+                {/* Users list roster manager */}
+                <div className="bg-neutral-900 border border-neutral-850 rounded-2xl p-4 md:p-5 space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-neutral-850 pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Users size={15} className="text-neutral-450" />
+                      <span className="text-[10px] text-neutral-400 font-mono font-bold uppercase tracking-wider">Database Roster ({adminUsers.length})</span>
+                    </div>
+                    {adminUsers.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllUsers}
+                        className="text-[10px] text-red-400 hover:text-red-500 font-mono flex items-center gap-1 cursor-pointer outline-none bg-none border-none animate-pulse"
+                      >
+                        <Trash2 size={11} /> Clear Database
+                      </button>
+                    )}
+                  </div>
+
+                  {loadingAdmin ? (
+                    <div className="py-6 text-center text-xs font-mono text-neutral-500">
+                      Reading local DatabaseUser.json record logs...
+                    </div>
+                  ) : adminUsers.length === 0 ? (
+                    <div className="py-6 text-center text-xs font-mono text-neutral-550 border border-dashed border-neutral-850 rounded-xl select-none">
+                      No registered user profiles found in DatabaseUser.json.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1 divide-y divide-neutral-950 scrollbar-thin scrollbar-thumb-neutral-855 scrollbar-track-transparent">
+                      {adminUsers.map((u) => (
+                        <div key={u.username} className="flex items-center justify-between text-xs font-mono py-2.5 first:pt-0">
+                          <div>
+                            <span className="text-white font-extrabold block">
+                              @{u.username}
+                              {u.isBanned && (
+                                <span className="text-[8px] bg-rose-600 text-white font-mono font-black uppercase px-1.5 py-0.5 rounded ml-1.5 inline-block align-middle">
+                                  BANNED
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-[10px] text-neutral-455 block leading-normal mt-0.5">
+                              {u.givenName} {u.familyName} • Passport {u.passportNumber || "None"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[9.5px] text-neutral-550 block hidden sm:inline">{u.email}</span>
+                            {u.username !== 'Admin' && (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleBanUser(u.username)}
+                                  className={`p-1.5 rounded transition-all cursor-pointer outline-none border-none ${
+                                    u.isBanned 
+                                      ? 'text-rose-500 hover:text-rose-400 bg-rose-500/10' 
+                                      : 'text-neutral-500 hover:text-amber-500 hover:bg-neutral-800'
+                                  }`}
+                                  title={u.isBanned ? `Unban user @${u.username}` : `Ban user @${u.username}`}
+                                >
+                                  <Ban size={12} className={u.isBanned ? "animate-pulse" : ""} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUser(u.username)}
+                                  className="text-neutral-500 hover:text-red-400 p-1.5 rounded hover:bg-neutral-800 transition-all cursor-pointer outline-none border-none bg-transparent"
+                                  title={`Delete User @${u.username}`}
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Logout panel */}
             <div className="bg-white border border-gray-150 rounded-2xl p-5 flex items-center justify-between select-none shadow-xs">

@@ -255,9 +255,75 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
   const [weatherPreset, setWeatherPreset] = useState<'dry' | 'damp' | 'wet'>('dry');
   const [hoveredTurn, setHoveredTurn] = useState<any | null>(null);
 
+  // OpenF1 Paddock Drivers Profile States
+  const [paddockDrivers, setPaddockDrivers] = useState<any[]>([]);
+  const [loadingPaddockDrivers, setLoadingPaddockDrivers] = useState<boolean>(false);
+  const [selectedDriverProfile, setSelectedDriverProfile] = useState<any | null>(null);
+
   useEffect(() => {
     setHoveredTurn(null);
   }, [selectedCircuitId]);
+
+  // Map F1 country codes to flags
+  const getCountryEmoji = (code: string) => {
+    if (!code) return "🏁";
+    const dict: Record<string, string> = {
+      GBR: "🇬🇧", NLD: "🇳🇱", MCO: "🇲🇨", ESP: "🇪🇸", FRA: "🇫🇷", DEU: "🇩🇪", AUS: "🇦🇺",
+      JPN: "🇯🇵", CAN: "🇨🇦", USA: "🇺🇸", ITA: "🇮🇹", FIN: "🇫🇮", MEX: "🇲🇽", CHN: "🇨🇳",
+      DNK: "🇩🇰", THA: "🇹🇭", AUT: "🇦🇹", BEL: "🇧🇪", CHE: "🇨🇭", BRA: "🇧🇷", NZL: "🇳🇿"
+    };
+    return dict[code.toUpperCase()] || "🏁";
+  };
+
+  useEffect(() => {
+    let active = true;
+    async function loadPaddockDrivers() {
+      setLoadingPaddockDrivers(true);
+      try {
+        const res = await fetch('https://api.openf1.org/v1/drivers?session_key=9161');
+        if (!res.ok) throw new Error(`HTTP Status ${res.status}`);
+        const data = await res.json();
+        if (active && Array.isArray(data)) {
+          // De-duplicate drivers as some may have multiple entries in a session
+          const uniqueDict: Record<number, any> = {};
+          data.forEach((d: any) => {
+            if (d.driver_number && d.full_name) {
+              const num = d.driver_number;
+              // prefer entries that have a headshot
+              if (!uniqueDict[num] || (!uniqueDict[num].headshot_url && d.headshot_url)) {
+                uniqueDict[num] = d;
+              }
+            }
+          });
+          const list = Object.values(uniqueDict).sort((a: any, b: any) => {
+            return (a.last_name || '').localeCompare(b.last_name || '');
+          });
+          setPaddockDrivers(list);
+          if (list.length > 0) {
+            setSelectedDriverProfile(list[0]);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed loading paddock drivers in CircuitsTab:", err);
+        // Robust Fallback F1 roster data when OpenF1 is throttled or offline
+        const fallbacks = [
+          { driver_number: 1, full_name: "Max VERSTAPPEN", name_acronym: "VER", team_name: "Red Bull Racing", team_colour: "3671C6", first_name: "Max", last_name: "Verstappen", country_code: "NLD", headshot_url: "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/M/MAXVER01_Max_Verstappen/maxver01.png" },
+          { driver_number: 44, full_name: "Lewis HAMILTON", name_acronym: "HAM", team_name: "Mercedes", team_colour: "27F4D2", first_name: "Lewis", last_name: "Hamilton", country_code: "GBR", headshot_url: "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LEWHAM01_Lewis_Hamilton/lewham01.png" },
+          { driver_number: 16, full_name: "Charles LECLERC", name_acronym: "LEC", team_name: "Ferrari", team_colour: "EF1A2D", first_name: "Charles", last_name: "Leclerc", country_code: "MCO", headshot_url: "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/C/CHALEC01_Charles_Leclerc/chalec01.png" },
+          { driver_number: 4, full_name: "Lando NORRIS", name_acronym: "NOR", team_name: "McLaren", team_colour: "FF8700", first_name: "Lando", last_name: "Norris", country_code: "GBR", headshot_url: "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/L/LANKEY01_Lando_Norris/lankey01.png" },
+          { driver_number: 55, full_name: "Carlos SAINZ", name_acronym: "SAI", team_name: "Ferrari", team_colour: "EF1A2D", first_name: "Carlos", last_name: "Sainz", country_code: "ESP", headshot_url: "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/C/CARSAI01_Carlos_Sainz/carsai01.png" },
+          { driver_number: 63, full_name: "George RUSSELL", name_acronym: "RUS", team_name: "Mercedes", team_colour: "27F4D2", first_name: "George", last_name: "Russell", country_code: "GBR", headshot_url: "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/G/GEORUS01_George_Russell/georus01.png" },
+          { driver_number: 14, full_name: "Fernando ALONSO", name_acronym: "ALO", team_name: "Aston Martin", team_colour: "229971", first_name: "Fernando", last_name: "Alonso", country_code: "ESP", headshot_url: "https://media.formula1.com/d_driver_fallback_image.png/content/dam/fom-website/drivers/F/FERALO01_Fernando_Alonso/feralo01.png" }
+        ];
+        setPaddockDrivers(fallbacks);
+        setSelectedDriverProfile(fallbacks[0]);
+      } finally {
+        setLoadingPaddockDrivers(false);
+      }
+    }
+    loadPaddockDrivers();
+    return () => { active = false; };
+  }, []);
 
   const silverstoneTurns = useMemo(() => [
     { id: 1, name: "Abbey", type: "High-Speed Right", speed: "285 km/h", gear: "7th", gforce: "4.2G", x: 370, y: 170 },
@@ -459,14 +525,106 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
           {/* Grid Layout of HUD Cockpit parameters */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-stretch pt-2">
             
-            {/* Left Column: Interactive Telemetry/Route Mapping Panel */}
-            <div className="xl:col-span-6 flex flex-col bg-[#0b0b0c] border border-neutral-800 rounded-2xl overflow-hidden relative" style={{ minHeight: '420px' }} id="interactive-radar-hud">
+            {/* Column 1: Paddock Driver Profiles (F1 drivers profile) */}
+            <div className="xl:col-span-4 flex flex-col bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden p-5 space-y-4" id="paddock-drivers-hud" style={{ minHeight: '420px' }}>
+              <div className="border-b border-neutral-850 pb-2 flex items-center justify-between">
+                <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest font-mono">Paddock Driver Profiles</span>
+                <span className="text-[8px] bg-red-950/40 text-red-400 px-2 py-0.5 rounded uppercase font-black font-mono">LIVE API</span>
+              </div>
+
+              {loadingPaddockDrivers ? (
+                <div id="drivers-loading-placeholder" className="py-24 text-center space-y-2 font-mono">
+                  <div className="w-6 h-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-[9.5px] text-neutral-400 uppercase tracking-wider">RETRIEVING DRIVER ASSETS...</p>
+                </div>
+              ) : paddockDrivers.length === 0 ? (
+                <p className="text-xs text-neutral-500 text-center py-12">No active F1 drivers registered in session.</p>
+              ) : (
+                <div className="space-y-4 flex flex-col flex-1">
+                  {/* Compact horizontal list of driver circles */}
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-[8px] text-neutral-500 uppercase font-bold tracking-wider block font-mono">PADDOCK ROSTER STANDINGS</span>
+                    <div className="flex gap-1.5 overflow-x-auto pb-1.5 pt-1 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+                      {paddockDrivers.map((driver) => {
+                        const isChosen = selectedDriverProfile?.driver_number === driver.driver_number;
+                        const colHex = driver.team_colour ? `#${driver.team_colour}` : "#9CA3AF";
+                        return (
+                          <button
+                            key={driver.driver_number}
+                            onClick={() => setSelectedDriverProfile(driver)}
+                            className={`px-2.5 py-1.5 rounded-lg border font-mono text-[9px] font-black tracking-normal whitespace-nowrap transition-all outline-none cursor-pointer flex items-center gap-1.5 ${
+                              isChosen 
+                                ? "bg-white text-black border-white scale-102 font-extrabold" 
+                                : "bg-neutral-950 text-neutral-300 border-neutral-800 hover:text-white"
+                            }`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: colHex }} />
+                            {driver.name_acronym || `N#${driver.driver_number}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Chosen Driver Card layout */}
+                  {selectedDriverProfile && (
+                    <div className="flex-1 flex flex-col justify-between bg-neutral-950 border border-neutral-850 p-4 rounded-xl relative overflow-hidden font-mono text-xs select-none">
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                        <span className="text-[18px] font-black text-neutral-850 leading-none mr-1">#{selectedDriverProfile.driver_number}</span>
+                        <span className="text-xs">{getCountryEmoji(selectedDriverProfile.country_code)}</span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-neutral-900 border border-neutral-800 overflow-hidden flex items-center justify-center shrink-0">
+                            {selectedDriverProfile.headshot_url ? (
+                              <img 
+                                src={selectedDriverProfile.headshot_url} 
+                                alt={selectedDriverProfile.full_name} 
+                                className="w-full h-full object-contain scale-110 object-bottom"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <span className="text-neutral-500 font-bold text-xs">F1</span>
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-[8px] text-neutral-450 font-extrabold uppercase tracking-wide block leading-tight">ACTIVE DRIVER CODE: {selectedDriverProfile.name_acronym}</span>
+                            <h4 className="text-white text-xs font-black uppercase leading-tight tracking-tight mt-0.5">{selectedDriverProfile.first_name} {selectedDriverProfile.last_name}</h4>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="w-1.5 h-3 rounded-full" style={{ backgroundColor: selectedDriverProfile.team_colour ? `#${selectedDriverProfile.team_colour}` : "#737373" }} />
+                              <span className="text-[9px] text-neutral-300 font-bold leading-none">{selectedDriverProfile.team_name}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-[9.5px] pt-1">
+                          <div className="bg-neutral-900 border border-neutral-850 p-2.5 rounded-lg leading-tight">
+                            <span className="text-[7px] text-neutral-500 block uppercase font-bold mb-1">Paddock Name</span>
+                            <span className="text-white font-extrabold">{selectedDriverProfile.broadcast_name || selectedDriverProfile.full_name}</span>
+                          </div>
+                          <div className="bg-neutral-900 border border-neutral-850 p-2.5 rounded-lg leading-tight">
+                            <span className="text-[7px] text-neutral-500 block uppercase font-bold mb-1">Region Code</span>
+                            <span className="text-white font-extrabold">{selectedDriverProfile.country_code || "INT"} / FIA PR</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-[9px] text-neutral-400 leading-normal border-t border-neutral-850 pt-2 mt-2">
+                        Telemetry profile highlights: <strong className="text-white">{selectedDriverProfile.first_name} {selectedDriverProfile.last_name}</strong> logs crisp turn vectors and excellent throttle recovery.
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* Column 2: Interactive Telemetry/Route Mapping Panel (Circuit Icon Map) */}
+            <div className="xl:col-span-4 flex flex-col bg-[#0b0b0c] border border-neutral-800 rounded-2xl overflow-hidden relative" style={{ minHeight: '420px' }} id="interactive-radar-hud">
               {/* Header title badge */}
               <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-neutral-900/90 border border-neutral-800 px-3 py-1.5 rounded-lg select-none font-mono text-[9px]">
                 <span className="w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                <span className="text-gray-300 font-extrabold uppercase">LIVE CIRCUIT GEOMETRY OVERLAY</span>
-                <span className="text-gray-500 text-[8px]">•</span>
-                <span className="text-gray-400">ACTIVE TELEMETRY</span>
+                <span className="text-gray-300 font-extrabold uppercase">CIRCUIT GEOMETRY</span>
               </div>
 
               {selectedCircuitData.circuitId === 'silverstone' ? (
@@ -595,9 +753,9 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                   
                   {/* Watermark sector designations */}
                   <span className="absolute bottom-3 left-4 text-[8px] font-mono text-neutral-500 uppercase tracking-widest font-black flex gap-3 select-none">
-                    <span className="text-red-500 font-extrabold">SECTOR 1 (Turns 01-05)</span>
-                    <span className="text-blue-500 font-extrabold">SECTOR 2 (Turns 06-14)</span>
-                    <span className="text-yellow-500 font-extrabold">SECTOR 3 (Turns 15-18)</span>
+                    <span className="text-red-500 font-extrabold">S1</span>
+                    <span className="text-blue-500 font-extrabold">S2</span>
+                    <span className="text-yellow-500 font-extrabold">S3</span>
                   </span>
                 </div>
               ) : (
@@ -619,7 +777,7 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                   {/* Horizontal scrollable directory list of track corners */}
                   <div className="w-full z-10 pt-4 border-t border-neutral-800/80 bg-neutral-900/40 p-3 rounded-xl">
                     <span className="block text-[8px] font-mono text-neutral-500 uppercase tracking-wider font-extrabold mb-2 text-center">
-                      TRACK CORNERS DIRECTORY (HOVER TO RUN INDEPENDENT TELEMETRY SENSORS)
+                      TRACK CORNERS DIRECTORY
                     </span>
                     <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-neutral-850 scrollbar-track-transparent">
                       {getGenericTurns(selectedCircuitData.circuitName, activeTrackInfo.corners).map((turn) => {
@@ -645,8 +803,8 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
               )}
             </div>
 
-            {/* Right Column: Readouts, Strategy and Live telemetry HUD */}
-            <div className="xl:col-span-6 flex flex-col justify-between gap-6">
+            {/* Column 3: Readouts, Strategy and Live telemetry HUD */}
+            <div className="xl:col-span-4 flex flex-col justify-between gap-6">
               
               {/* Dynamic Turn Telemetry Cockpit (Our hot element!) */}
               <div 
@@ -656,64 +814,60 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                 <div className="flex justify-between items-center border-b border-neutral-800/80 pb-2">
                   <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest flex items-center gap-1">
                     <Activity size={12} className="text-red-500" />
-                    LIVE ELECTRONIC TELEMETRY READOUT
+                    LIVE TELEMETRY
                   </span>
                   <span className="text-[7.5px] bg-red-650/20 text-red-500 px-2 py-0.5 rounded uppercase font-black">
-                    ONLINE ANALYZER
+                    ANALYZER
                   </span>
                 </div>
 
                 {hoveredTurn ? (
                   <div className="grid grid-cols-12 gap-4 pt-3.5 z-10">
                     <div className="col-span-4 border-r border-neutral-800 pr-2">
-                      <span className="text-[8px] text-neutral-500 uppercase tracking-widest block font-bold">ACTIVE NODE</span>
-                      <strong className="text-2xl font-black text-white block leading-none mt-1">
+                      <span className="text-[8px] text-neutral-500 uppercase tracking-widest block font-bold">NODE</span>
+                      <strong className="text-xl font-black text-white block leading-none mt-1">
                         T{hoveredTurn.id.toString().padStart(2, '0')}
                       </strong>
-                      <span className="text-[9.5px] font-bold text-[#FF9E00] block mt-1 uppercase tracking-tight truncate">
+                      <span className="text-[9px] font-bold text-[#FF9E00] block mt-1 uppercase tracking-tight truncate">
                         {hoveredTurn.name}
                       </span>
                     </div>
 
                     <div className="col-span-8 space-y-3 pl-2">
-                      <div className="grid grid-cols-3 gap-2 text-center text-[10.5px]">
+                      <div className="grid grid-cols-3 gap-2 text-center text-[9.5px]">
                         <div className="bg-neutral-950 p-2 rounded-lg border border-neutral-800">
-                          <span className="text-[7px] text-neutral-500 block uppercase">APEX SPEED</span>
-                          <strong className="text-white font-bold block mt-0.5">{hoveredTurn.speed}</strong>
+                          <span className="text-[7px] text-neutral-500 block uppercase">SPEED</span>
+                          <strong className="text-white font-bold block mt-0.5 whitespace-nowrap">{hoveredTurn.speed}</strong>
                         </div>
                         <div className="bg-neutral-950 p-2 rounded-lg border border-neutral-800">
-                          <span className="text-[7px] text-neutral-500 block uppercase">GEAR LEVEL</span>
+                          <span className="text-[7px] text-neutral-500 block uppercase">GEAR</span>
                           <strong className="text-emerald-400 font-extrabold block mt-0.5">{hoveredTurn.gear}</strong>
                         </div>
                         <div className="bg-neutral-950 p-2 rounded-lg border border-neutral-800">
-                          <span className="text-[7px] text-neutral-500 block uppercase">LAT LIB G</span>
+                          <span className="text-[7px] text-neutral-500 block uppercase">FORCE</span>
                           <strong className="text-amber-500 font-bold block mt-0.5">{hoveredTurn.gforce}</strong>
                         </div>
                       </div>
 
                       <div className="leading-tight">
-                        <span className="text-[7px] text-neutral-500 uppercase tracking-widest block mb-1">GEOMETRIC ACCENT DESCRIPTION</span>
-                        <div className="text-[10px] text-neutral-300 font-medium">
-                          Apex characteristic utilizes <strong className="text-white font-semibold">{hoveredTurn.type || "standard apex curves"}</strong> style. Downforce loadings test chassis limits under extreme F1 stress.
+                        <div className="text-[9px] text-neutral-300 font-medium">
+                          Style uses <strong className="text-white font-semibold">{hoveredTurn.type || "standard curves"}</strong>.
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="py-8 text-center space-y-2 z-10 select-none">
-                    <span className="inline-block text-neutral-500 animate-pulse text-[15px] font-mono leading-none">█ ▄ █ ▄ ▄ █ ▄ █ ▄</span>
+                    <span className="inline-block text-neutral-500 animate-pulse text-[15px] font-mono leading-none">█ ▄ █ ▄ ▄ █ ▄ </span>
                     <p className="text-[9.5px] text-neutral-450 font-bold uppercase tracking-wider">
-                      HOVER OVER FIELD PINPOINTS OR USE SENSOR MENU TO INITIATE LIVE TELEMETRY APEX READOUT
-                    </p>
-                    <p className="text-[8.5px] text-neutral-500 font-medium">
-                      Monitored measurements: estimated speeds, G-loadings, target gears and corner profiles.
+                      HOVER PINPOINTS FOR APEX TELEMETRY
                     </p>
                   </div>
                 )}
 
                 {/* Decorative retro grid watermark trace element */}
                 <div className="absolute right-2 bottom-2 font-mono text-[7px] text-neutral-700/60 leading-none text-right select-none pointer-events-none">
-                  F1_COMMAND_BRIDGE_AISTUDIO_SYS
+                  F1_COMMAND
                 </div>
               </div>
 
@@ -723,14 +877,14 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                 <div className="bg-neutral-900/60 p-4 border border-neutral-800 rounded-2xl space-y-2.5">
                   <div className="flex items-center gap-1.5 text-neutral-400 font-bold uppercase text-[9px]">
                     <Activity size={12} className="text-red-500" />
-                    <span>TACTICAL SURFACE FRICTION</span>
+                    <span>TACTICAL SURFACE</span>
                   </div>
                   <div>
-                    <div className={`text-base font-black ${weatherMetrics[weatherPreset].gripColor}`}>
+                    <div className={`text-sm font-black ${weatherMetrics[weatherPreset].gripColor}`}>
                       {weatherMetrics[weatherPreset].grip}
                     </div>
-                    <span className="text-[10px] text-neutral-450 font-medium block mt-0.5">
-                      {weatherMetrics[weatherPreset].temp} • {weatherMetrics[weatherPreset].frictionCoef}
+                    <span className="text-[9px] text-neutral-450 font-medium block mt-0.5">
+                      {weatherMetrics[weatherPreset].temp}
                     </span>
                   </div>
                 </div>
@@ -738,14 +892,14 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                 <div className="bg-neutral-900/60 p-4 border border-neutral-800 rounded-2xl space-y-2.5">
                   <div className="flex items-center gap-1.5 text-neutral-400 font-bold uppercase text-[9px]">
                     <Award size={12} className="text-amber-500" />
-                    <span>TIRES CONFIGS & WINGS APEX</span>
+                    <span>TIRES CONFIGS</span>
                   </div>
                   <div>
-                    <div className="text-white text-xs font-bold font-mono">
+                    <div className="text-white text-[11px] font-bold font-mono">
                       {weatherMetrics[weatherPreset].tires}
                     </div>
-                    <span className="text-[10px] text-neutral-450 font-medium block mt-0.5 truncate">
-                      {weatherMetrics[weatherPreset].aero}
+                    <span className="text-[9px] text-neutral-450 font-medium block mt-0.5 truncate">
+                      {weatherMetrics[weatherPreset].aero.split(" // ")[0] || ""}
                     </span>
                   </div>
                 </div>
@@ -754,12 +908,11 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                   <span className="text-neutral-400 font-bold uppercase text-[9px] block">
                     RECOMMENDED TELEMETRIC RACE STRATEGY
                   </span>
-                  <p className="font-bold text-gray-205 leading-relaxed text-[11px] text-white">
+                  <p className="font-bold text-gray-205 leading-normal text-[10.5px] text-white">
                     {weatherMetrics[weatherPreset].pitStrategy}
                   </p>
-                  <div className="pt-2.5 border-t border-neutral-800 text-[10px] text-neutral-450 flex flex-col sm:flex-row justify-between gap-1.5">
-                    <span>Performance impact: <strong className="text-red-400 font-bold">{weatherMetrics[weatherPreset].timeDelta}</strong></span>
-                    <span className="truncate max-w-[320px] text-neutral-400">{weatherMetrics[weatherPreset].status}</span>
+                  <div className="pt-2 border-t border-neutral-800 text-[9px] text-neutral-450 flex flex-col justify-between gap-1">
+                    <span>Impact: <strong className="text-red-400 font-bold">{weatherMetrics[weatherPreset].timeDelta}</strong></span>
                   </div>
                 </div>
 

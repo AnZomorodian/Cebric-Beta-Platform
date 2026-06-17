@@ -11,8 +11,10 @@ import ScheduleTab from './components/ScheduleTab';
 import StandingsTab from './components/StandingsTab';
 import DriversTab from './components/DriversTab';
 import CircuitsTab from './components/CircuitsTab';
+import DriverProfilesTab from './components/DriverProfilesTab';
 import CompareTab from './components/CompareTab';
 import LapTimesTab from './components/LapTimesTab';
+import PredictionsTab from './components/PredictionsTab';
 import AuthTab from './components/AuthTab';
 
 export default function App() {
@@ -21,6 +23,19 @@ export default function App() {
   const [seasons, setSeasons] = useState<string[]>([]);
   const [seasonData, setSeasonData] = useState<SeasonData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Instantly recover user session from cache on mount
+  useEffect(() => {
+    const cached = localStorage.getItem('f1_user_session');
+    if (cached) {
+      try {
+        setCurrentUser(JSON.parse(cached));
+      } catch (e) {
+        localStorage.removeItem('f1_user_session');
+      }
+    }
+  }, []);
 
   // Fetch dynamic seasons list once on app start
   useEffect(() => {
@@ -64,11 +79,20 @@ export default function App() {
     setActiveTab(tabId);
   };
 
+  // Synchronous route guard for locked tabs on session expiration/logout
+  useEffect(() => {
+    if (!currentUser) {
+      if (activeTab === 'predictions' || activeTab === 'compare' || activeTab === 'laps') {
+        setActiveTab('dashboard');
+      }
+    }
+  }, [currentUser, activeTab]);
+
   return (
     <div id="app-root" className="min-h-screen bg-[#fafafa] flex text-black antialiased font-sans">
       
       {/* Sidebar Navigation (Left Rail pinned) */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} currentUser={currentUser} />
 
       {/* Main Panel Content Container (offsets Sidebar) */}
       <div className="flex-1 flex flex-col md:pl-16 min-w-0" id="main-content-lane">
@@ -122,6 +146,10 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'driver-profiles' && (
+            <DriverProfilesTab />
+          )}
+
           {activeTab === 'circuits' && seasonData && (
             <CircuitsTab 
               races={seasonData.races} 
@@ -145,8 +173,12 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'predictions' && (
+            <PredictionsTab seasonData={seasonData} />
+          )}
+
           {activeTab === 'auth' && (
-            <AuthTab />
+            <AuthTab onSessionUpdate={setCurrentUser} />
           )}
         </main>
 

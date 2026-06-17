@@ -1,22 +1,34 @@
-import { Home, Newspaper, Calendar, Trophy, BarChart3, MapPin, ArrowLeftRight, Timer, User } from 'lucide-react';
+import { Home, Newspaper, Calendar, Trophy, BarChart3, MapPin, ArrowLeftRight, Timer, User, Sparkles, Users } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  currentUser: any;
 }
 
-export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
-  const menuItems = [
+export default function Sidebar({ activeTab, setActiveTab, currentUser }: SidebarProps) {
+  const rawMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'news', label: 'News Feed', icon: Newspaper },
     { id: 'schedule', label: 'Race Schedule', icon: Calendar },
     { id: 'standings', label: 'Standings', icon: Trophy },
     { id: 'drivers', label: 'Drivers & Teams', icon: BarChart3 },
+    { id: 'driver-profiles', label: 'Drivers Profile', icon: Users },
     { id: 'circuits', label: 'Circuits', icon: MapPin },
     { id: 'compare', label: 'Head to Head', icon: ArrowLeftRight },
     { id: 'laps', label: 'Lap Telemetry', icon: Timer },
+    { id: 'predictions', label: 'F1 Prediction', icon: Sparkles },
     { id: 'auth', label: 'User Hub', icon: User },
   ];
+
+  const menuItems = rawMenuItems.filter(item => {
+    if (!currentUser) {
+      if (item.id === 'predictions' || item.id === 'compare' || item.id === 'laps') {
+        return false;
+      }
+    }
+    return true;
+  });
 
   return (
     <aside 

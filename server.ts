@@ -93,6 +93,21 @@ app.post("/api/login", (req, res) => {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
+    // Special exact credentials override for Admin requested by user
+    if (username === "Admin" && password === "Admin123") {
+      return res.json({
+        success: true,
+        user: {
+          username: "Admin",
+          givenName: "System",
+          familyName: "Administrator",
+          email: "admin@cebricf1.com",
+          passportNumber: "ADM777",
+          isAdmin: true
+        }
+      });
+    }
+
     const users = readUsers();
     const user = users.find(
       (u) =>
@@ -104,6 +119,10 @@ app.post("/api/login", (req, res) => {
       return res.status(401).json({ error: "Invalid username or password credentials" });
     }
 
+    if (user.isBanned) {
+      return res.status(403).json({ error: "This user has been banned from the F1 Paddock." });
+    }
+
     return res.json({
       success: true,
       user: {
@@ -111,11 +130,788 @@ app.post("/api/login", (req, res) => {
         givenName: user.givenName,
         familyName: user.familyName,
         email: user.email || "",
-        passportNumber: user.passportNumber || `${user.givenName ? user.givenName.charAt(0).toUpperCase() : 'U'}${Math.floor(1000 + Math.random() * 9000)}`
+        passportNumber: user.passportNumber || `${user.givenName ? user.givenName.charAt(0).toUpperCase() : 'U'}${Math.floor(1000 + Math.random() * 9000)}`,
+        isAdmin: user.username === "Admin" || !!user.isAdmin,
+        isBanned: !!user.isBanned
       }
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || "An unexpected error occurred during login" });
+  }
+});
+
+// Admin REST Endpoint: Get all registered users
+app.get("/api/admin/users", (req, res) => {
+  try {
+    const users = readUsers();
+    // Return users mapped with predictions, active score, and historical results for administration detail view
+    const safeUsers = users.map(u => ({
+      username: u.username,
+      givenName: u.givenName || u.username,
+      familyName: u.familyName || "",
+      email: u.email || "",
+      passportNumber: u.passportNumber || "None",
+      registeredAt: u.registeredAt || "Prior",
+      score: u.score || 0,
+      prediction: u.prediction || null,
+      history: u.history || [],
+      isBanned: !!u.isBanned
+    }));
+    return res.json(safeUsers);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin REST Endpoint: Toggle Ban Option on specific user
+app.post("/api/admin/users/toggle-ban", (req, res) => {
+  try {
+    const { usernameToToggle } = req.body;
+    if (!usernameToToggle) {
+      return res.status(400).json({ error: "Username was not received in body." });
+    }
+    if (usernameToToggle.toLowerCase() === "admin") {
+      return res.status(400).json({ error: "The system Administrator account can never be banned." });
+    }
+    const users = readUsers();
+    const user = users.find(u => u.username.toLowerCase() === usernameToToggle.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: "User account not active on database server." });
+    }
+    user.isBanned = !user.isBanned;
+    writeUsers(users);
+    return res.json({ success: true, isBanned: user.isBanned });
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin REST Endpoint: Delete specific user
+app.post("/api/admin/users/delete", (req, res) => {
+  try {
+    const { usernameToDelete } = req.body;
+    if (!usernameToDelete) {
+      return res.status(400).json({ error: "Username to delete is required" });
+    }
+    const users = readUsers();
+    const filtered = users.filter(u => u.username.toLowerCase() !== usernameToDelete.toLowerCase());
+    
+    if (users.length === filtered.length) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    writeUsers(filtered);
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin REST Endpoint: Clear all users
+app.post("/api/admin/users/clear", (req, res) => {
+  try {
+    // Keeps database empty or clears all
+    writeUsers([]);
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST Endpoint: Change Email
+app.post("/api/change-email", (req, res) => {
+  try {
+    const { username, newEmail } = req.body;
+    if (!username || !newEmail) {
+      return res.status(400).json({ error: "Missing required parameters" });
+    }
+    const users = readUsers();
+    const userIndex = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+    if (userIndex === -1) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const emailExists = users.some((u, idx) => idx !== userIndex && u.email && u.email.toLowerCase() === newEmail.toLowerCase());
+    if (emailExists) {
+      return res.status(400).json({ error: "Email is already in use by another account" });
+    }
+
+    users[userIndex].email = newEmail;
+    const success = writeUsers(users);
+    if (success) {
+      return res.json({ success: true, email: newEmail });
+    } else {
+      return res.status(500).json({ error: "Failed to persist updated email" });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "An unexpected error occurred" });
+  }
+});
+
+// Paths and prediction settings helpers
+const PRED_SETTINGS_PATH = path.join(process.cwd(), "PredictionSettings.json");
+
+function readPredictionSettings(): any {
+  try {
+    if (!fs.existsSync(PRED_SETTINGS_PATH)) {
+      const defaultSettings = {
+        nextGpName: "British Grand Prix 2026",
+        nextGpLocation: "Silverstone Circuit",
+        nextGpDate: "2026-07-05T14:00:00Z",
+        globalLock: false,
+        scoringRules: {
+          pole: 10,
+          winner: 25,
+          podium: 10,
+          top10Multiplier: 5,
+          fastestLap: 5,
+          dotd: 5,
+          firstDnf: 10,
+          numDnfs: 5,
+          safetyCar: 5,
+          vsc: 5,
+          redFlag: 5,
+          overtakes: 10,
+          gains: 10
+        },
+        certifiedResults: {
+          poleDriver: "",
+          p1Winner: "",
+          p2Winner: "",
+          p3Winner: "",
+          top10Finishers: Array(10).fill(""),
+          fastestLap: "",
+          driverOfTheDay: "",
+          firstDNF: "",
+          numberOfDNFs: 0,
+          safetyCar: "no",
+          virtualSafetyCar: "no",
+          redFlag: "no",
+          numberOfOvertakes: 0,
+          mostPositionsGained: ""
+        }
+      };
+      fs.writeFileSync(PRED_SETTINGS_PATH, JSON.stringify(defaultSettings, null, 2));
+      return defaultSettings;
+    }
+    const data = fs.readFileSync(PRED_SETTINGS_PATH, "utf8");
+    return JSON.parse(data || "{}");
+  } catch (error) {
+    console.error("Error reading from PredictionSettings.json:", error);
+    return {};
+  }
+}
+
+function writePredictionSettings(settings: any): boolean {
+  try {
+    fs.writeFileSync(PRED_SETTINGS_PATH, JSON.stringify(settings, null, 2), "utf8");
+    return true;
+  } catch (error) {
+    console.error("Error writing to PredictionSettings.json:", error);
+    return false;
+  }
+}
+
+function recalculateUserScores(settings: any) {
+  try {
+    const users = readUsers();
+    const cert = settings.certifiedResults || {};
+    const rules = settings.scoringRules || {};
+
+    const isCertified = !!cert.p1Winner;
+
+    users.forEach((u) => {
+      if (!isCertified) {
+        u.score = 0;
+        return;
+      }
+
+      const pred = u.prediction;
+      if (!pred) {
+        u.score = 0;
+        return;
+      }
+
+      let score = 0;
+
+      // Pole Position
+      if (pred.poleDriver && cert.poleDriver && pred.poleDriver.toLowerCase().trim() === cert.poleDriver.toLowerCase().trim()) {
+        score += Number(rules.pole || 10);
+      }
+      // P1 Winner
+      if (pred.p1Winner && cert.p1Winner && pred.p1Winner.toLowerCase().trim() === cert.p1Winner.toLowerCase().trim()) {
+        score += Number(rules.winner || 25);
+      }
+      // P2 Runner-up
+      if (pred.p2Winner && cert.p2Winner && pred.p2Winner.toLowerCase().trim() === cert.p2Winner.toLowerCase().trim()) {
+        score += Number(rules.podium || 10);
+      }
+      // P3 Third Place
+      if (pred.p3Winner && cert.p3Winner && pred.p3Winner.toLowerCase().trim() === cert.p3Winner.toLowerCase().trim()) {
+        score += Number(rules.podium || 10);
+      }
+      // Fastest Lap
+      if (pred.fastestLap && cert.fastestLap && pred.fastestLap.toLowerCase().trim() === cert.fastestLap.toLowerCase().trim()) {
+        score += Number(rules.fastestLap || 5);
+      }
+      // Driver of the Day
+      if (pred.driverOfTheDay && cert.driverOfTheDay && pred.driverOfTheDay.toLowerCase().trim() === cert.driverOfTheDay.toLowerCase().trim()) {
+        score += Number(rules.dotd || 5);
+      }
+      // First DNF
+      if (pred.firstDNF && cert.firstDNF && pred.firstDNF.toLowerCase().trim() === cert.firstDNF.toLowerCase().trim()) {
+        score += Number(rules.firstDnf || 10);
+      }
+      // Number of DNFs
+      if (pred.numberOfDNFs !== undefined && cert.numberOfDNFs !== undefined && Number(pred.numberOfDNFs) === Number(cert.numberOfDNFs)) {
+        score += Number(rules.numDnfs || 5);
+      }
+      // Safety Car
+      if (pred.safetyCar && cert.safetyCar && pred.safetyCar.toLowerCase().trim() === cert.safetyCar.toLowerCase().trim()) {
+        score += Number(rules.safetyCar || 5);
+      }
+      // Virtual Safety Car
+      if (pred.virtualSafetyCar && cert.virtualSafetyCar && pred.virtualSafetyCar.toLowerCase().trim() === cert.virtualSafetyCar.toLowerCase().trim()) {
+        score += Number(rules.vsc || 5);
+      }
+      // Red Flag Occurrence
+      if (pred.redFlag && cert.redFlag && pred.redFlag.toLowerCase().trim() === cert.redFlag.toLowerCase().trim()) {
+        score += Number(rules.redFlag || 5);
+      }
+      // Number of Overtakes: score if guess is +/- 5 overtakes
+      if (pred.numberOfOvertakes !== undefined && cert.numberOfOvertakes !== undefined) {
+        const diff = Math.abs(Number(pred.numberOfOvertakes) - Number(cert.numberOfOvertakes));
+        if (diff <= 5) {
+          score += Number(rules.overtakes || 10);
+        }
+      }
+      // Driver Who Gains Most Positions
+      if (pred.mostPositionsGained && cert.mostPositionsGained && pred.mostPositionsGained.toLowerCase().trim() === cert.mostPositionsGained.toLowerCase().trim()) {
+        score += Number(rules.gains || 10);
+      }
+
+      // Top 10 Finishers check
+      if (Array.isArray(pred.top10Finishers) && Array.isArray(cert.top10Finishers)) {
+        const certSet = new Set(cert.top10Finishers.filter(Boolean).map((d: string) => d.toLowerCase().trim()));
+        let correctTop10s = 0;
+        pred.top10Finishers.forEach((pdriver: string) => {
+          if (pdriver && certSet.has(pdriver.toLowerCase().trim())) {
+            correctTop10s++;
+          }
+        });
+        score += correctTop10s * Number(rules.top10Multiplier || 5);
+      }
+
+      u.score = score;
+    });
+
+    writeUsers(users);
+  } catch (err) {
+    console.error("Recalculate error:", err);
+  }
+}
+
+// REST Endpoints for GP Prediction Game
+app.get("/api/prediction-settings", (req, res) => {
+  const s = readPredictionSettings();
+  const now = new Date();
+  const autoLock = s.lockTime && now >= new Date(s.lockTime);
+  s.globalLock = !!s.globalLock || !!autoLock;
+  return res.json(s);
+});
+
+app.post("/api/admin/prediction-settings", (req, res) => {
+  try {
+    const newSettings = req.body;
+    if (!newSettings) {
+      return res.status(400).json({ error: "Missing prediction settings body data" });
+    }
+
+    const current = readPredictionSettings();
+    const updated = {
+      ...current,
+      ...newSettings,
+      lockTime: newSettings.lockTime !== undefined ? newSettings.lockTime : current.lockTime,
+      scoringRules: { ...current.scoringRules, ...newSettings.scoringRules },
+      certifiedResults: { ...current.certifiedResults, ...newSettings.certifiedResults }
+    };
+
+    const saved = writePredictionSettings(updated);
+    if (!saved) {
+      return res.status(500).json({ error: "Failed to write prediction settings." });
+    }
+
+    // Automatically recalculate user scores in standard backend database when saved
+    recalculateUserScores(updated);
+
+    return res.json({ success: true, settings: updated });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/user/prediction", (req, res) => {
+  try {
+    const { username, prediction } = req.body;
+    if (!username || !prediction) {
+      return res.status(400).json({ error: "Missing required username or prediction details" });
+    }
+
+    // Check if predictions are locked globally or automatically locked by time
+    const settings = readPredictionSettings();
+    const now = new Date();
+    const autoLock = settings.lockTime && now >= new Date(settings.lockTime);
+    if (settings.globalLock || autoLock) {
+      return res.status(403).json({ error: "Submissions are currently locked." });
+    }
+
+    const users = readUsers();
+    const idx = users.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+    if (idx === -1) {
+      return res.status(404).json({ error: "User profile not found in database" });
+    }
+
+    users[idx].prediction = prediction;
+    writeUsers(users);
+
+    // Dynamic points calculation support if certified results exist
+    recalculateUserScores(settings);
+
+    return res.json({ success: true, message: "Prediction registered and leaderboard recalculated." });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST Endpoint: Change registered account password
+app.post("/api/user/change-password", (req, res) => {
+  try {
+    const { username, oldPassword, newPassword } = req.body;
+    if (!username || !oldPassword || !newPassword) {
+      return res.status(400).json({ error: "Missing required details to execute password alteration." });
+    }
+    const users = readUsers();
+    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: "User profile record does not exist on database server." });
+    }
+    if (user.password !== oldPassword) {
+      return res.status(400).json({ error: "Your specified current password is incorrect." });
+    }
+    user.password = newPassword;
+    writeUsers(users);
+    return res.json({ success: true, message: "Your paddock security credentials changed successfully." });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST Endpoint: Get user profile with mocked F1 game historical points accuracy
+app.get("/api/user/profile", (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username) {
+      return res.status(400).json({ error: "Username is required." });
+    }
+    const users = readUsers();
+    const user = users.find(u => u.username.toLowerCase() === (username as string).toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    // Default pre-populated F1 season history logs if empty
+    if (!user.history || user.history.length === 0) {
+      user.history = [
+        {
+          gpName: "Bahrain GP",
+          score: 45,
+          date: "2026-03-02T15:00:00Z",
+          prediction: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Sergio Pérez",
+            p3Winner: "Carlos Sainz Jr",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Max Verstappen",
+            driverOfTheDay: "Carlos Sainz Jr",
+            mostPositionsGained: "Lewis Hamilton",
+            safetyCar: "yes"
+          },
+          certifiedResults: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Sergio Pérez",
+            p3Winner: "Carlos Sainz Jr",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Max Verstappen",
+            driverOfTheDay: "Carlos Sainz Jr",
+            mostPositionsGained: "Lewis Hamilton",
+            safetyCar: "yes"
+          }
+        },
+        {
+          gpName: "Saudi Arabian GP",
+          score: 60,
+          date: "2026-03-16T15:00:00Z",
+          prediction: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Charles Leclerc",
+            p3Winner: "Sergio Pérez",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Charles Leclerc",
+            driverOfTheDay: "Oliver Bearman",
+            mostPositionsGained: "Lewis Hamilton",
+            safetyCar: "yes"
+          },
+          certifiedResults: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Sergio Pérez",
+            p3Winner: "Charles Leclerc",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Charles Leclerc",
+            driverOfTheDay: "Oliver Bearman",
+            mostPositionsGained: "Lewis Hamilton",
+            safetyCar: "yes"
+          }
+        },
+        {
+          gpName: "Australian GP",
+          score: 35,
+          date: "2026-03-30T15:00:00Z",
+          prediction: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Carlos Sainz Jr",
+            p3Winner: "Charles Leclerc",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Charles Leclerc",
+            driverOfTheDay: "Carlos Sainz Jr",
+            mostPositionsGained: "Alex Albon",
+            safetyCar: "no"
+          },
+          certifiedResults: {
+            p1Winner: "Carlos Sainz Jr",
+            p2Winner: "Charles Leclerc",
+            p3Winner: "Lando Norris",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Charles Leclerc",
+            driverOfTheDay: "Carlos Sainz Jr",
+            mostPositionsGained: "Yuki Tsunoda",
+            safetyCar: "no"
+          }
+        },
+        {
+          gpName: "Japanese GP",
+          score: 85,
+          date: "2026-04-13T15:00:00Z",
+          prediction: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Sergio Pérez",
+            p3Winner: "Carlos Sainz Jr",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Max Verstappen",
+            driverOfTheDay: "Yuki Tsunoda",
+            mostPositionsGained: "Yuki Tsunoda",
+            safetyCar: "no"
+          },
+          certifiedResults: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Sergio Pérez",
+            p3Winner: "Carlos Sainz Jr",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Max Verstappen",
+            driverOfTheDay: "Yuki Tsunoda",
+            mostPositionsGained: "Yuki Tsunoda",
+            safetyCar: "no"
+          }
+        },
+        {
+          gpName: "Chinese GP",
+          score: 50,
+          date: "2026-04-27T15:00:00Z",
+          prediction: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Lando Norris",
+            p3Winner: "Sergio Pérez",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Max Verstappen",
+            driverOfTheDay: "Lando Norris",
+            mostPositionsGained: "Nico Hülkenberg",
+            safetyCar: "yes"
+          },
+          certifiedResults: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Lando Norris",
+            p3Winner: "Sergio Pérez",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Max Verstappen",
+            driverOfTheDay: "Lando Norris",
+            mostPositionsGained: "Nico Hülkenberg",
+            safetyCar: "yes"
+          }
+        },
+        {
+          gpName: "Miami GP",
+          score: 70,
+          date: "2026-05-11T15:00:00Z",
+          prediction: {
+            p1Winner: "Max Verstappen",
+            p2Winner: "Lando Norris",
+            p3Winner: "Charles Leclerc",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Lando Norris",
+            driverOfTheDay: "Lando Norris",
+            mostPositionsGained: "Lewis Hamilton",
+            safetyCar: "yes"
+          },
+          certifiedResults: {
+            p1Winner: "Lando Norris",
+            p2Winner: "Max Verstappen",
+            p3Winner: "Charles Leclerc",
+            poleDriver: "Max Verstappen",
+            fastestLap: "Oscar Piastri",
+            driverOfTheDay: "Lando Norris",
+            mostPositionsGained: "Lewis Hamilton",
+            safetyCar: "yes"
+          }
+        }
+      ];
+      writeUsers(users);
+    }
+
+    return res.json({
+      username: user.username,
+      givenName: user.givenName || user.username,
+      familyName: user.familyName || "",
+      email: user.email || "",
+      passportNumber: user.passportNumber || "None",
+      score: user.score || 0,
+      history: user.history
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST Endpoint: Get global aggregate prediction statistics
+app.get("/api/predictions/aggregate-stats", (req, res) => {
+  try {
+    const users = readUsers();
+    const activePredictions = users.filter(u => u.prediction);
+    const totalCount = activePredictions.length;
+
+    if (totalCount === 0) {
+      return res.json({
+        totalCount: 0,
+        mostCommonWinner: { driver: "None", count: 0, pct: 0 },
+        mostCommonPole: { driver: "None", count: 0, pct: 0 },
+        mostCommonDotd: { driver: "None", count: 0, pct: 0 },
+        mostCommonFastestLap: { driver: "None", count: 0, pct: 0 },
+        safetyCarSpread: { yes: 0, no: 0 }
+      });
+    }
+
+    const countWinners: Record<string, number> = {};
+    const countPoles: Record<string, number> = {};
+    const countDotd: Record<string, number> = {};
+    const countFastest: Record<string, number> = {};
+    let safetyCarYes = 0;
+
+    activePredictions.forEach(u => {
+      const pred = u.prediction;
+      if (pred.p1Winner) countWinners[pred.p1Winner] = (countWinners[pred.p1Winner] || 0) + 1;
+      if (pred.poleDriver) countPoles[pred.poleDriver] = (countPoles[pred.poleDriver] || 0) + 1;
+      if (pred.driverOfTheDay) countDotd[pred.driverOfTheDay] = (countDotd[pred.driverOfTheDay] || 0) + 1;
+      if (pred.fastestLap) countFastest[pred.fastestLap] = (countFastest[pred.fastestLap] || 0) + 1;
+      if (pred.safetyCar?.toLowerCase() === 'yes') safetyCarYes++;
+    });
+
+    const getMax = (record: Record<string, number>) => {
+      let maxKey = "None";
+      let maxVal = 0;
+      for (const [key, val] of Object.entries(record)) {
+        if (val > maxVal) {
+          maxVal = val;
+          maxKey = key;
+        }
+      }
+      return {
+        driver: maxKey,
+        count: maxVal,
+        pct: Math.round((maxVal / totalCount) * 100)
+      };
+    };
+
+    return res.json({
+      totalCount,
+      mostCommonWinner: getMax(countWinners),
+      mostCommonPole: getMax(countPoles),
+      mostCommonDotd: getMax(countDotd),
+      mostCommonFastestLap: getMax(countFastest),
+      safetyCarSpread: {
+        yes: Math.round((safetyCarYes / totalCount) * 100),
+        no: 100 - Math.round((safetyCarYes / totalCount) * 100)
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST Endpoint: Delete / reset current active GP setup
+app.post("/api/admin/delete-current-gp", (req, res) => {
+  try {
+    const emptySettings = {
+      nextGpName: "No Active Grand Prix",
+      nextGpLocation: "N/A",
+      nextGpDate: "1970-01-01T00:00:00Z",
+      lockTime: null,
+      globalLock: true,
+      scoringRules: {
+        pole: 10, winner: 25, podium: 10, top10Multiplier: 5, fastestLap: 5,
+        dotd: 5, firstDnf: 10, numDnfs: 5, safetyCar: 5, vsc: 5, redFlag: 5, overtakes: 10, gains: 10
+      },
+      certifiedResults: {
+        poleDriver: "", p1Winner: "", p2Winner: "", p3Winner: "",
+        top10Finishers: Array(10).fill(""), fastestLap: "", driverOfTheDay: "",
+        firstDNF: "", numberOfDNFs: 0, safetyCar: "no", virtualSafetyCar: "no",
+        redFlag: "no", numberOfOvertakes: 0, mostPositionsGained: ""
+      }
+    };
+    writePredictionSettings(emptySettings);
+
+    const users = readUsers();
+    users.forEach(u => {
+      u.prediction = null;
+      u.score = 0;
+    });
+    writeUsers(users);
+
+    return res.json({ success: true, settings: emptySettings });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST Endpoint: Get fully-revealed predictions & profile data of all players
+app.get("/api/admin/users-predictions", (req, res) => {
+  try {
+    const users = readUsers();
+    const list = users.map((u) => ({
+      username: u.username,
+      givenName: u.givenName || u.username,
+      familyName: u.familyName || "",
+      email: u.email || "",
+      passportNumber: u.passportNumber || "None",
+      prediction: u.prediction || null,
+      score: u.score || 0
+    }));
+    return res.json(list);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST Endpoint: Archive active GP round and instantiate a new GP round
+app.post("/api/admin/archive-and-new-gp", (req, res) => {
+  try {
+    const { nextGpName, nextGpLocation, nextGpDate, lockTime } = req.body;
+    if (!nextGpName || !nextGpLocation || !nextGpDate) {
+      return res.status(400).json({ error: "Missing required details to initialize the new F1 Grand Prix session." });
+    }
+
+    const settings = readPredictionSettings();
+    const users = readUsers();
+
+    // 1. Copy active prediction details into score history for all users
+    users.forEach((u) => {
+      u.history = u.history || [
+        { gpName: "Bahrain GP", score: 45, date: "2026-03-02T15:00:00Z" },
+        { gpName: "Saudi Arabian GP", score: 60, date: "2026-03-16T15:00:00Z" },
+        { gpName: "Australian GP", score: 35, date: "2026-03-30T15:00:00Z" },
+        { gpName: "Japanese GP", score: 85, date: "2026-04-13T15:00:00Z" },
+        { gpName: "Chinese GP", score: 50, date: "2026-04-27T15:00:00Z" },
+        { gpName: "Miami GP", score: 70, date: "2026-05-11T15:00:00Z" }
+      ];
+
+      u.history.push({
+        gpName: settings.nextGpName || "F1 Grand Prix",
+        gpLocation: settings.nextGpLocation || "F1 Circuit",
+        score: u.score || 0,
+        date: new Date().toISOString(),
+        prediction: u.prediction || null
+      });
+
+      // 2. Clear current GP records
+      u.prediction = null;
+      u.score = 0;
+    });
+
+    writeUsers(users);
+
+    // 3. Construct clean next GP settings, with empty/unresolved certifiedResults
+    const cleanSettings = {
+      nextGpName,
+      nextGpLocation,
+      nextGpDate,
+      lockTime: lockTime || null,
+      globalLock: false,
+      scoringRules: settings.scoringRules || {
+        pole: 10,
+        winner: 25,
+        podium: 10,
+        top10Multiplier: 5,
+        fastestLap: 5,
+        dotd: 5,
+        firstDnf: 10,
+        numDnfs: 5,
+        safetyCar: 5,
+        vsc: 5,
+        redFlag: 5,
+        overtakes: 10,
+        gains: 10
+      },
+      certifiedResults: {
+        poleDriver: "",
+        p1Winner: "",
+        p2Winner: "",
+        p3Winner: "",
+        top10Finishers: Array(10).fill(""),
+        fastestLap: "",
+        driverOfTheDay: "",
+        firstDNF: "",
+        numberOfDNFs: 0,
+        safetyCar: "no",
+        virtualSafetyCar: "no",
+        redFlag: "no",
+        numberOfOvertakes: 0,
+        mostPositionsGained: ""
+      }
+    };
+
+    writePredictionSettings(cleanSettings);
+
+    return res.json({
+      success: true,
+      message: `Archived successfully. ${nextGpName} is now active and predictions are open!`,
+      settings: cleanSettings
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/leaderboard", (req, res) => {
+  try {
+    const users = readUsers();
+    const list = users.map((u) => ({
+      username: u.username,
+      givenName: u.givenName || u.username,
+      familyName: u.familyName || "",
+      score: u.score || 0,
+      hasPrediction: !!u.prediction
+    })).sort((a, b) => b.score - a.score);
+
+    return res.json(list);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
   }
 });
 

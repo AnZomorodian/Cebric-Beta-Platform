@@ -2,11 +2,38 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Timer, Clock, Activity, Users, ChevronDown, 
-  Eye, EyeOff, BarChart2, Hash, Zap
+  Eye, EyeOff, BarChart2, Hash, Zap,
+  Database, RefreshCw, Gauge
 } from 'lucide-react';
 import { SeasonData, DriverStanding, Race } from '../types';
 import { fetchLapTimes } from '../services/ergast';
 import { TEAM_HEX, TEAM_BG } from '../data/mockData';
+
+const DRIVER_NUMBERS: Record<string, string> = {
+  'verstappen': '1',
+  'perez': '11',
+  'hamilton': '44',
+  'russell': '63',
+  'leclerc': '16',
+  'sainz': '55',
+  'norris': '4',
+  'piastri': '81',
+  'alonso': '14',
+  'stroll': '18',
+  'tsunoda': '22',
+  'lawson': '30',
+  'albon': '23',
+  'gasly': '10',
+  'ocon': '31',
+  'hulkenberg': '27',
+  'magnussen': '20',
+  'bottas': '77',
+  'colapinto': '43',
+  'bearman': '87',
+  'sargeant': '2',
+  'ricciardo': '3',
+  'zhou': '24'
+};
 
 // Format standard seconds count to elegant F1 mm:ss.sss
 function formatTime(sec: number): string {
@@ -54,10 +81,209 @@ export default function LapTimesTab({ data, isLoading }: LapTimesTabProps) {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<string>('API feed');
 
+  // OpenF1 Dynamic Sessions & Laps states
+  const [openF1Sessions, setOpenF1Sessions] = useState<any[]>([]);
+  const [openF1SelectedSession, setOpenF1SelectedSession] = useState<string>('9161'); // Default to Singapore GP 2023 session key
+  const [openF1LapsStats, setOpenF1LapsStats] = useState<any[]>([]);
+  const [openF1LapsList, setOpenF1LapsList] = useState<any[]>([]);
+  const [openF1DriversMap, setOpenF1DriversMap] = useState<Record<number, any>>({});
+  const [openF1SortField, setOpenF1SortField] = useState<'lap_number' | 'lap_duration'>('lap_duration');
+  const [loadingSessions, setLoadingSessions] = useState<boolean>(false);
+  const [loadingOpenF1Laps, setLoadingOpenF1Laps] = useState<boolean>(false);
+  const [openF1SessionError, setOpenF1SessionError] = useState<string | null>(null);
+  const [openF1LapsError, setOpenF1LapsError] = useState<string | null>(null);
+
+  // Fetch F1 Sessions on mount
+  useEffect(() => {
+    let active = true;
+    async function loadSessions() {
+      setLoadingSessions(true);
+      setOpenF1SessionError(null);
+      try {
+        const res = await fetch('https://api.openf1.org/v1/sessions');
+        if (!res.ok) throw new Error(`HTTP Status ${res.status}`);
+        const data = await res.json();
+        if (active && Array.isArray(data)) {
+          // Filter valid sessions and sort newest session_key first to present freshest
+          const filtered = data
+            .filter((s: any) => s.session_key && s.location && s.session_name)
+            .sort((a, b) => b.session_key - a.session_key);
+          setOpenF1Sessions(filtered);
+          if (filtered.length > 0) {
+            const hasSingapore = filtered.some((s: any) => s.session_key === 9161);
+            setOpenF1SelectedSession(hasSingapore ? '9161' : String(filtered[0].session_key));
+          }
+        }
+      } catch (err: any) {
+        console.warn("Failed fetching sessions from OpenF1:", err);
+        setOpenF1SessionError("Failed to fetch sessions. Fallback records shown.");
+        setOpenF1Sessions([
+          { session_key: 9161, session_name: "Race", location: "Marina Bay", country_name: "Singapore", year: 2023, session_type: "Race" },
+          { session_key: 9158, session_name: "Qualifying", location: "Marina Bay", country_name: "Singapore", year: 2023, session_type: "Qualifying" },
+          { session_key: 9160, session_name: "Practice 3", location: "Marina Bay", country_name: "Singapore", year: 2023, session_type: "Practice" },
+          { session_key: 9149, session_name: "Race", location: "Monza", country_name: "Italy", year: 2023, session_type: "Race" },
+        ]);
+      } finally {
+        if (active) setLoadingSessions(false);
+      }
+    }
+    loadSessions();
+    return () => { active = false; };
+  }, []);
+
+  // Fetch Laps & Drivers when selected Session changes
+  useEffect(() => {
+    if (!openF1SelectedSession) return;
+    let active = true;
+
+    async function loadLapsAndDrivers() {
+      setLoadingOpenF1Laps(true);
+      setOpenF1LapsError(null);
+      try {
+        // Fetch drivers of the session first for team names and colors
+        const drvRes = await fetch(`https://api.openf1.org/v1/drivers?session_key=${openF1SelectedSession}`);
+        let driversMap: Record<number, any> = {};
+        if (drvRes.ok) {
+          const driversArray = await drvRes.json();
+          if (Array.isArray(driversArray)) {
+            driversArray.forEach((d: any) => {
+              if (d.driver_number) {
+                driversMap[d.driver_number] = d;
+              }
+            });
+          }
+        }
+        if (active) {
+          setOpenF1DriversMap(driversMap);
+        }
+
+        // Fetch laps for matching session_key
+        const lapsRes = await fetch(`https://api.openf1.org/v1/laps?session_key=${openF1SelectedSession}`);
+        if (!lapsRes.ok) throw new Error(`HTTP Status ${lapsRes.status}`);
+        const lapsArray = await lapsRes.json();
+
+        if (active && Array.isArray(lapsArray)) {
+          // Set raw laps, filter out anomalies
+          const validLaps = lapsArray.filter((l: any) => typeof l.lap_duration === 'number' && l.lap_duration > 30 && l.lap_duration < 250);
+          setOpenF1LapsList(validLaps);
+
+          // Process lap times: group by driver_number
+          const grouped: Record<number, number[]> = {};
+          validLaps.forEach((lap: any) => {
+            const dn = lap.driver_number;
+            const dur = lap.lap_duration;
+            if (dn) {
+              if (!grouped[dn]) grouped[dn] = [];
+              grouped[dn].push(dur);
+            }
+          });
+
+          // Build statistics for each driver in session
+          const stats = Object.keys(grouped).map((dnStr) => {
+            const dn = parseInt(dnStr, 10);
+            const times = grouped[dn];
+            const best = Math.min(...times);
+            const avg = times.reduce((a, b) => a + b, 0) / times.length;
+            const meta = driversMap[dn] || {};
+
+            return {
+              driverNumber: dn,
+              fullName: meta.full_name || `Driver #${dn}`,
+              nameAcronym: meta.name_acronym || `DRV`,
+              teamName: meta.team_name || "F1 Constructor",
+              teamColour: meta.team_colour ? `#${meta.team_colour}` : "#7c3aed",
+              lapsCount: times.length,
+              bestLapTime: best,
+              avgLapTime: avg
+            };
+          });
+
+          // Sort by fastest bestLapTime ascending
+          stats.sort((a, b) => a.bestLapTime - b.bestLapTime);
+          setOpenF1LapsStats(stats);
+        }
+      } catch (err: any) {
+        console.warn("Failed fetching laps/drivers details from OpenF1:", err);
+        setOpenF1LapsError("API issue / CORS restrictions. Fallback telemetry shown.");
+        
+        const fallbackDrivers: Record<number, any> = {
+          63: { full_name: "George Russell", name_acronym: "RUS", team_name: "Mercedes", team_colour: "27F4D2" },
+          4: { full_name: "Lando Norris", name_acronym: "NOR", team_name: "McLaren", team_colour: "FF8700" },
+          16: { full_name: "Charles Leclerc", name_acronym: "LEC", team_name: "Ferrari", team_colour: "EF1A2D" },
+          1: { full_name: "Max Verstappen", name_acronym: "VER", team_name: "Red Bull Racing", team_colour: "3671C6" },
+          44: { full_name: "Lewis Hamilton", name_acronym: "HAM", team_name: "Mercedes", team_colour: "27F4D2" },
+          55: { full_name: "Carlos Sainz", name_acronym: "SAI", team_name: "Ferrari", team_colour: "EF1A2D" },
+          14: { full_name: "Fernando Alonso", name_acronym: "ALO", team_name: "Aston Martin", team_colour: "229971" }
+        };
+
+        if (active) {
+          setOpenF1DriversMap(fallbackDrivers);
+          
+          const stats = [
+            { driverNumber: 63, fullName: "George Russell", nameAcronym: "RUS", teamName: "Mercedes", teamColour: "#27F4D2", lapsCount: 62, bestLapTime: 94.225, avgLapTime: 96.540 },
+            { driverNumber: 4, fullName: "Lando Norris", nameAcronym: "NOR", teamName: "McLaren", teamColour: "#FF8700", lapsCount: 62, bestLapTime: 94.380, avgLapTime: 96.710 },
+            { driverNumber: 16, fullName: "Charles Leclerc", nameAcronym: "LEC", teamName: "Ferrari", teamColour: "#EF1A2D", lapsCount: 62, bestLapTime: 94.510, avgLapTime: 96.905 },
+            { driverNumber: 1, fullName: "Max Verstappen", nameAcronym: "VER", teamName: "Red Bull Racing", teamColour: "#3671C6", lapsCount: 62, bestLapTime: 94.880, avgLapTime: 97.120 },
+            { driverNumber: 44, fullName: "Lewis Hamilton", nameAcronym: "HAM", teamName: "Mercedes", teamColour: "#27F4D2", lapsCount: 62, bestLapTime: 94.920, avgLapTime: 97.230 },
+            { driverNumber: 55, fullName: "Carlos Sainz", nameAcronym: "SAI", teamName: "Ferrari", teamColour: "#EF1A2D", lapsCount: 62, bestLapTime: 95.050, avgLapTime: 97.450 },
+            { driverNumber: 14, fullName: "Fernando Alonso", nameAcronym: "ALO", teamName: "Aston Martin", teamColour: "#229971", lapsCount: 61, bestLapTime: 95.420, avgLapTime: 97.900 },
+          ];
+          setOpenF1LapsStats(stats);
+
+          // Generate simulated detailed individual laps for fallback mode
+          const fallbackLaps: any[] = [];
+          stats.forEach(s => {
+            for (let l = 1; l <= 20; l++) {
+              const variance = Math.sin(l * 0.5 + s.driverNumber) * 0.6 + Math.random() * 0.4;
+              fallbackLaps.push({
+                driver_number: s.driverNumber,
+                lap_number: l,
+                lap_duration: s.bestLapTime + variance,
+                duration_sector_1: 29.112 + variance * 0.3,
+                duration_sector_2: 38.455 + variance * 0.4,
+                duration_sector_3: 26.658 + variance * 0.3,
+                st_speed: 310 + Math.round(variance * 10)
+              });
+            }
+          });
+          setOpenF1LapsList(fallbackLaps);
+        }
+      } finally {
+        if (active) setLoadingOpenF1Laps(false);
+      }
+    }
+
+    loadLapsAndDrivers();
+    return () => { active = false; };
+  }, [openF1SelectedSession]);
+
   // Currently selected race matching selectedRound
   const selectedRace = useMemo(() => {
     return races.find(r => r.round === selectedRound) || races[0] || null;
   }, [races, selectedRound]);
+
+  // Match currently checked drivers from the Roster Grid Filters to their acronym codes
+  const selectedDriverCodes = useMemo(() => {
+    return selectedDrivers.map(dId => {
+      const ds = driverStandings.find(d => d.Driver.driverId === dId);
+      return ds?.Driver?.code?.toUpperCase() || "";
+    }).filter(Boolean);
+  }, [selectedDrivers, driverStandings]);
+
+  // Filter and sort the all-laps feed dynamically on active checkmarks or select dropdown sorts
+  const filteredOpenF1Laps = useMemo(() => {
+    return openF1LapsList.filter(l => {
+      const meta = openF1DriversMap[l.driver_number];
+      const acronym = meta?.name_acronym?.toUpperCase() || "";
+      return selectedDriverCodes.length === 0 || selectedDriverCodes.includes(acronym);
+    }).sort((a, b) => {
+      if (openF1SortField === 'lap_duration') {
+        return a.lap_duration - b.lap_duration;
+      } else {
+        return a.lap_number - b.lap_number || a.lap_duration - b.lap_duration;
+      }
+    });
+  }, [openF1LapsList, openF1DriversMap, selectedDriverCodes, openF1SortField]);
 
   // Load lap times
   useEffect(() => {
@@ -713,84 +939,6 @@ export default function LapTimesTab({ data, isLoading }: LapTimesTabProps) {
               </div>
             </div>
 
-            {/* Micro FAQ Information Panel */}
-            <div className="bg-neutral-900 text-[#ccc] border border-neutral-800 rounded-2xl p-5 space-y-3.5 shadow-md">
-              <div className="flex items-center justify-between text-white border-b border-neutral-800 pb-2.5">
-                <span className="text-[9px] font-mono tracking-widest font-black uppercase text-red-500">SYSTEM INTEL</span>
-                <span className="text-[8px] font-mono bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded leading-none uppercase">
-                  UTC ACTIVE
-                </span>
-              </div>
-              <div className="space-y-2.5 text-xs text-neutral-400 font-sans font-medium leading-relaxed">
-                <p>
-                  Telemetry metrics are automatically synchronized with the Ergast REST services. If timing lists are missing, simulated intervals are run.
-                </p>
-                <div className="pt-2 border-t border-dashed border-neutral-800 text-[10.5px] text-[#FF9E00]/90 font-mono flex items-start gap-1.5 font-sans leading-snug">
-                  <Zap size={14} className="text-[#FF9E00] flex-shrink-0 mt-0.5" />
-                  <span>Interactive highlight: Click any driver badge on the central roster board to display overlays!</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Grand detailed tables section underneath */}
-          <div className="lg:col-span-12 space-y-3">
-            <div className="flex items-center justify-between bg-white border border-gray-150 px-5 py-4 rounded-xl leading-none shadow-xs">
-              <h4 className="text-sm font-black text-black">Lap-By-Lap Consolidated Timing Log</h4>
-              <span className="text-[10px] bg-gray-100 text-gray-650 font-mono px-2 py-1 rounded-lg select-none leading-none uppercase">
-                Showing {lapsList.length} total laps
-              </span>
-            </div>
-
-            <div className="border border-gray-150 bg-white rounded-2xl overflow-hidden shadow-xs">
-              <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-100 pr-0.5">
-                {/* Table Header */}
-                <div className="grid grid-cols-12 items-center bg-gray-50/70 p-3 text-[10px] font-mono font-black text-gray-400 uppercase tracking-widest border-b border-gray-150 select-none">
-                  <div className="col-span-2">LAP</div>
-                  {selectedDrivers.map((dId, index) => {
-                    const ds = driverStandings.find(d => d.Driver.driverId === dId);
-                    return (
-                      <div key={dId} className="col-span-2">
-                        {ds?.Driver?.code || dId.toUpperCase().slice(0, 3)} Pace
-                      </div>
-                    );
-                  })}
-                  <div className="col-span-2 text-right">Laps Left</div>
-                </div>
-
-                {/* Table Rows */}
-                {lapsList.map((item) => (
-                  <div 
-                    key={item.lap} 
-                    className={`grid grid-cols-12 items-center p-3.5 hover:bg-neutral-50/80 transition-all font-mono text-xs ${
-                      hoveredLap === item.lap ? 'bg-red-50/50' : ''
-                    }`}
-                    onMouseEnter={() => setHoveredLap(item.lap)}
-                    onMouseLeave={() => setHoveredLap(null)}
-                  >
-                    <div className="col-span-2 text-gray-400 font-bold leading-none">Lap {item.lap}</div>
-                    
-                    {selectedDrivers.map((dId) => {
-                      const val = item.timings[dId];
-                      const dObj = driverStandings.find(d => d.Driver.driverId === dId);
-                      const tColor = TEAM_HEX[dObj?.Constructors?.[0]?.constructorId || ''] || '#7c3aed';
-
-                      return (
-                        <div key={dId} className="col-span-2 flex items-center gap-1.5 font-bold leading-none">
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: tColor }} />
-                          <span className="text-black">{formatTime(val)}</span>
-                        </div>
-                      );
-                    })}
-
-                    <div className="col-span-2 text-right text-[10.5px] font-mono text-gray-400 font-bold">
-                      {lapsList.length - item.lap} Rounds Remaining
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
         </div>

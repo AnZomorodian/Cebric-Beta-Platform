@@ -11,7 +11,8 @@ export const TEAM_COLORS: Record<string, string> = {
   rb: 'text-[#6600CC] border-[#6600CC]',
   williams: 'text-[#37BEDD] border-[#37BEDD]',
   sauber: 'text-[#52e252] border-[#52e252]',
-  audi: 'text-[#E60000] border-[#E60000]',
+  audi: 'text-[#00E6C3] border-[#00E6C3]',
+  cadillac: 'text-[#D4AF37] border-[#D4AF37]',
   unknown: 'text-gray-400 border-gray-400'
 };
 
@@ -26,7 +27,8 @@ export const TEAM_BG: Record<string, string> = {
   rb: 'bg-[#18003C] text-[#6600CC] bg-opacity-10',
   williams: 'bg-[#0E2C33] text-[#37BEDD] bg-opacity-10',
   sauber: 'bg-[#113111] text-[#52e252] bg-opacity-10',
-  audi: 'bg-[#1F0404] text-[#E60000] bg-opacity-10',
+  audi: 'bg-[#002B25] text-[#00E6C3] bg-opacity-10',
+  cadillac: 'bg-[#2B230B] text-[#D4AF37] bg-opacity-10',
   unknown: 'bg-gray-100 text-gray-400'
 };
 
@@ -41,7 +43,8 @@ export const TEAM_HEX: Record<string, string> = {
   rb: '#6600CC',
   williams: '#37BEDD',
   sauber: '#52e252',
-  audi: '#E60000',
+  audi: '#00E6C3',
+  cadillac: '#D4AF37',
   unknown: '#9ca3af'
 };
 
@@ -58,6 +61,7 @@ export const getConstructorId = (name: string): string => {
   if (norm.includes('sauber') || norm.includes('kick') || norm.includes('stake')) return 'sauber';
   if (norm.includes('audi')) return 'audi';
   if (norm.includes('williams')) return 'williams';
+  if (norm.includes('cadillac')) return 'cadillac';
   return 'unknown';
 };
 

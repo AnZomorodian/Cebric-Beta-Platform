@@ -8,5 +8,12 @@ services:
     image: ${IMAGE:-cebric-beta-platform:local}
     container_name: cebric-beta-platform
     ports:
-      - "${PORT:-8080}:80"
+      - "${PORT:-8080}:3000"
+    environment:
+      # Needed for the Gemini AI features (read from your shell / .env)
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    volumes:
+      # Mount the JSON database from the project root into the container.
+      # Edits on either side are shared; data survives container rebuilds.
+      - ./DatabaseUser.json:/app/DatabaseUser.json
     restart: unless-stopped

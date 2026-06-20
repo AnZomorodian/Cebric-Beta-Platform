@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# ---- Build stage: compile the Vite/React SPA into static assets ----
+# ---- Build stage: compile the Vite SPA + bundle the Express server ----
 FROM node:20-alpine AS build
 WORKDIR /app
 
@@ -8,23 +8,26 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Build
+# Build SPA (-> dist/) and server bundle (-> dist/server.cjs)
 COPY . .
 RUN npm run build
 
-# ---- Runtime stage: serve static files with nginx ----
-FROM nginx:1.27-alpine AS runtime
+# ---- Runtime stage: run the Express server with Node ----
+FROM node:20-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
 
-# SPA routing config (history fallback to index.html)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Production deps only (server bundle uses --packages=external)
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
-# Copy built assets from the build stage
-COPY --from=build /app/dist /usr/share/nginx/html
+# Built assets + server bundle
+COPY --from=build /app/dist ./dist
 
-EXPOSE 80
+EXPOSE 3000
 
-# Basic container healthcheck
+# Container healthcheck against the running server
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --quiet --spider http://localhost/ || exit 1
+  CMD wget --quiet --spider http://localhost:3000/ || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "dist/server.cjs"]

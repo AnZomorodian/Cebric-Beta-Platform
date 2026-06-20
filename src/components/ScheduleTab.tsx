@@ -59,7 +59,7 @@ export default function ScheduleTab({ races, isLoading, season }: ScheduleTabPro
     fetchFiaDocsForRound(round, raceName);
 
     try {
-      const response = await fetch(`https://api.jolpi.ca/ergast/f1/${season}/${round}/results.json`);
+      const response = await fetch(`/api/ergast/${season}/${round}/results.json`);
       if (response.ok) {
         const json = await response.json();
         const results = json?.MRData?.RaceTable?.Races?.[0]?.Results || 
@@ -138,8 +138,8 @@ export default function ScheduleTab({ races, isLoading, season }: ScheduleTabPro
                 {/* Main Row */}
                 <div
                   id={`schedule-click-${race.round}`}
-                  onClick={() => isCompleted ? fetchResultsForRound(race.round, race.raceName) : handleToggleUpcomingExpansion(race.round, race.raceName)}
-                  className="flex flex-col md:flex-row md:items-center justify-between p-5 gap-4 select-none cursor-pointer"
+                  onClick={() => isCompleted ? fetchResultsForRound(race.round, race.raceName) : undefined}
+                  className={`flex flex-col md:flex-row md:items-center justify-between p-5 gap-4 select-none ${isCompleted ? 'cursor-pointer' : 'cursor-default'}`}
                 >
                   <div className="flex items-start md:items-center gap-4">
                     {/* Round Bubble */}
@@ -189,10 +189,12 @@ export default function ScheduleTab({ races, isLoading, season }: ScheduleTabPro
                   </div>
 
                   {/* Accords Controls */}
-                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-400 self-end md:self-auto hover:text-black transition-colors">
-                    <span className="font-mono text-[10px]">{isCompleted ? "DETAILS" : "FIA DOCS"}</span>
-                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </div>
+                  {isCompleted ? (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-400 self-end md:self-auto hover:text-black transition-colors">
+                      <span className="font-mono text-[10px]">DETAILS</span>
+                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Expanded Drawer (Results & FIA Documents) */}

@@ -1,10 +1,10 @@
 import { SeasonData, DriverStanding, ConstructorStanding, Race, RaceResult } from '../types';
 import { getSeasonMockData, getConstructorId } from '../data/mockData';
 
-const BASE_URL = 'https://api.jolpi.ca/ergast/f1';
+const BASE_URL = '/api/ergast';
 
 // We list years from 2026 down to 1950 (or similar) to make the horizontal scroll immediate and zero-latency!
-export const SEASONS_LIST = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => String(2026 - i));
+export const SEASONS_LIST = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => String(2026 - i)).filter(y => y !== '2024' && y !== '2025');
 
 // Elite In-Memory and LocalStorage Cache Layer with TTL (TimeToLive)
 const CACHE_PREFIX = 'f1_explorer_cache_';
@@ -84,8 +84,8 @@ export async function fetchSeasonsList(): Promise<string[]> {
     const res = await safeFetchWithRetry(`${BASE_URL}/seasons.json?limit=1000`);
     if (res?.MRData?.SeasonTable?.Seasons) {
       const apiSeasons: string[] = res.MRData.SeasonTable.Seasons.map((s: any) => s.season);
-      // Ensure 2026 is top listed
-      const combined = Array.from(new Set(['2026', ...apiSeasons]));
+      // Ensure 2026 is top listed and remove 2024 and 2025
+      const combined = Array.from(new Set(['2026', ...apiSeasons])).filter(y => y !== '2024' && y !== '2025');
       const sorted = combined.sort((a, b) => parseInt(b) - parseInt(a));
       setCachedData(cacheKey, sorted);
       return sorted;

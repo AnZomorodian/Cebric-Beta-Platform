@@ -192,6 +192,78 @@ export default function DashboardTab({ data, isLoading, onGoToTab }: DashboardTa
         </div>
       )}
 
+      {/* Latest Grand Prix Podium Summary Row */}
+      {lastResults && lastResults.length > 0 && (
+        <div id="dashboard-podium-summary" className="bg-white border border-gray-150 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <h2 className="text-xs font-black font-mono tracking-widest text-[#111] uppercase">
+                LATEST GP PODIUM: {lastRace?.raceName || "COMPLETED GP"}
+              </h2>
+            </div>
+            <span className="text-[10px] font-mono font-bold text-gray-400 uppercase bg-gray-50 px-2 py-0.5 rounded border border-gray-150/40">
+              Round {lastRace?.round || "Completed"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {lastResults.slice(0, 3).map((result, idx) => {
+              const teamId = result.Constructor?.constructorId || 'unknown';
+              const teamColor = TEAM_HEX[teamId] || '#9ca3af';
+              const isP1 = idx === 0;
+              const isP2 = idx === 1;
+              const isP3 = idx === 2;
+
+              let positionBadgeClass = "";
+              let positionText = "";
+              let bgAccent = "";
+              if (isP1) {
+                positionBadgeClass = "bg-amber-100 text-amber-800 border-amber-200";
+                positionText = "P1 CHAMPION";
+                bgAccent = "bg-amber-50/20";
+              } else if (isP2) {
+                positionBadgeClass = "bg-slate-100 text-slate-800 border-slate-200";
+                positionText = "P2 SECOND";
+                bgAccent = "bg-slate-50/25";
+              } else {
+                positionBadgeClass = "bg-amber-700/10 text-amber-800 border-amber-700/20";
+                positionText = "P3 THIRD";
+                bgAccent = "bg-amber-800/5";
+              }
+
+              return (
+                <div
+                  key={result.Driver.driverId}
+                  className={`flex items-center justify-between p-3.5 rounded-xl border border-gray-120 hover:border-black transition-all ${bgAccent}`}
+                  style={{ borderLeftWidth: '4px', borderLeftColor: teamColor }}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-md border ${positionBadgeClass}`}>
+                      {positionText}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-neutral-900 truncate leading-tight text-sm">
+                        {result.Driver.givenName} {result.Driver.familyName}
+                      </div>
+                      <div className="text-[10px] text-gray-500 font-mono font-bold uppercase truncate mt-0.5">
+                        {result.Constructor?.name || "Independent"}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] font-mono font-black text-neutral-800 bg-gray-100/80 px-2 py-1 rounded">
+                      {result.Time?.time || result.status || "Checkered"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Main Grid Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         

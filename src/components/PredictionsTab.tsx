@@ -53,6 +53,8 @@ const REAL_DRIVERS_LIST = [
 
 interface PredictionData {
   poleDriver: string;
+  qualifyingP2: string;
+  qualifyingP3: string;
   p1Winner: string;
   p2Winner: string;
   p3Winner: string;
@@ -64,7 +66,6 @@ interface PredictionData {
   safetyCar: string; // "yes" / "no"
   virtualSafetyCar: string; // "yes" / "no"
   redFlag: string; // "yes" / "no"
-  numberOfOvertakes: number;
   mostPositionsGained: string;
 }
 
@@ -75,6 +76,8 @@ interface PredictionSettings {
   globalLock: boolean;
   scoringRules: {
     pole: number;
+    qualifyingP2: number;
+    qualifyingP3: number;
     winner: number;
     podium: number;
     top10Multiplier: number;
@@ -85,11 +88,12 @@ interface PredictionSettings {
     safetyCar: number;
     vsc: number;
     redFlag: number;
-    overtakes: number;
     gains: number;
   };
   certifiedResults: {
     poleDriver: string;
+    qualifyingP2: string;
+    qualifyingP3: string;
     p1Winner: string;
     p2Winner: string;
     p3Winner: string;
@@ -101,7 +105,6 @@ interface PredictionSettings {
     safetyCar: string;
     virtualSafetyCar: string;
     redFlag: string;
-    numberOfOvertakes: number;
     mostPositionsGained: string;
   };
 }
@@ -128,6 +131,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
   // Hardcoded defaults mapping to back-end initial state
   const [prediction, setPrediction] = useState<PredictionData>({
     poleDriver: '',
+    qualifyingP2: '',
+    qualifyingP3: '',
     p1Winner: '',
     p2Winner: '',
     p3Winner: '',
@@ -139,7 +144,6 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
     safetyCar: 'no',
     virtualSafetyCar: 'no',
     redFlag: 'no',
-    numberOfOvertakes: 0,
     mostPositionsGained: ''
   });
 
@@ -150,6 +154,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
     globalLock: false,
     scoringRules: {
       pole: 10,
+      qualifyingP2: 5,
+      qualifyingP3: 5,
       winner: 25,
       podium: 10,
       top10Multiplier: 5,
@@ -160,11 +166,12 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
       safetyCar: 5,
       vsc: 5,
       redFlag: 5,
-      overtakes: 10,
       gains: 10
     },
     certifiedResults: {
       poleDriver: "",
+      qualifyingP2: "",
+      qualifyingP3: "",
       p1Winner: "",
       p2Winner: "",
       p3Winner: "",
@@ -176,7 +183,6 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
       safetyCar: "no",
       virtualSafetyCar: "no",
       redFlag: "no",
-      numberOfOvertakes: 0,
       mostPositionsGained: ""
     }
   });
@@ -329,6 +335,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
     // Strict validation
     if (
       !prediction.poleDriver || 
+      !prediction.qualifyingP2 || 
+      !prediction.qualifyingP3 || 
       !prediction.p1Winner || 
       !prediction.p2Winner || 
       !prediction.p3Winner || 
@@ -336,14 +344,20 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
       !prediction.driverOfTheDay ||
       !prediction.mostPositionsGained
     ) {
-      alert("Please ensure all critical driver prediction drop-downs are selected!");
+      alert("Please ensure all critical driver prediction drop-downs (including qualifying and podium positions) are selected!");
       return;
     }
 
-    // Top 10 Finishers check
-    const emptyTop10s = prediction.top10Finishers.filter(d => !d);
+    // Sync p1, p2, p3 into first three slots of top10Finishers
+    const syncedTop10 = [...prediction.top10Finishers];
+    syncedTop10[0] = prediction.p1Winner;
+    syncedTop10[1] = prediction.p2Winner;
+    syncedTop10[2] = prediction.p3Winner;
+
+    // Check if slots P4 to P10 are filled
+    const emptyTop10s = syncedTop10.filter(d => !d);
     if (emptyTop10s.length > 0) {
-      alert("Please complete selecting all 10 driver dropdowns in the Top 10 Finishers list!");
+      alert("Please complete selecting all driver choices in the P4 to P10 prediction finishers grid!");
       return;
     }
 
@@ -356,7 +370,10 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
         },
         body: JSON.stringify({
           username: sessionUser.username,
-          prediction: prediction
+          prediction: {
+            ...prediction,
+            top10Finishers: syncedTop10
+          }
         })
       });
 
@@ -388,12 +405,26 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
     setAdminNotify(null);
 
     try {
+      // Sync certifiedResults P1, P2, P3 into first 3 slots of top10Finishers array
+      const certTop10 = [...settings.certifiedResults.top10Finishers];
+      certTop10[0] = settings.certifiedResults.p1Winner;
+      certTop10[1] = settings.certifiedResults.p2Winner;
+      certTop10[2] = settings.certifiedResults.p3Winner;
+
+      const syncedSettings = {
+        ...settings,
+        certifiedResults: {
+          ...settings.certifiedResults,
+          top10Finishers: certTop10
+        }
+      };
+
       const response = await fetch('/api/admin/prediction-settings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(settings)
+        body: JSON.stringify(syncedSettings)
       });
 
       if (!response.ok) {
@@ -712,11 +743,20 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                         />
                       </div>
                       <div>
-                        <label className="text-neutral-400">Overtakes:</label>
+                        <label className="text-neutral-400">Qual P2:</label>
                         <input 
                           type="number" 
-                          value={settings.scoringRules.overtakes} 
-                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, overtakes: Number(e.target.value) } })}
+                          value={settings.scoringRules.qualifyingP2} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, qualifyingP2: Number(e.target.value) } })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-neutral-400">Qual P3:</label>
+                        <input 
+                          type="number" 
+                          value={settings.scoringRules.qualifyingP3} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, qualifyingP3: Number(e.target.value) } })}
                           className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
                         />
                       </div>
@@ -738,6 +778,30 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                         value={settings.certifiedResults.poleDriver}
                         onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, poleDriver: e.target.value } })}
                         className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white"
+                      >
+                        <option value="">-- No Result --</option>
+                        {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-neutral-400 block">Qualifying P2</label>
+                      <select 
+                        value={settings.certifiedResults.qualifyingP2}
+                        onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, qualifyingP2: e.target.value } })}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white"
+                      >
+                        <option value="">-- No Result --</option>
+                        {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-neutral-400 block">Qualifying P3</label>
+                      <select 
+                        value={settings.certifiedResults.qualifyingP3}
+                        onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, qualifyingP3: e.target.value } })}
+                        className="w-full bg-[#11121d] border border-neutral-800 rounded-lg p-2 text-white"
                       >
                         <option value="">-- No Result --</option>
                         {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
@@ -863,16 +927,6 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                         <option value="yes">YES</option>
                         <option value="no">NO</option>
                       </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-neutral-400 block">Overtakes Count</label>
-                      <input 
-                        type="number"
-                        value={settings.certifiedResults.numberOfOvertakes}
-                        onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, numberOfOvertakes: Number(e.target.value) } })}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white text-center"
-                      />
                     </div>
 
                     <div className="space-y-1">
@@ -1063,6 +1117,14 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                                 <strong className="text-white">{usr.prediction.poleDriver || "-"}</strong>
                               </div>
                               <div className="bg-neutral-900 p-1.5 rounded border border-neutral-850/40">
+                                <span className="text-neutral-500 block">🥈 Qual P2:</span>
+                                <strong className="text-white">{usr.prediction.qualifyingP2 || "-"}</strong>
+                              </div>
+                              <div className="bg-neutral-900 p-1.5 rounded border border-neutral-850/40">
+                                <span className="text-neutral-500 block">🥉 Qual P3:</span>
+                                <strong className="text-white">{usr.prediction.qualifyingP3 || "-"}</strong>
+                              </div>
+                              <div className="bg-neutral-900 p-1.5 rounded border border-neutral-850/40">
                                 <span className="text-neutral-500 block">⚡ Fastest Lap:</span>
                                 <strong className="text-white">{usr.prediction.fastestLap || "-"}</strong>
                               </div>
@@ -1197,8 +1259,13 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
-                    <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Total Overtakes Projected</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.numberOfOvertakes || 0} Overtakes</strong>
+                    <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Qualifying P2</span>
+                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.qualifyingP2 || "empty"}</strong>
+                  </div>
+
+                  <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
+                    <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Qualifying P3</span>
+                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.qualifyingP3 || "empty"}</strong>
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1 md:col-span-2">
@@ -1246,6 +1313,34 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                       className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
                     >
                       <option value="">-- Select Driver --</option>
+                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Qualifying P2 */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Qualifying P2 Driver</label>
+                    <select
+                      disabled={settings.globalLock}
+                      value={prediction.qualifyingP2}
+                      onChange={(e) => setPrediction({ ...prediction, qualifyingP2: e.target.value })}
+                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
+                    >
+                      <option value="">-- Select Qualifying P2 --</option>
+                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Qualifying P3 */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Qualifying P3 Driver</label>
+                    <select
+                      disabled={settings.globalLock}
+                      value={prediction.qualifyingP3}
+                      onChange={(e) => setPrediction({ ...prediction, qualifyingP3: e.target.value })}
+                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
+                    >
+                      <option value="">-- Select Qualifying P3 --</option>
                       {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
@@ -1390,7 +1485,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   </div>
 
                   {/* Integer choices */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Predict Number of DNFs</label>
                     <select
                       disabled={settings.globalLock}
@@ -1403,19 +1498,6 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                       ))}
                     </select>
                   </div>
-
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Predict Total Number of Overtakes</label>
-                    <input 
-                      type="number" 
-                      disabled={settings.globalLock}
-                      value={prediction.numberOfOvertakes}
-                      onChange={(e) => setPrediction({ ...prediction, numberOfOvertakes: Number(e.target.value) })}
-                      min="0"
-                      max="400"
-                      className="w-full bg-neutral-50 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none"
-                    />
-                  </div>
                 </div>
 
                 {/* Predict Top 10 Finishers Form Deck */}
@@ -1423,32 +1505,35 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   <div className="flex items-center gap-1.5">
                     <Star size={14} className="text-amber-500 animate-pulse" />
                     <span className="text-[10px] text-neutral-850 font-black font-mono uppercase tracking-widest block">
-                      Predict the Top 10 Finishers (Positions P1 to P10)
+                      Predict the remaining Top 10 Finishers (P4 to P10)
                     </span>
                   </div>
                   <p className="text-[10.5px] text-gray-500 font-medium">
-                    Select exactly ten different drivers. Multiplier awards points for every correct selection regardless of their exact position.
+                    Select the other 7 drivers for P4 to P10. P1, P2, and P3 are automatically populated based on your selections above!
                   </p>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 pt-2">
-                    {Array(10).fill(null).map((_, idx) => (
-                      <div key={`form-top10-${idx}`} className="space-y-1">
-                        <label className="text-[8px] text-gray-400 font-black block font-mono">FINISHER #{idx + 1}</label>
-                        <select
-                          disabled={settings.globalLock}
-                          value={prediction.top10Finishers[idx] || ''}
-                          onChange={(e) => {
-                            const newTop10 = [...prediction.top10Finishers];
-                            newTop10[idx] = e.target.value;
-                            setPrediction({ ...prediction, top10Finishers: newTop10 });
-                          }}
-                          className="w-full bg-white border border-gray-150 rounded-lg p-1.5 text-[10px] font-mono outline-none focus:border-[#EF1A2D]"
-                        >
-                          <option value="">P{idx + 1}</option>
-                          {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-2 sm:grid-cols-7 gap-3.5 pt-2">
+                    {Array(7).fill(null).map((_, idxIndex) => {
+                      const idx = idxIndex + 3; // Starts from idx 3 (Finisher #4)
+                      return (
+                        <div key={`form-top10-${idx}`} className="space-y-1">
+                          <label className="text-[8px] text-gray-400 font-black block font-mono">FINISHER #{idx + 1}</label>
+                          <select
+                            disabled={settings.globalLock}
+                            value={prediction.top10Finishers[idx] || ''}
+                            onChange={(e) => {
+                              const newTop10 = [...prediction.top10Finishers];
+                              newTop10[idx] = e.target.value;
+                              setPrediction({ ...prediction, top10Finishers: newTop10 });
+                            }}
+                            className="w-full bg-white border border-gray-150 rounded-lg p-1.5 text-[10px] font-mono outline-none focus:border-[#EF1A2D]"
+                          >
+                            <option value="">P{idx + 1}</option>
+                            {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1745,12 +1830,13 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
             </p>
             <ul className="list-disc pl-4 space-y-1 font-mono text-[9px] text-gray-550 pt-1">
               <li><strong>Winner (P1):</strong> +{settings.scoringRules.winner} points</li>
-              <li><strong>Pole position:</strong> +{settings.scoringRules.pole} points</li>
+              <li><strong>Pole position (Qualifying P1):</strong> +{settings.scoringRules.pole} points</li>
+              <li><strong>Qualifying P2:</strong> +{settings.scoringRules.qualifyingP2} points</li>
+              <li><strong>Qualifying P3:</strong> +{settings.scoringRules.qualifyingP3} points</li>
               <li><strong>P2 / P3 podium:</strong> +{settings.scoringRules.podium} points each</li>
               <li><strong>Fastest Lap:</strong> +{settings.scoringRules.fastestLap} points</li>
               <li><strong>Top 10 correct:</strong> +{settings.scoringRules.top10Multiplier} pts per driver</li>
               <li><strong>Track deployment metrics:</strong> +5 points each</li>
-              <li><strong>Overtakes tolerance (+/- 5):</strong> +{settings.scoringRules.overtakes} points</li>
             </ul>
           </div>
         </div>
@@ -1857,7 +1943,9 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                               { label: "Winner (P1)", key: "p1Winner", icon: "🏆", desc: "Predict the driver who crosses the finish line in P1" },
                               { label: "Runner-Up (P2)", key: "p2Winner", icon: "🥈", desc: "Predict the driver to finish in P2" },
                               { label: "Third-Place (P3)", key: "p3Winner", icon: "🥉", desc: "Predict the driver to finish in P3" },
-                              { label: "Pole Position Setter", key: "poleDriver", icon: "⏱", desc: "Predict the driver who sets the fastest Q3 lap time" },
+                              { label: "Pole Position Setter", key: "poleDriver", icon: "⏱", desc: "Predict the driver who sets the fastest Q3 lap time (Qualifying P1)" },
+                              { label: "Qualifying P2", key: "qualifyingP2", icon: "🥈", desc: "Predict the driver who finishes Q3 in second place (Qualifying P2)" },
+                              { label: "Qualifying P3", key: "qualifyingP3", icon: "🥉", desc: "Predict the driver who finishes Q3 in third place (Qualifying P3)" },
                               { label: "Fastest Lap Record", key: "fastestLap", icon: "⚡", desc: "Driver who clocks the single fastest lap on race day" },
                               { label: "Driver of the Day", key: "driverOfTheDay", icon: "🌟", desc: "The popular fan-voted driver of the GP" },
                               { label: "Most Positions Gained", key: "mostPositionsGained", icon: "📈", desc: "Driver who moves up the most places from starting grid" },

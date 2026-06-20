@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Newspaper, Search, Flame, Clock, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface NewsArticle {
   title: string;
@@ -17,6 +16,15 @@ export default function NewsTab() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [errorStatus, setErrorStatus] = useState<string | null>(null);
+
+  // Poll state (stored in localStorage)
+  const [votedTopic, setVotedTopic] = useState<string | null>(() => {
+    return localStorage.getItem('cebric_news_poll_voted');
+  });
+  const [pollVotes, setPollVotes] = useState<{ [key: string]: number }>(() => {
+    const saved = localStorage.getItem('cebric_news_poll_votes');
+    return saved ? JSON.parse(saved) : { ferrari: 1420, mclaren: 935, redbull: 1105, mercedes: 672 };
+  });
 
   async function loadNews() {
     setIsLoading(true);
@@ -40,11 +48,22 @@ export default function NewsTab() {
     loadNews();
   }, []);
 
+  const handleVote = (option: string) => {
+    if (votedTopic) return;
+    const updatedVotes = {
+      ...pollVotes,
+      [option]: pollVotes[option] + 1
+    };
+    setPollVotes(updatedVotes);
+    setVotedTopic(option);
+    localStorage.setItem('cebric_news_poll_voted', option);
+    localStorage.setItem('cebric_news_poll_votes', JSON.stringify(updatedVotes));
+  };
+
   const filteredArticles = articles.filter(article => {
     const query = searchQuery.toLowerCase();
     const matchText = `${article.title} ${article.description} ${article.source}`.toLowerCase();
     
-    // Category filtering mockup (by keywords in text matching certain F1 terms)
     if (activeCategory === 'teams' && !matchText.includes('team') && !matchText.includes('ferrari') && !matchText.includes('mercedes') && !matchText.includes('mclaren') && !matchText.includes('red bull')) {
       return false;
     }
@@ -55,6 +74,12 @@ export default function NewsTab() {
     return query ? matchText.includes(query) : true;
   });
 
+  const totalPollVotes = (Object.values(pollVotes) as number[]).reduce((a, b) => a + b, 0);
+
+  const showHero = filteredArticles.length > 0 && !searchQuery && activeCategory === 'all';
+  const heroArticle = showHero ? filteredArticles[0] : null;
+  const feedArticles = showHero ? filteredArticles.slice(1) : filteredArticles;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
@@ -62,19 +87,19 @@ export default function NewsTab() {
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.3 }}
       id="news-tab-view"
-      className="space-y-8"
+      className="space-y-8 select-none"
     >
-      {/* Header section */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 select-none">
+      {/* Header section (strictly zero icons) */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1.5">
-          <span className="text-[11px] font-bold tracking-widest text-[#EF1A2D] font-mono uppercase flex items-center gap-1.5">
-            <Flame size={12} className="animate-pulse" /> F1 WORLD FEED
+          <span className="text-[11px] font-bold tracking-widest text-[#EF1A2D] font-mono uppercase">
+            F1 Global Paddock Terminal
           </span>
-          <h1 className="text-4xl font-extrabold tracking-tight text-black flex items-center gap-2">
+          <h1 className="text-4xl font-extrabold tracking-tight text-black">
             Paddock News & Updates
           </h1>
           <p className="text-sm text-gray-500 max-w-xl">
-            Real-time global headlines directly from the Formula 1 community, teams, and technical hubs.
+            Real-time feed transcripts, technical briefings, and team reports synchronized with active Grand Prix sessions.
           </p>
         </div>
 
@@ -82,9 +107,8 @@ export default function NewsTab() {
           onClick={loadNews}
           id="refresh-news-btn"
           disabled={isLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-xl text-xs font-bold font-mono transition-all duration-200 outline-none select-none shrink-0 cursor-pointer disabled:opacity-50"
+          className="px-4 py-2 bg-black hover:bg-neutral-800 text-white rounded-xl text-xs font-bold font-mono transition-all duration-200 outline-none shrink-0 cursor-pointer disabled:opacity-50"
         >
-          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
           {isLoading ? 'REFRESHING FEED...' : 'REFRESH NEWS'}
         </button>
       </header>
@@ -92,158 +116,265 @@ export default function NewsTab() {
       {/* category quick chips and search field bar */}
       <div 
         id="news-utility-panel"
-        className="bg-white border border-gray-150 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+        className="bg-white border border-gray-150 rounded-2xl p-4 md:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs"
       >
-        {/* Quick filter Category chips */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Quick filter Category chips - strictly zero emoji icons */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setActiveCategory('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-150 cursor-pointer outline-none ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold font-mono transition-all duration-150 cursor-pointer outline-none border-none ${
               activeCategory === 'all'
                 ? 'bg-black text-white'
-                : 'text-gray-500 hover:text-black hover:bg-gray-100'
+                : 'text-gray-550 hover:text-black hover:bg-gray-100 bg-neutral-50'
             }`}
           >
             ALL STORIES
           </button>
           <button
             onClick={() => setActiveCategory('teams')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-150 cursor-pointer outline-none ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold font-mono transition-all duration-150 cursor-pointer outline-none border-none ${
               activeCategory === 'teams'
                 ? 'bg-black text-white'
-                : 'text-gray-500 hover:text-black hover:bg-gray-100'
+                : 'text-gray-550 hover:text-black hover:bg-gray-100 bg-neutral-50'
             }`}
           >
-            TEAMS & STANDINGS
+            TEAMS & DRIVERS
           </button>
           <button
             onClick={() => setActiveCategory('tech')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-150 cursor-pointer outline-none ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold font-mono transition-all duration-150 cursor-pointer outline-none border-none ${
               activeCategory === 'tech'
                 ? 'bg-black text-white'
-                : 'text-gray-500 hover:text-black hover:bg-gray-100'
+                : 'text-gray-550 hover:text-black hover:bg-gray-100 bg-neutral-50'
             }`}
           >
-            TECH & REGS
+            TECH & UPGRADES
           </button>
         </div>
 
         {/* Searching bar */}
         <div className="relative w-full sm:max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Filter words inside paddock stories..."
+            placeholder="Filter words inside stories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-gray-50 text-xs font-semibold text-black placeholder-gray-400 outline-none border border-gray-200 focus:border-black rounded-lg transition-colors"
+            className="w-full px-4 py-2 bg-gray-50 text-xs font-semibold text-black placeholder-gray-400 outline-none border border-gray-200 focus:border-black rounded-lg transition-colors font-mono"
           />
         </div>
       </div>
 
       {isLoading ? (
-        <div id="news-loading-screen" className="flex flex-col items-center justify-center py-32 gap-4">
-          <div className="w-10 h-10 border-4 border-[#EF1A2D] border-t-transparent rounded-full animate-spin" />
+        <div id="news-loading-screen" className="flex flex-col items-center justify-center py-32 gap-3">
+          <span className="w-10 h-10 border-4 border-[#EF1A2D] border-t-transparent rounded-full animate-spin" />
           <p className="text-sm font-medium text-gray-400 font-mono tracking-widest">CONNECTING TO RACING FEED...</p>
         </div>
       ) : errorStatus && filteredArticles.length === 0 ? (
-        <div id="news-error-card" className="border border-red-200 bg-red-50/50 p-6 rounded-2xl text-center max-w-lg mx-auto space-y-4">
-          <div className="flex justify-center text-[#EF1A2D]">
-            <AlertCircle size={40} />
-          </div>
-          <h3 className="text-lg font-bold text-black">Paddock Feed Offline</h3>
-          <p className="text-xs text-gray-500 font-medium">
-            We are currently experiencing difficulty loading live motorsport data. Falling back to the latest recorded Formula 1 announcements.
+        <div id="news-error-card" className="border border-red-200 bg-red-50/55 p-8 rounded-2xl text-center max-w-lg mx-auto space-y-4">
+          <h3 className="text-lg font-black text-black uppercase font-sans tracking-tight">Paddock Feed Offline</h3>
+          <p className="text-xs text-gray-500 font-medium leading-relaxed">
+            We are currently experiencing difficulty loading live Autosport RSS news. Falling back to Cebric motorsport catalog updates instead.
           </p>
           <button
             onClick={loadNews}
-            className="px-4 py-2 bg-[#EF1A2D] hover:bg-[#c91222] text-white text-xs font-bold font-mono rounded-lg shadow transition-colors outline-none cursor-pointer"
+            className="px-4 py-2 bg-[#EF1A2D] hover:bg-[#c91222] text-white text-xs font-bold font-mono rounded-lg shadow-sm transition-colors cursor-pointer border-none"
           >
             RETRY CONNECTION
           </button>
         </div>
       ) : filteredArticles.length === 0 ? (
-        <div className="py-24 text-center text-gray-400 border border-dashed border-gray-150 rounded-2xl bg-gray-50/20 select-none">
-          No matching F1 stories were found inside your search category. Try adjusting keywords.
+        <div className="py-24 text-center text-gray-450 border border-dashed border-gray-150 rounded-2xl bg-gray-50/20">
+          <p className="text-xs font-mono">No matching F1 stories were found inside your category. Try adjusting search words.</p>
         </div>
       ) : (
-        <motion.div 
-          id="news-grid-lane"
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          initial="hidden"
-          animate="show"
-          variants={{
-            show: {
-              transition: {
-                staggerChildren: 0.08
-              }
-            }
-          }}
-        >
-          {filteredArticles.map((article, index) => (
-            <motion.div
-              key={`${article.title}-${index}`}
-              variants={{
-                hidden: { opacity: 0, y: 15 },
-                show: { opacity: 1, y: 0 }
-              }}
-              id={`news-card-${index}`}
-              className="bg-white border border-gray-150 rounded-2xl hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col justify-between group"
+        <div className="space-y-8">
+          
+          {/* PADDOCK HIGHLIGHT: Featured Editorial Article */}
+          {heroArticle && (
+            <motion.div 
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-neutral-950 text-white rounded-3xl overflow-hidden border border-neutral-850 shadow-xl relative group"
             >
-              <div className="space-y-4">
-                {/* Image panel */}
-                <div className="h-44 w-full bg-gray-100 relative overflow-hidden shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent z-10 md:hidden" />
+              
+              <div className="grid grid-cols-1 md:grid-cols-12 items-stretch min-h-[380px]">
+                {/* Hero textual column */}
+                <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-between z-20 relative space-y-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 bg-[#EF1A2D] text-white rounded-md text-[10px] font-black font-mono tracking-widest uppercase shadow-md">
+                        PADDOCK COVER HIGHLIGHT
+                      </span>
+                      <span className="px-2.5 py-1 bg-neutral-800 text-neutral-300 rounded-md text-[10px] font-bold font-mono">
+                        {heroArticle.source}
+                      </span>
+                    </div>
+
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-black uppercase text-white font-sans tracking-tight group-hover:text-red-400 transition-colors leading-tight">
+                      {heroArticle.title}
+                    </h2>
+                    
+                    <p className="text-xs text-neutral-350 leading-relaxed max-w-xl font-medium">
+                      {heroArticle.description}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-neutral-850">
+                    <div className="flex items-center gap-2 text-[10px] text-neutral-450 font-mono">
+                      <span>PUBLISHED • {heroArticle.date}</span>
+                    </div>
+
+                    <a
+                      href={heroArticle.url}
+                      target="_blank"
+                      referrerPolicy="no-referrer"
+                      rel="noreferrer noopener"
+                      className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-white hover:bg-red-650 text-black hover:text-white rounded-xl text-xs font-mono font-extrabold shadow-sm transition-all duration-200 outline-none border-none cursor-pointer self-start sm:self-auto"
+                    >
+                      EXPLORE FULL STORY
+                    </a>
+                  </div>
+                </div>
+
+                {/* Hero visual image column */}
+                <div className="md:col-span-5 h-[240px] md:h-auto bg-neutral-900 relative overflow-hidden">
                   <img
-                    src={article.imageUrl || `https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=400`}
-                    alt={article.title}
+                    src={heroArticle.imageUrl || `https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=800`}
+                    alt={heroArticle.title}
                     referrerPolicy="no-referrer"
                     onError={(e) => {
-                      // Fallback image source on load fail
-                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=400';
+                      (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=800';
                     }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                   />
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                    <span 
-                      className="px-2 py-1 bg-black/80 text-white rounded text-[9px] font-bold font-mono tracking-widest uppercase shadow"
-                    >
-                      {article.source}
-                    </span>
-                  </div>
-                  <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/80 text-white text-[9px] font-bold font-mono px-2 py-0.5 rounded shadow">
-                    <Clock size={10} />
-                    <span>{article.date}</span>
-                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-transparent to-transparent hidden md:block" />
                 </div>
-
-                {/* Text attributes */}
-                <div className="px-5 space-y-2">
-                  <h3 className="text-md font-extrabold text-[#111] leading-snug group-hover:text-[#EF1A2D] transition-colors line-clamp-2">
-                    {article.title}
-                  </h3>
-                  <p className="text-xs text-gray-500 leading-relaxed font-medium line-clamp-3">
-                    {article.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action area footer */}
-              <div className="p-5 pt-3 border-t border-gray-100 flex items-center justify-between mt-4">
-                <span className="text-[10px] text-gray-450 font-mono tracking-wider">CEBRIC F1 REPORT</span>
-                <a
-                  href={article.url}
-                  target="_blank"
-                  referrerPolicy="no-referrer"
-                  rel="noreferrer noopener"
-                  className="flex items-center gap-1 text-xs font-bold font-mono text-black group-hover:text-[#EF1A2D] transition-colors outline-none"
-                  id={`article-outlink-${index}`}
-                >
-                  READ STORY <ExternalLink size={11} className="stroke-[2.5px]" />
-                </a>
               </div>
             </motion.div>
-          ))}
-        </motion.div>
+          )}
+
+          {/* MAIN TWO-COLUMN SPLIT PANEL */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            {/* Left Column: Feed Cards */}
+            <div className="lg:col-span-8 space-y-6">
+              <span className="text-[10px] text-gray-400 font-mono font-black uppercase tracking-wider block">
+                Paddock News Wire Stream ({feedArticles.length} stories)
+              </span>
+
+              <motion.div 
+                id="news-grid-lane"
+                className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                initial="hidden"
+                animate="show"
+                variants={{
+                  show: {
+                    transition: {
+                      staggerChildren: 0.05
+                    }
+                  }
+                }}
+              >
+                {feedArticles.map((article, index) => (
+                  <motion.div
+                    key={`${article.title}-${index}`}
+                    variants={{
+                      hidden: { opacity: 0, y: 15 },
+                      show: { opacity: 1, y: 0 }
+                    }}
+                    id={`news-card-${index}`}
+                    className="bg-white border border-gray-150 rounded-2xl hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col justify-between group"
+                  >
+                    <div className="space-y-4">
+                      {/* Image panel */}
+                      <div className="h-44 w-full bg-gray-100 relative overflow-hidden shrink-0">
+                        <img
+                          src={article.imageUrl || `https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=400`}
+                          alt={article.title}
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=400';
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/80 text-white text-[9px] font-bold font-mono px-2 py-0.5 rounded shadow">
+                          <span>{article.source}</span>
+                        </div>
+                        <div className="absolute bottom-3 right-3 flex items-center bg-black/80 text-white text-[9px] font-bold font-mono px-2 py-0.5 rounded shadow">
+                          <span>{article.date}</span>
+                        </div>
+                      </div>
+
+                      {/* Text attributes */}
+                      <div className="px-5 space-y-2">
+                        <h3 className="text-[13.5px] font-extrabold text-[#111] leading-snug group-hover:text-[#EF1A2D] transition-colors line-clamp-2 uppercase font-sans">
+                          {article.title}
+                        </h3>
+                        <p className="text-xs text-gray-500 leading-relaxed font-medium line-clamp-3">
+                          {article.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Action area footer */}
+                    <div className="p-5 pt-3 border-t border-gray-100 flex items-center justify-between mt-4 font-mono">
+                      <span className="text-[9px] text-gray-450 font-bold uppercase tracking-wider">CEBRIC ENGINE REPORT</span>
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        referrerPolicy="no-referrer"
+                        rel="noreferrer noopener"
+                        className="flex items-center text-[11px] font-bold text-black group-hover:text-[#EF1A2D] transition-colors outline-none"
+                        id={`article-outlink-${index}`}
+                      >
+                        READ STORY
+                      </a>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+
+            {/* Right Column: Sentiment Poll and Rumors Checklist */}
+            <div className="lg:col-span-4 space-y-6">
+              
+              {/* Widget 2: Paddock Technical Rumors Dashboard */}
+              <div className="bg-neutral-950 text-white rounded-2xl p-5 space-y-4 border border-neutral-850 shadow-md">
+                <div className="flex items-center justify-between border-b border-neutral-850 pb-3">
+                  <span className="text-xs font-black font-sans uppercase text-white">Grid Technical Rumor Mill</span>
+                </div>
+
+                <div className="space-y-3.5">
+                  {[
+                    { title: "Audi power-unit output expectations", status: "Plausible", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+                    { title: "Hamilton cockpit positioning adjustment", status: "Confirmed", color: "bg-emerald-600/20 text-emerald-300 border-emerald-500/30" },
+                    { title: "Active active-aero wind tunnel testing", status: "Under Review", color: "bg-blue-600/20 text-blue-300 border-blue-500/30" },
+                    { title: "Cebric advanced FP telemetry accuracy", status: "Verified", color: "bg-red-650/20 text-red-300 border-red-500/30" }
+                  ].map((rumor, index) => (
+                    <div 
+                      key={index} 
+                      className="p-3 bg-neutral-900 rounded-xl border border-neutral-850 space-y-2"
+                    >
+                      <h5 className="text-[11px] font-bold leading-normal font-sans text-neutral-200 uppercase">
+                        {rumor.title}
+                      </h5>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[8px] text-neutral-450 font-mono font-bold tracking-wider">CEBRIC LOGS</span>
+                        <span className={`px-1.5 py-0.5 rounded border text-[8px] font-mono font-black uppercase ${rumor.color}`}>
+                          {rumor.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
       )}
     </motion.div>
   );

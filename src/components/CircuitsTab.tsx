@@ -280,7 +280,7 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
     async function loadPaddockDrivers() {
       setLoadingPaddockDrivers(true);
       try {
-        const res = await fetch('https://api.openf1.org/v1/drivers?session_key=9161');
+        const res = await fetch('/api/openf1/drivers?session_key=9161');
         if (!res.ok) throw new Error(`HTTP Status ${res.status}`);
         const data = await res.json();
         if (active && Array.isArray(data)) {
@@ -757,6 +757,18 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                     <span className="text-blue-500 font-extrabold">S2</span>
                     <span className="text-yellow-500 font-extrabold">S3</span>
                   </span>
+                </div>
+              ) : selectedCircuitData.circuitId === 'albert_park' ? (
+                /* High-Fidelity Albert Park Circuit Image replaced in place of SVG geometry as requested */
+                <div className="w-full h-full flex flex-col items-center justify-center p-4 pt-16 relative">
+                  <div className="w-full h-full flex items-center justify-center relative select-none">
+                    <img 
+                      src="/circuits/albert_park.jpg" 
+                      alt="Albert Park Circuit Geometry Map" 
+                      className="w-full max-w-[90%] max-h-[280px] object-contain rounded-xl shadow-xl border border-neutral-800/85 filter drop-shadow-[0_0_15px_rgba(239,26,45,0.45)]"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
                 </div>
               ) : (
                 /* Dynamic generic trace styled visual overlay for any other track */

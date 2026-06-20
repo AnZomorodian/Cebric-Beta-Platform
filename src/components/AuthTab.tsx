@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle, Database, Clock, Check, Shield } from 'lucide-react';
 
 interface UserSession {
   username: string;
@@ -24,6 +24,68 @@ const TEAM_COLORS: Record<string, string> = {
   'Audi': '#F20000',
   'Cadillac Formula 1 Team': '#E5A93B',
 };
+
+const F1_2026_CALENDAR = [
+  { gp: "Australia", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "China", sessions: ["FP1", "Sprint Qualifying", "Sprint", "Qualifying", "Race"] },
+  { gp: "Japan", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Bahrain", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Saudi Arabia", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Miami", sessions: ["FP1", "Sprint Qualifying", "Sprint", "Qualifying", "Race"] },
+  { gp: "Canada", sessions: ["FP1", "Sprint Qualifying", "Sprint", "Qualifying", "Race"] },
+  { gp: "Monaco", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Barcelona", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Austria", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Great Britain", sessions: ["FP1", "Sprint Qualifying", "Sprint", "Qualifying", "Race"] },
+  { gp: "Belgium", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Hungary", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Netherlands", sessions: ["FP1", "Sprint Qualifying", "Sprint", "Qualifying", "Race"] },
+  { gp: "Italy (Monza)", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Spain (Madrid)", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Azerbaijan", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Singapore", sessions: ["FP1", "Sprint Qualifying", "Sprint", "Qualifying", "Race"] },
+  { gp: "United States (Austin)", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Mexico City", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "São Paulo", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Las Vegas", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Qatar", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] },
+  { gp: "Abu Dhabi", sessions: ["FP1", "FP2", "FP3", "Qualifying", "Race"] }
+];
+
+const getSessionsForGp = (gpName: string): string[] => {
+  if (!gpName) return ["FP1", "FP2", "FP3", "Qualifying", "Race"];
+  const cleanGp = gpName.toLowerCase().replace(/\bgp\b/g, '').replace(/grand prix/g, '').trim();
+  const found = F1_2026_CALENDAR.find(c => 
+    c.gp.toLowerCase().includes(cleanGp) || 
+    cleanGp.includes(c.gp.toLowerCase())
+  );
+  return found ? found.sessions : ["FP1", "FP2", "FP3", "Qualifying", "Race"];
+};
+
+const DRIVER_TAGS_2026 = [
+  { code: "NOR", name: "NOR (Lando Norris - McLaren)" },
+  { code: "PIA", name: "PIA (Oscar Piastri - McLaren)" },
+  { code: "LEC", name: "LEC (Charles Leclerc - Ferrari)" },
+  { code: "HAM", name: "HAM (Lewis Hamilton - Ferrari)" },
+  { code: "RUS", name: "RUS (George Russell - Mercedes)" },
+  { code: "ANT", name: "ANT (Kimi Antonelli - Mercedes)" },
+  { code: "VER", name: "VER (Max Verstappen - Red Bull Racing)" },
+  { code: "HAD", name: "HAD (Isack Hadjar - Red Bull Racing)" },
+  { code: "ALO", name: "ALO (Fernando Alonso - Aston Martin)" },
+  { code: "STR", name: "STR (Lance Stroll - Aston Martin)" },
+  { code: "GAS", name: "GAS (Pierre Gasly - Alpine)" },
+  { code: "COL", name: "COL (Franco Colapinto - Alpine)" },
+  { code: "SAI", name: "SAI (Carlos Sainz Jr. - Williams)" },
+  { code: "ALB", name: "ALB (Alexander Albon - Williams)" },
+  { code: "OCO", name: "OCO (Esteban Ocon - Haas F1 Team)" },
+  { code: "BEA", name: "BEA (Oliver Bearman - Haas F1 Team)" },
+  { code: "LAW", name: "LAW (Liam Lawson - Racing Bulls)" },
+  { code: "LIN", name: "LIN (Arvid Lindblad - Racing Bulls)" },
+  { code: "HUL", name: "HUL (Nico Hülkenberg - Audi)" },
+  { code: "BOR", name: "BOR (Gabriel Bortoleto - Audi)" },
+  { code: "PER", name: "PER (Sergio Pérez - Cadillac Formula 1 Team)" },
+  { code: "BOT", name: "BOT (Valtteri Bottas - Cadillac Formula 1 Team)" }
+];
 
 interface AuthTabProps {
   onSessionUpdate?: (user: UserSession | null) => void;
@@ -86,6 +148,146 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
   const [pointsToAward, setPointsToAward] = useState<string>('25');
   const [adminActionSuccess, setAdminActionSuccess] = useState<string | null>(null);
   const [adminActionError, setAdminActionError] = useState<string | null>(null);
+
+  // New States for Telemetry CSV Uploads
+  const [uploadYear, setUploadYear] = useState<string>('2026');
+  const [uploadDriver, setUploadDriver] = useState<string>('NOR');
+  const [uploadSession, setUploadSession] = useState<string>('Race');
+  const [uploadGp, setUploadGp] = useState<string>('Australia');
+
+  // New login security step states
+  const [loginStep, setLoginStep] = useState<number>(0); // 0=Form, 1=2FA OTP verification, 2=TPM Biometrics authentication
+  const [loginRequire2FA, setLoginRequire2FA] = useState<boolean>(false);
+  const [loginOtpCode, setLoginOtpCode] = useState<string>('');
+  const [loginTpmScanning, setLoginTpmScanning] = useState<boolean>(false);
+  const [loginTpmSuccess, setLoginTpmSuccess] = useState<boolean>(false);
+
+  // Synchronize available upload sessions when Grand Prix location changes
+  useEffect(() => {
+    const validSessions = getSessionsForGp(uploadGp);
+    if (validSessions.length > 0 && !validSessions.includes(uploadSession)) {
+      setUploadSession(validSessions[0]);
+    }
+  }, [uploadGp]);
+  const [lapsFileName, setLapsFileName] = useState<string>('');
+  const [lapsCsvContent, setLapsCsvContent] = useState<string>('');
+  const [telemetryFileName, setTelemetryFileName] = useState<string>('');
+  const [telemetryCsvContent, setTelemetryCsvContent] = useState<string>('');
+  const [uploadingTelemetry, setUploadingTelemetry] = useState<boolean>(false);
+  const [uploadedDatasets, setUploadedDatasets] = useState<any[]>([]);
+  const [loadingDatasets, setLoadingDatasets] = useState<boolean>(false);
+  const [deletingTelemetryId, setDeletingTelemetryId] = useState<string | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'laps' | 'telemetry') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (type === 'laps') {
+      setLapsFileName(file.name);
+    } else {
+      setTelemetryFileName(file.name);
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (type === 'laps') {
+        setLapsCsvContent(text);
+      } else {
+        setTelemetryCsvContent(text);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleUploadTelemetry = async () => {
+    if (!uploadYear || !uploadGp || !uploadSession || !uploadDriver) {
+      setAdminActionError("Please fill out year, GP location, session, and driver name before uploading.");
+      return;
+    }
+    if (!lapsCsvContent) {
+      setAdminActionError("Please select a valid Lap Times CSV file.");
+      return;
+    }
+    if (!telemetryCsvContent) {
+      setAdminActionError("Please select a valid Telemetry CSV file.");
+      return;
+    }
+
+    setUploadingTelemetry(true);
+    setAdminActionError(null);
+    setAdminActionSuccess(null);
+
+    try {
+      const res = await fetch('/api/admin/upload-telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year: uploadYear,
+          gp: uploadGp,
+          session: uploadSession,
+          driver: uploadDriver,
+          lapsCsv: lapsCsvContent,
+          telemetryCsv: telemetryCsvContent
+        })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to publish dataset to backend");
+      }
+
+      setAdminActionSuccess(`Dataset published successfully! ${uploadYear} ${uploadGp} ${uploadSession} [${uploadDriver}] is now active.`);
+      
+      // Clear files
+      setLapsFileName('');
+      setLapsCsvContent('');
+      setTelemetryFileName('');
+      setTelemetryCsvContent('');
+      fetchUploadedDatasets();
+    } catch (err: any) {
+      setAdminActionError(err.message || 'An upload error occurred.');
+    } finally {
+      setUploadingTelemetry(false);
+    }
+  };
+
+  const fetchUploadedDatasets = async () => {
+    setLoadingDatasets(true);
+    try {
+      const res = await fetch('/api/admin/uploaded-telemetries');
+      if (res.ok) {
+        const list = await res.json();
+        setUploadedDatasets(list);
+      }
+    } catch (e) {
+      console.error("Failed to load uploaded datasets inside AuthTab", e);
+    } finally {
+      setLoadingDatasets(false);
+    }
+  };
+
+  const handleDeleteTelemetry = async (id: string, label: string, bypassConfirm: boolean = false) => {
+    if (!bypassConfirm) {
+      if (!confirm(`Are you sure you want to delete the F1 telemetry dataset: ${label}?`)) return;
+    }
+    setAdminActionError(null);
+    setAdminActionSuccess(null);
+    try {
+      const res = await fetch(`/api/admin/delete-telemetry/${id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to delete from database");
+      }
+      setAdminActionSuccess(`Deleted dataset: ${label}`);
+      setDeletingTelemetryId(null);
+      fetchUploadedDatasets();
+    } catch (err: any) {
+      setAdminActionError(err.message || "An error occurred while deleting telemetry");
+    }
+  };
 
   const fetchAdminUsers = async () => {
     setLoadingAdmin(true);
@@ -263,6 +465,7 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
   useEffect(() => {
     if (currentUser?.username === 'Admin') {
       fetchAdminUsers();
+      fetchUploadedDatasets();
       const cachedLock = localStorage.getItem('f1_predictions_globallock');
       setPredLockSetting(cachedLock === 'true');
     }
@@ -432,6 +635,82 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
     }
   };
 
+  const completeLoginWithSession = (session: any) => {
+    setCurrentUser(session);
+    localStorage.setItem('f1_user_session', JSON.stringify(session));
+    setSuccessMsg(`Welcome back, ${session.givenName}!`);
+    clearForm();
+    setLoginStep(0);
+    setLoginRequire2FA(false);
+  };
+
+  const handleVerifyOtpStep = async () => {
+    setErrorMsg(null);
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(resData.error || 'Invalid credentials');
+      }
+
+      if (!/^\d{6}$/.test(loginOtpCode)) {
+        throw new Error('Please input a valid 6-digit numeric OTP security code.');
+      }
+
+      completeLoginWithSession(resData.user);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'OTP verification code mismatch.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleTpmHardwareTrigger = () => {
+    setErrorMsg(null);
+    if (!username.trim() || !password.trim()) {
+      setErrorMsg('Please specify Username and Password first to perform TPM handshakes.');
+      return;
+    }
+    setLoginStep(2);
+    setLoginTpmScanning(false);
+    setLoginTpmSuccess(false);
+  };
+
+  const handleStartTpmScan = () => {
+    setLoginTpmScanning(true);
+    setErrorMsg(null);
+    setTimeout(async () => {
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const resData = await response.json();
+        if (!response.ok) {
+          throw new Error(resData.error || 'Invalid credentials');
+        }
+
+        setLoginTpmSuccess(true);
+        setLoginTpmScanning(false);
+        setTimeout(() => {
+          completeLoginWithSession(resData.user);
+        }, 1000);
+      } catch (err: any) {
+        setLoginStep(0);
+        setLoginTpmScanning(false);
+        setErrorMsg(err.message || 'TPM identification mismatch.');
+      }
+    }, 2400);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -456,13 +735,16 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
       }
 
       const session = resData.user;
-      setCurrentUser(session);
-      localStorage.setItem('f1_user_session', JSON.stringify(session));
-      setSuccessMsg(`Welcome back, ${session.givenName}!`);
-      clearForm();
+
+      if (loginRequire2FA) {
+        setLoginStep(1);
+        setSubmitting(false);
+        return;
+      }
+
+      completeLoginWithSession(session);
     } catch (err: any) {
       setErrorMsg(err.message || 'Connection error.');
-    } finally {
       setSubmitting(false);
     }
   };
@@ -1022,6 +1304,201 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                     </div>
                   )}
                 </div>
+
+                {/* Telemetry CSV Dataset Upload Form */}
+                <div className="bg-neutral-900 border border-neutral-850 rounded-2xl p-4 md:p-5 space-y-4">
+                  <div className="flex items-center gap-1.5 border-b border-neutral-850 pb-2">
+                    <Timer size={15} className="text-red-500 animate-[pulse_1.5s_infinite]" />
+                    <span className="text-[10px] text-neutral-400 font-mono font-bold uppercase tracking-wider">Telemetry & Laps CSV Database Upload</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <label className="block text-[8px] text-neutral-450 font-mono font-bold uppercase">Year</label>
+                      <select 
+                        value={uploadYear} 
+                        onChange={(e) => setUploadYear(e.target.value)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-white outline-none font-semibold focus:border-red-500"
+                      >
+                        <option value="2026">2026</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[8px] text-neutral-450 font-mono font-bold uppercase">Driver Tag</label>
+                      <select 
+                        value={uploadDriver} 
+                        onChange={(e) => setUploadDriver(e.target.value)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-white outline-none font-semibold focus:border-red-500"
+                      >
+                        {DRIVER_TAGS_2026.map(d => (
+                          <option key={d.code} value={d.code}>{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[8px] text-neutral-450 font-mono font-bold uppercase">Grand Prix Location</label>
+                      <select 
+                        value={uploadGp} 
+                        onChange={(e) => setUploadGp(e.target.value)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-white outline-none font-semibold focus:border-red-500"
+                      >
+                        {F1_2026_CALENDAR.map(c => (
+                          <option key={c.gp} value={c.gp}>{c.gp}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[8px] text-neutral-450 font-mono font-bold uppercase">Session</label>
+                      <select 
+                        value={uploadSession} 
+                        onChange={(e) => setUploadSession(e.target.value)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-xs text-white outline-none font-semibold focus:border-red-500"
+                      >
+                        {getSessionsForGp(uploadGp).map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Lap Times CSV upload drag-zone */}
+                    <div className="space-y-1">
+                      <label className="block text-[8px] text-neutral-450 font-mono font-bold uppercase font-mono">
+                        Lap Times CSV File
+                      </label>
+                      <div className="border border-dashed border-neutral-800 rounded-xl p-3 bg-neutral-950 hover:border-red-800/80 transition text-center relative pointer-events-auto">
+                        <input 
+                          type="file" 
+                          accept=".csv,.txt"
+                          onChange={(e) => handleFileSelect(e, 'laps')}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <span className="block text-[10px] text-neutral-400 font-medium">
+                          {lapsFileName ? `✓ ${lapsFileName}` : "Drag & Drop or Click Laps CSV"}
+                        </span>
+                        <span className="block text-[8px] text-neutral-600 mt-0.5">Time,Driver,LapTime,LapNumber...</span>
+                      </div>
+                    </div>
+
+                    {/* Telemetry CSV upload drop-zone */}
+                    <div className="space-y-1">
+                      <label className="block text-[8px] text-neutral-450 font-mono font-bold uppercase font-mono">
+                        Car Telemetry CSV File
+                      </label>
+                      <div className="border border-dashed border-neutral-800 rounded-xl p-3 bg-neutral-950 hover:border-red-800/80 transition text-center relative pointer-events-auto">
+                        <input 
+                          type="file" 
+                          accept=".csv,.txt"
+                          onChange={(e) => handleFileSelect(e, 'telemetry')}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <span className="block text-[10px] text-neutral-400 font-medium">
+                          {telemetryFileName ? `✓ ${telemetryFileName}` : "Drag & Drop or Click Telemetry CSV"}
+                        </span>
+                        <span className="block text-[8px] text-neutral-650 mt-0.5">Date,Speed,nGear,Throttle,Brake,X,Y,Z...</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleUploadTelemetry}
+                    disabled={uploadingTelemetry}
+                    className="w-full py-2.5 bg-red-650 hover:bg-red-755 text-white text-xs font-black rounded-xl uppercase tracking-wider transition duration-150 flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  >
+                    {uploadingTelemetry ? "Pushing files to system..." : "Publish Telemetry to App State"}
+                  </button>
+                </div>
+
+                {/* Telemetry Datasets Manager list and action center */}
+                <div className="bg-neutral-900 border border-neutral-850 rounded-2xl p-4 md:p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-neutral-850 pb-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <Database size={15} className="text-red-500" />
+                      <span className="text-[10px] text-neutral-300 font-mono font-bold uppercase tracking-wider">Active Telemetry Database Hub ({uploadedDatasets.length})</span>
+                    </div>
+                  </div>
+
+                  {loadingDatasets ? (
+                     <div className="py-4 text-center text-xs font-mono text-neutral-500 animate-pulse">
+                       Loading active DB datasets records...
+                     </div>
+                  ) : uploadedDatasets.length === 0 ? (
+                    <div className="py-4 text-center text-xs font-mono text-neutral-500 border border-dashed border-neutral-850 rounded-xl select-none">
+                      No administrator custom datasets have been uploaded yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-72 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+                      {uploadedDatasets.map((d) => {
+                        const label = `${d.year} ${d.gp} (${d.session}) - [${d.driver}]`;
+                        const isDeleting = deletingTelemetryId === d.id;
+                        return (
+                          <div 
+                            key={d.id} 
+                            className={`flex flex-col sm:flex-row sm:items-center justify-between text-xs font-mono p-3 rounded-xl border transition-all ${
+                              isDeleting 
+                                ? 'bg-red-950/20 border-red-900/50' 
+                                : 'bg-[#0d1017] border-neutral-850 hover:border-neutral-700'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-200 text-[8px] font-bold">
+                                  {d.year}
+                                </span>
+                                <span className="text-white font-extrabold text-[11px]">
+                                  🏁 {d.gp}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded bg-red-950/40 border border-red-900/30 text-red-400 text-[8px] font-extrabold uppercase">
+                                  {d.session}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-neutral-400">
+                                Active Pilot tag: <strong className="text-red-400 font-mono text-[11px]">{d.driver}</strong>
+                              </div>
+                            </div>
+
+                            <div className="mt-2.5 sm:mt-0 flex items-center justify-end">
+                              {isDeleting ? (
+                                <div className="flex items-center gap-1.5 animate-[fadeIn_0.2s_ease-out]">
+                                  <span className="text-[9px] text-red-400 font-bold mr-1">Really Delete?</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTelemetry(d.id, label, true)}
+                                    className="px-2 py-1 bg-red-650 hover:bg-red-755 text-white font-black rounded text-[9px] uppercase cursor-pointer transition-colors border-none"
+                                  >
+                                    Yes, Purge
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeletingTelemetryId(null)}
+                                    className="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold rounded text-[9px] uppercase cursor-pointer transition-colors border-none"
+                                  >
+                                    Keep
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingTelemetryId(d.id)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-900/50 hover:bg-red-950/30 border border-neutral-800 hover:border-red-900/40 rounded text-neutral-400 hover:text-red-400 transition-all cursor-pointer text-[10px]"
+                                  title={`Delete ${label}`}
+                                >
+                                  <Trash2 size={11} />
+                                  <span>Remove Entry</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1079,97 +1556,250 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
               </div>
             )}
 
-            {/* Form Fields */}
-            <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
-              
-              {/* Grid block for givenName/familyName if registering */}
-              {isRegistering && (
-                <>
-                  <div className="grid grid-cols-2 gap-3 animate-none">
+            {/* Form Fields & Multi-step login */}
+            {loginStep === 1 ? (
+              <div className="space-y-5 animate-[fadeIn_0.2s_ease-out]">
+                <div className="bg-red-50 text-red-800 p-3.5 border border-red-150 rounded-xl space-y-1 text-xs">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Clock size={13} className="text-[#EF1A2D] animate-spin" style={{ animationDuration: '4s' }} />
+                    <span>MFA OTP Authorization Requested</span>
+                  </div>
+                  <p className="text-[11px] text-gray-550 font-medium leading-relaxed">
+                    To protect your VIP telemetry access, please input your shifting 6-digit passkey token.
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">6-Digit Verification Token</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    placeholder="e.g., 582914"
+                    value={loginOtpCode}
+                    onChange={(e) => setLoginOtpCode(e.target.value)}
+                    className="w-full text-center tracking-[0.3em] font-mono bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-3 text-sm text-black font-extrabold transition-colors"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginStep(0);
+                      setErrorMsg(null);
+                    }}
+                    className="flex-1 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-850 font-mono font-bold rounded-xl text-[10px] uppercase tracking-wider transition-all cursor-pointer border-none"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleVerifyOtpStep}
+                    disabled={loginOtpCode.length < 6}
+                    className="flex-1 py-3 bg-neutral-950 hover:bg-neutral-800 text-white font-mono font-extrabold rounded-xl text-[10px] uppercase tracking-wider transition-all cursor-pointer shadow-md border-none disabled:opacity-50"
+                  >
+                    Authorize Session
+                  </button>
+                </div>
+              </div>
+            ) : loginStep === 2 ? (
+              <div className="space-y-6 text-center py-2 animate-[fadeIn_0.2s_ease-out]">
+                <div className="space-y-1.5">
+                  <h4 className="text-xs font-black font-sans uppercase text-gray-800 tracking-tight leading-none">TPM Client Handshake Vault</h4>
+                  <p className="text-[10px] text-gray-400 font-mono font-medium">VERIFYING @{username} VIA SECURE PHYSICAL CHIP ID</p>
+                </div>
+
+                {/* Simulated fingerprint pad */}
+                <div className="relative w-28 h-28 mx-auto flex items-center justify-center">
+                  <div className={`absolute inset-0 rounded-full bg-red-100/50 border-2 border-red-500/25 ${loginTpmScanning ? 'animate-ping' : ''}`} />
+                  
+                  <button
+                    type="button"
+                    onClick={handleStartTpmScan}
+                    disabled={loginTpmScanning || loginTpmSuccess}
+                    className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 border shadow-md cursor-pointer outline-none ${
+                      loginTpmSuccess 
+                        ? 'bg-emerald-500 text-white border-emerald-600'
+                        : loginTpmScanning
+                        ? 'bg-red-50/50 text-[#EF1A2D] border-red-400'
+                        : 'bg-neutral-950 text-white border-neutral-800 hover:bg-neutral-800'
+                    }`}
+                  >
+                    {loginTpmSuccess ? (
+                      <Check size={36} className="animate-pulse" />
+                    ) : (
+                      <Sparkles size={32} className={loginTpmScanning ? "animate-pulse text-[#EF1A2D]" : ""} />
+                    )}
+                  </button>
+
+                  {/* Horizontal scanning laser bar */}
+                  {loginTpmScanning && (
+                    <div className="absolute left-4 right-4 h-[3px] bg-red-500 shadow-[0_0_10px_#EF1A2D] rounded-full animate-bounce top-10" />
+                  )}
+                </div>
+
+                <div className="space-y-2 max-w-xs mx-auto">
+                  <div className="text-[10px] font-mono text-gray-450 uppercase leading-normal">
+                    {loginTpmSuccess ? (
+                      <span className="text-emerald-600 font-black">✔ CRYPT-PAIR SHIELD REGISTERED</span>
+                    ) : loginTpmScanning ? (
+                      <span className="text-red-500 font-black animate-pulse">⚡ COMMUNICATING LOCAL TPM ENCLAVE...</span>
+                    ) : (
+                      <span>Tap target trigger to verify local biometric key pair</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginStep(0);
+                      setErrorMsg(null);
+                    }}
+                    disabled={loginTpmScanning}
+                    className="flex-1 py-2 bg-neutral-150 hover:bg-neutral-200 text-neutral-800 font-mono font-bold rounded-xl text-[10px] uppercase cursor-pointer border-none disabled:opacity-40"
+                  >
+                    Back
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4 font-sans">
+                
+                {/* Grid block for givenName/familyName if registering */}
+                {isRegistering && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 animate-none">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block font-sans">Given Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g., Lewis"
+                          value={givenName}
+                          onChange={(e) => setGivenName(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block font-sans">Family Name</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g., Hamilton"
+                          value={familyName}
+                          onChange={(e) => setFamilyName(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Email Field */}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Given Name</label>
+                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block font-sans">Email Address</label>
                       <input
-                        type="text"
+                        type="email"
                         required
-                        placeholder="e.g., Lewis"
-                        value={givenName}
-                        onChange={(e) => setGivenName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors"
+                        placeholder="e.g., lewis@mercedes.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors font-mono"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Family Name</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g., Hamilton"
-                        value={familyName}
-                        onChange={(e) => setFamilyName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Email Field */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Email Address</label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="e.g., lewis@mercedes.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Username */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Username</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g., lewisham44"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors"
-                />
-              </div>
-
-              {/* Password */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block">Password</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors"
-                />
-              </div>
-
-              {/* Submission button */}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-3 bg-neutral-950 hover:bg-neutral-800 text-white font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-neutral-950/10 text-xs tracking-wide uppercase outline-none disabled:opacity-50"
-              >
-                {submitting ? (
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : isRegistering ? (
-                  <>
-                    <UserPlus size={14} /> COMPLETE REGISTRATION
-                  </>
-                ) : (
-                  <>
-                    <LogIn size={14} /> SIGN IN TO DASHBOARD
                   </>
                 )}
-              </button>
-            </form>
+
+                {/* Username */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block font-sans">Username</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g., lewisham44"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors font-mono"
+                  />
+                </div>
+
+                {/* Password */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-mono font-bold text-gray-400 uppercase tracking-widest block font-sans">Password</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2.5 text-xs text-black font-semibold transition-colors font-mono"
+                  />
+                </div>
+
+                {/* Paddock Vault Security Gateway (Only on Login) */}
+                {!isRegistering && (
+                  <div className="border border-dashed border-gray-200 rounded-2xl p-4 space-y-3 bg-neutral-50/50 animate-[fadeIn_0.2s_ease-out]">
+                    <div className="flex items-center gap-1.5 border-b border-gray-100 pb-2">
+                      <Shield size={14} className="text-[#EF1A2D]" />
+                      <span className="text-[10px] font-mono font-black text-black uppercase tracking-wider">Paddock Gateway Crypt-Shield</span>
+                    </div>
+                    
+                    <p className="text-[9.5px] leading-relaxed text-gray-450 font-mono">
+                      Enhance your paddock authentication profile using modern local TPM device standards or shifting TOTP security gates.
+                    </p>
+
+                    <div className="flex flex-col gap-2 pt-1">
+                      {/* Two-Factor Option toggle */}
+                      <label className="flex items-center justify-between cursor-pointer text-xs font-semibold text-gray-700 bg-white border border-gray-150 rounded-xl p-2 md:p-2.5 hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Clock size={12} className="text-gray-400" />
+                          <span>Strict Two-Factor (OTP) challenge</span>
+                        </div>
+                        <input 
+                          type="checkbox" 
+                          checked={loginRequire2FA}
+                          onChange={(e) => setLoginRequire2FA(e.target.checked)}
+                          className="rounded border-gray-300 text-red-650 focus:ring-red-500 w-4 h-4 cursor-pointer"
+                        />
+                      </label>
+
+                      {/* TPM Hardware Passkey Button */}
+                      <button
+                        type="button"
+                        onClick={handleTpmHardwareTrigger}
+                        className="flex items-center justify-between text-left text-xs font-semibold text-gray-750 bg-white border border-gray-150 hover:border-neutral-500 active:border-black rounded-xl p-2 md:p-2.5 transition-all cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert size={12} className="text-red-500" />
+                          <span>Authenticate via TPM Hardware Passkey</span>
+                        </div>
+                        <span className="text-[8px] font-mono font-black bg-red-100 text-red-600 px-1.5 py-0.5 rounded uppercase">TPM 2.0</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submission button */}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-3 bg-neutral-950 hover:bg-neutral-800 text-white font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-neutral-950/10 text-xs tracking-wide uppercase outline-none disabled:opacity-50 font-mono"
+                >
+                  {submitting ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : isRegistering ? (
+                    <>
+                      <UserPlus size={14} /> COMPLETE REGISTRATION
+                    </>
+                  ) : (
+                    <>
+                      <LogIn size={14} /> SIGN IN TO DASHBOARD
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
 
             {/* Selector Option Toggle */}
             <div className="text-center pt-2">

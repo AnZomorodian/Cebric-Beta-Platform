@@ -16,6 +16,8 @@ import CompareTab from './components/CompareTab';
 import LapTimesTab from './components/LapTimesTab';
 import PredictionsTab from './components/PredictionsTab';
 import AuthTab from './components/AuthTab';
+import PollsTab from './components/PollsTab';
+import GlobalSearch from './components/GlobalSearch';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
@@ -102,7 +104,13 @@ export default function App() {
           selectedSeason={selectedSeason} 
           onSelectSeason={setSelectedSeason} 
           seasons={seasons}
-        />
+        >
+          <GlobalSearch 
+            seasonData={seasonData} 
+            onGoToTab={handleGoToTab} 
+            selectedSeason={selectedSeason}
+          />
+        </SeasonSelector>
 
         {/* Content Wrapper Container */}
         <main 
@@ -171,6 +179,10 @@ export default function App() {
               data={seasonData} 
               isLoading={isLoading} 
             />
+          )}
+
+          {activeTab === 'polls' && (
+            <PollsTab />
           )}
 
           {activeTab === 'predictions' && (

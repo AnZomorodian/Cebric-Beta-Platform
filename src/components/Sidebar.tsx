@@ -1,4 +1,4 @@
-import { Home, Newspaper, Calendar, Trophy, BarChart3, MapPin, ArrowLeftRight, Timer, User, Sparkles, Users } from 'lucide-react';
+import { Home, Newspaper, Calendar, Trophy, BarChart3, MapPin, ArrowLeftRight, Timer, User, Sparkles, Users, Vote } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -17,6 +17,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser }: Sideba
     { id: 'circuits', label: 'Circuits', icon: MapPin },
     { id: 'compare', label: 'Head to Head', icon: ArrowLeftRight },
     { id: 'laps', label: 'Lap Telemetry', icon: Timer },
+    { id: 'polls', label: 'Paddock Polls', icon: Vote },
     { id: 'predictions', label: 'F1 Prediction', icon: Sparkles },
     { id: 'auth', label: 'User Hub', icon: User },
   ];

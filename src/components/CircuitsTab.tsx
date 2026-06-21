@@ -195,6 +195,150 @@ const TRACK_DETAILS: Record<string, { length: string; laps: number; record: stri
     capacity: '100,000',
     corners: 15,
     path: 'M 15,25 L 55,15 L 85,35 L 55,45 Z'
+  },
+  villeneuve: {
+    length: '4.361 km',
+    laps: 70,
+    record: '1:13.078 (V. Bottas)',
+    capacity: '100,000',
+    corners: 14,
+    path: 'M 15,15 L 65,15 L 85,35 L 50,50 L 30,35 Z'
+  },
+  paul_ricard: {
+    length: '5.842 km',
+    laps: 53,
+    record: '1:32.740 (S. Vettel)',
+    capacity: '90,000',
+    corners: 15,
+    path: 'M 15,25 L 45,15 L 85,30 L 75,55 L 35,45 Z'
+  },
+  nurburgring: {
+    length: '5.148 km',
+    laps: 60,
+    record: '1:28.139 (M. Verstappen)',
+    capacity: '150,005',
+    corners: 16,
+    path: 'M 15,35 L 45,15 L 75,15 L 85,45 L 35,45 Z'
+  },
+  hockenheimring: {
+    length: '4.574 km',
+    laps: 67,
+    record: '1:13.780 (K. Räikkönen)',
+    capacity: '120,000',
+    corners: 17,
+    path: 'M 15,15 L 75,15 L 85,45 L 35,35 Z'
+  },
+  sochi: {
+    length: '5.848 km',
+    laps: 53,
+    record: '1:35.761 (L. Hamilton)',
+    capacity: '55,000',
+    corners: 18,
+    path: 'M 15,35 L 45,15 L 75,30 L 85,55 Q 45,45 Z'
+  },
+  istanbul: {
+    length: '5.338 km',
+    laps: 58,
+    record: '1:24.770 (J. P. Montoya)',
+    capacity: '155,000',
+    corners: 14,
+    path: 'M 15,20 L 75,15 L 85,45 L 55,50 Z'
+  },
+  sepang: {
+    length: '5.543 km',
+    laps: 56,
+    record: '1:34.080 (S. Vettel)',
+    capacity: '130,000',
+    corners: 15,
+    path: 'M 10,20 L 70,10 L 80,45 L 35,40 Z'
+  },
+  canada: {
+    length: '4.361 km',
+    laps: 70,
+    record: '1:13.078 (V. Bottas)',
+    capacity: '100,000',
+    corners: 14,
+    path: 'M 15,15 L 65,15 L 85,35 L 50,50 L 30,35 Z'
+  },
+  singapore: {
+    length: '4.940 km',
+    laps: 62,
+    record: '1:35.867 (L. Hamilton)',
+    capacity: '90,000',
+    corners: 19,
+    path: 'M 15,15 L 75,15 L 80,45 L 45,50 L 20,40 Z'
+  },
+  austria: {
+    length: '4.318 km',
+    laps: 71,
+    record: '1:05.619 (C. Sainz)',
+    capacity: '105,000',
+    corners: 10,
+    path: 'M 15,40 L 15,15 L 45,25 L 75,25 L 85,45 L 45,45 Z'
+  },
+  great_britain: {
+    length: '5.891 km',
+    laps: 52,
+    record: '1:27.097 (M. Verstappen)',
+    capacity: '150,000',
+    corners: 18,
+    path: 'M 20,20 L 50,15 L 80,25 L 75,45 L 50,50 L 35,40 L 15,35 Z'
+  },
+  belgium: {
+    length: '7.004 km',
+    laps: 44,
+    record: '1:46.286 (V. Bottas)',
+    capacity: '70,000',
+    corners: 19,
+    path: 'M 15,15 L 65,25 L 85,45 L 55,55 L 35,40 Z'
+  },
+  brazil: {
+    length: '4.309 km',
+    laps: 71,
+    record: '1:10.540 (V. Bottas)',
+    capacity: '60,000',
+    corners: 15,
+    path: 'M 15,25 L 45,15 L 75,30 L 65,50 L 35,40 Z'
+  },
+  mexico: {
+    length: '4.304 km',
+    laps: 71,
+    record: '1:17.774 (V. Bottas)',
+    capacity: '110,000',
+    corners: 17,
+    path: 'M 15,15 L 75,15 L 85,45 L 45,45 Z'
+  },
+  japan: {
+    length: '5.807 km',
+    laps: 53,
+    record: '1:30.983 (L. Hamilton)',
+    capacity: '155,000',
+    corners: 18,
+    path: 'M 15,35 Q 30,15 50,45 T 85,25 Q 70,55 45,35 Z'
+  },
+  china: {
+    length: '5.451 km',
+    laps: 56,
+    record: '1:32.238 (M. Schumacher)',
+    capacity: '200,000',
+    corners: 16,
+    path: 'M 15,35 L 35,15 L 75,20 L 85,50 L 45,45 Z'
+  },
+  qatar: {
+    length: '5.419 km',
+    laps: 57,
+    record: '1:24.319 (M. Verstappen)',
+    capacity: '52,000',
+    corners: 16,
+    path: 'M 15,15 L 75,25 L 80,45 L 45,45 Z'
+  },
+  uae: {
+    length: '5.281 km',
+    laps: 58,
+    record: '1:26.103 (M. Verstappen)',
+    capacity: '60,000',
+    corners: 16,
+    path: 'M 15,15 L 75,25 L 85,45 L 45,50 L 25,35 Z'
   }
 };
 
@@ -457,19 +601,144 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
       className="space-y-8"
     >
       <header className="space-y-1.5 select-none">
-        <span className="text-[11px] font-bold tracking-widest text-gray-400 font-mono uppercase">
+        <span className="text-[10px] font-bold tracking-widest text-red-650 font-mono uppercase">
           F1 VENUES & TRACKS
         </span>
-        <h1 className="text-4xl font-extrabold tracking-tight text-black">
-          {season} Circuits List
+        <h1 className="text-3xl font-black tracking-tight text-neutral-900 leading-none">
+          {season} Grand Prix Venue & Telemetry Cockpit
         </h1>
-        <p className="text-sm text-gray-500 max-w-xl">
-          Complete listing of global circuits hosting Grand Prix battles during the {season} F1 Championship.
+        <p className="text-xs text-neutral-500 max-w-xl">
+          Real-time weather modeling, recommended telemetry setups, and active sector metrics for all {season} calendar tracks.
         </p>
       </header>
 
-      {/* NEW: Dynamic Strategy & Weather Commander Dashboard */}
-      {selectedCircuitData && activeTrackInfo && (
+      {/* Grid split cockpit system */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* LEFT COLUMN: TRACK CATALOG SELECTOR & SEARCH */}
+        <div className="lg:col-span-4 space-y-4">
+          <div className="bg-neutral-950 text-white rounded-2xl p-4 border border-neutral-800 shadow-xl space-y-4 border-neutral-850">
+            <div className="flex items-center gap-1.5 border-b border-neutral-900 pb-1.5">
+              <Compass size={13} className="text-red-500 animate-spin" style={{ animationDuration: '6s' }} />
+              <span className="text-[10px] text-neutral-300 font-mono font-bold uppercase tracking-wider">
+                F1 VENUES RADAR ({filteredCircuits.length})
+              </span>
+            </div>
+            
+            {/* Search Input */}
+            <div className="relative">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                type="text"
+                placeholder="Search venue names, locations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 bg-neutral-900 text-xs text-white placeholder-neutral-500 outline-none border border-neutral-800 focus:border-red-500 rounded-lg transition-colors font-mono"
+              />
+            </div>
+
+            {/* Filters Group Grid */}
+            <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+              <div className="space-y-0.5">
+                <span className="text-neutral-500 font-bold uppercase block text-[8px]">Length</span>
+                <select
+                  value={lengthFilter}
+                  onChange={(e) => setLengthFilter(e.target.value as any)}
+                  className="w-full bg-neutral-900 border border-neutral-850 rounded-md p-1.5 text-neutral-300 outline-none focus:border-red-500"
+                >
+                  <option value="all">All Lengths</option>
+                  <option value="short">Short (&lt; 5.0km)</option>
+                  <option value="long">Long (&ge; 5.0km)</option>
+                </select>
+              </div>
+
+              <div className="space-y-0.5">
+                <span className="text-neutral-500 font-bold uppercase block text-[8px]">Style / Turn type</span>
+                <select
+                  value={cornersFilter}
+                  onChange={(e) => setCornersFilter(e.target.value as any)}
+                  className="w-full bg-neutral-900 border border-neutral-850 rounded-md p-1.5 text-neutral-300 outline-none focus:border-red-500"
+                >
+                  <option value="all">All Styles</option>
+                  <option value="flowing">Flowing (&lt; 15 Corners)</option>
+                  <option value="technical">Technical (&ge; 15 Corners)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-0.5 font-mono text-[10px]">
+              <span className="text-neutral-500 font-bold uppercase block text-[8px]">Sort By</span>
+              <div className="flex gap-1">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="flex-1 bg-neutral-900 border border-neutral-850 rounded-md p-1.5 text-xs text-neutral-300 outline-none focus:border-red-500"
+                >
+                  <option value="round">GP Round</option>
+                  <option value="length">Track Length</option>
+                  <option value="corners">Turn Count</option>
+                  <option value="name">Track Name</option>
+                </select>
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="px-2.5 bg-neutral-900 border border-neutral-850 hover:border-neutral-700 text-neutral-300 hover:text-white rounded-md transition-colors text-xs"
+                  title="Toggle Sorting Direction"
+                >
+                  {sortOrder === 'asc' ? '↑' : '↓'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Scrolling Tracks Catalog list container */}
+          <div className="max-h-[640px] overflow-y-auto space-y-2 pr-1.5 scrollbar-thin scrollbar-thumb-neutral-805 scrollbar-track-transparent">
+            {filteredCircuits.length === 0 ? (
+              <div className="py-12 text-center text-xs font-mono text-neutral-550 border border-dashed border-neutral-800 rounded-xl bg-neutral-950/40">
+                No matching Grand Prix venues.
+              </div>
+            ) : (
+              filteredCircuits.map((circuit) => {
+                const isSelected = selectedCircuitId === circuit.circuitId;
+                const info = TRACK_DETAILS[circuit.circuitId] || { length: '5.10 km', corners: 16 };
+                return (
+                  <div
+                    key={circuit.circuitId}
+                    onClick={() => setSelectedCircuitId(circuit.circuitId)}
+                    className={`p-3 rounded-xl border text-left cursor-pointer transition-all duration-200 select-none ${
+                      isSelected
+                        ? "bg-red-955/20 border-red-800 shadow-[inset_0_0_8px_rgba(239,26,45,0.06)]"
+                        : "bg-white hover:bg-neutral-50/50 border-gray-150 hover:border-gray-300 shadow-xs"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="space-y-0.5 truncate">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-mono font-black tracking-wider ${
+                          isSelected ? "bg-red-950 text-red-500 font-extrabold" : "bg-neutral-100 text-neutral-550"
+                        }`}>
+                          ROUND {circuit.visitedRound}
+                        </span>
+                        <h4 className={`text-xs font-black tracking-tight truncate mt-1 ${isSelected ? 'text-red-500 font-extrabold' : 'text-neutral-900'}`}>
+                          {circuit.circuitName}
+                        </h4>
+                        <p className={`text-[10px] truncate ${isSelected ? 'text-neutral-300' : 'text-neutral-500'}`}>
+                          {getCountryEmoji(circuit.Location.country)} {circuit.Location.locality}, {circuit.Location.country}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0 font-mono text-[9px] space-y-1 mt-0.5">
+                        <div className={`font-bold ${isSelected ? 'text-neutral-200' : 'text-neutral-700'}`}>{info.length}</div>
+                        <div className="text-neutral-450">{info.corners} Turns</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: ACTIVE TRACK DETAILED SIMULATION & STRATEGY COCKPIT */}
+        <div className="lg:col-span-8">
+          {selectedCircuitData && activeTrackInfo ? (
         <div 
           id="circuit-commander-hud"
           className="bg-neutral-950 text-white rounded-3xl p-6 border border-neutral-800 shadow-xl space-y-6 select-none"
@@ -923,219 +1192,23 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                   <p className="font-bold text-gray-205 leading-normal text-[10.5px] text-white">
                     {weatherMetrics[weatherPreset].pitStrategy}
                   </p>
-                  <div className="pt-2 border-t border-neutral-800 text-[9px] text-neutral-450 flex flex-col justify-between gap-1">
+                  <div className="pt-2 border-t border-neutral-800 text-[9px] text-neutral-455 flex flex-col justify-between gap-1">
                     <span>Impact: <strong className="text-red-400 font-bold">{weatherMetrics[weatherPreset].timeDelta}</strong></span>
                   </div>
                 </div>
 
               </div>
-
             </div>
-
           </div>
         </div>
-      )}
-
-      {/* Search and Filters Deck */}
-      <div 
-        id="circuits-filter-bar"
-        className="bg-white border border-gray-150 rounded-2xl p-5 flex flex-col lg:flex-row items-center gap-4 shadow-sm"
-      >
-        {/* Search input field */}
-        <div className="relative w-full lg:flex-1">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold" />
-          <input
-            type="text"
-            placeholder="Search venue names, locations, countries..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-gray-50 text-xs font-semibold text-black placeholder-gray-400 outline-none border border-gray-200 focus:border-black rounded-lg transition-colors"
-          />
-        </div>
-
-        {/* Filters and sorting layout */}
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          {/* Length Filter */}
-          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
-            <span className="text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Length</span>
-            <select
-              value={lengthFilter}
-              onChange={(e) => setLengthFilter(e.target.value as any)}
-              className="bg-transparent text-xs font-bold outline-none cursor-pointer text-gray-800"
-            >
-              <option value="all">All Tracks</option>
-              <option value="short">Short (&lt; 5km)</option>
-              <option value="long">Long (&ge; 5km)</option>
-            </select>
+        ) : (
+          <div className="text-center py-24 bg-[#0b0b0c] border border-dashed border-neutral-850 rounded-3xl font-mono text-neutral-500">
+             ⚠️ Select a Grand Prix venue on the radar selector catalog list to load active telemetry metrics.
           </div>
-
-          {/* Corners Filter */}
-          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
-            <span className="text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Type</span>
-            <select
-              value={cornersFilter}
-              onChange={(e) => setCornersFilter(e.target.value as any)}
-              className="bg-transparent text-xs font-bold outline-none cursor-pointer text-gray-800"
-            >
-              <option value="all">All Styles</option>
-              <option value="flowing">Flowing (&lt; 15 Corners)</option>
-              <option value="technical">Technical (&ge; 15 Corners)</option>
-            </select>
-          </div>
-
-          {/* Sorting */}
-          <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
-            <span className="text-[9px] font-bold font-mono text-gray-400 uppercase tracking-widest">Sort By</span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-transparent text-xs font-bold outline-none cursor-pointer text-gray-800 animate-none"
-            >
-              <option value="round">GP Round</option>
-              <option value="length">Track Length</option>
-              <option value="corners">Turn Count</option>
-              <option value="name">Track Name</option>
-            </select>
-            <button
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="hover:bg-gray-150 p-1 rounded-md transition-colors flex items-center justify-center text-gray-650 shrink-0"
-              title="Reverse layout order"
-            >
-              <SlidersHorizontal size={10} className="transform rotate-90" />
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
-      {filteredCircuits.length === 0 ? (
-        <div className="py-20 text-center text-gray-400 border border-dashed border-gray-150 rounded-2xl bg-gray-50/20">
-          No circuits match your filter criteria. Try expanding search or resetting filters.
-        </div>
-      ) : (
-        <div 
-          id="circuits-grid"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {filteredCircuits.map((circuit) => {
-            const isSelected = selectedCircuitId === circuit.circuitId;
-
-            return (
-              <div
-                key={circuit.circuitId}
-                id={`circuit-card-${circuit.circuitId}`}
-                onClick={() => setSelectedCircuitId(circuit.circuitId)}
-                className={`bg-white border hover:shadow-md transition-all duration-300 rounded-2xl p-6 relative flex flex-col justify-between h-[210px] group cursor-pointer ${
-                  isSelected 
-                    ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/5 shadow-inner' 
-                    : 'border-gray-150 hover:border-gray-250'
-                }`}
-              >
-                <div className="space-y-3.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold font-mono text-gray-400 tracking-wider bg-gray-50 border border-gray-100 px-2 py-0.5 rounded leading-none">
-                      ROUND {circuit.visitedRound}
-                    </span>
-                    <Navigation size={14} className="text-gray-350 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform -rotate-45" />
-                  </div>
-
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-extrabold text-black tracking-tight leading-snug">
-                      {circuit.circuitName}
-                    </h3>
-                    <p className="text-xs text-gray-405 font-medium">
-                      Event: <strong className="text-gray-650 font-semibold">{circuit.raceName}</strong>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 pt-3 border-t border-gray-100/60 font-mono text-xs text-gray-400">
-                  <div className="flex items-center gap-2">
-                    <MapPin size={12} className="text-gray-450 shrink-0" />
-                    <span className="truncate text-gray-750 font-semibold">
-                      {circuit.Location.locality}, {circuit.Location.country}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Compass size={12} className="text-gray-450 shrink-0" />
-                    <span>
-                      LAT: {parseFloat(circuit.Location.lat).toFixed(4)}° / LNG: {parseFloat(circuit.Location.long).toFixed(4)}°
-                    </span>
-                  </div>
-                </div>
-
-                {/* External out-link */}
-                <a
-                  href={circuit.url}
-                  target="_blank"
-                  rel="noreferrer referrerPolicy"
-                  className="absolute bottom-6 right-6 p-2 bg-gray-50 text-gray-400 rounded-full hover:bg-black hover:text-white transition-all duration-200 border border-gray-100 shadow-sm z-10"
-                  title="Wikipedia circuit guide"
-                >
-                  <ExternalLink size={12} />
-                </a>
-
-                {/* Interactive Circuit Map & Deeper Stats Tooltip on Hover */}
-                {(() => {
-                  const info = TRACK_DETAILS[circuit.circuitId] || {
-                    length: '5.10 km',
-                    laps: 55,
-                    record: 'N/A',
-                    capacity: '80,000',
-                    corners: 16,
-                    path: 'M 15,15 L 75,25 L 85,45 L 35,50 Z'
-                  };
-
-                  return (
-                    <div className="absolute left-1/2 bottom-[105%] -translate-x-1/2 w-72 bg-neutral-950 border border-neutral-800 rounded-xl p-4 shadow-xl text-white opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-300 z-50 space-y-3.5 mb-2">
-                      <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
-                        <span className="text-xs font-bold text-gray-200 truncate pr-1">{circuit.circuitName}</span>
-                        <span className="text-[9px] font-mono tracking-widest text-red-500 font-bold uppercase shrink-0">MAP & STATS</span>
-                      </div>
-
-                      {/* Mini SVG Circuit Map Trace */}
-                      <div className="bg-neutral-900 border border-neutral-800/60 rounded-lg p-3 flex items-center justify-center h-28 relative overflow-hidden">
-                        <svg viewBox="0 0 100 60" className="w-full h-full stroke-red-500 fill-none stroke-[2.5] stroke-linejoin-round stroke-linecap-round filter drop-shadow-[0_0_6px_rgba(239,26,45,0.4)]" style={{ stroke: '#EF1A2D' }}>
-                          <path d={info.path} />
-                        </svg>
-                        <span className="absolute bottom-1 right-2 text-[8px] font-mono text-gray-500 uppercase">Track Outline Map</span>
-                      </div>
-
-                      {/* Deeper stats list */}
-                      <div className="grid grid-cols-2 gap-y-2.5 gap-x-1.5 text-[11px] font-medium leading-normal">
-                        <div>
-                          <span className="block text-[8px] font-mono text-gray-500 uppercase tracking-wider font-bold">Track Length</span>
-                          <span className="text-gray-200 font-bold">{info.length}</span>
-                        </div>
-                        <div>
-                          <span className="block text-[8px] font-mono text-gray-500 uppercase tracking-wider font-bold">Race Laps</span>
-                          <span className="text-gray-300 font-mono font-bold">{info.laps} Laps</span>
-                        </div>
-                        <div>
-                          <span className="block text-[8px] font-mono text-gray-500 uppercase tracking-wider font-bold">Turns / Corners</span>
-                          <span className="text-gray-300 font-mono font-bold">{info.corners} Corners</span>
-                        </div>
-                        <div>
-                          <span className="block text-[8px] font-mono text-gray-400 uppercase tracking-wider font-bold">Crowd Capacity</span>
-                          <span className="text-gray-300 font-mono">{info.capacity}</span>
-                        </div>
-                        <div className="col-span-2">
-                          <span className="block text-[8px] font-mono text-gray-400 uppercase tracking-wider font-bold">Lap Record</span>
-                          <span className="text-amber-400 font-mono font-bold break-all">{info.record}</span>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-neutral-800 pt-2 flex items-center justify-between text-[10px] text-gray-500 font-mono">
-                        <span>Click Wiki icon to read more</span>
-                        <span className="text-red-500 font-bold">&#10142;</span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      </div>
     </motion.div>
   );
 }

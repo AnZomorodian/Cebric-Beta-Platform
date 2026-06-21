@@ -196,15 +196,8 @@ export default function StandingsTab({
                     </div>
 
                     <div className="border-t border-neutral-800 pt-2 flex items-center justify-between text-[10px] text-gray-400 font-mono">
-                      <span>Click to visit Wiki Biography</span>
-                      <a 
-                        href={standing.Driver.url || '#'}
-                        target="_blank"
-                        rel="noreferrer referrerPolicy"
-                        className="text-red-400 hover:text-red-300 font-bold uppercase text-[9px] flex items-center gap-0.5"
-                      >
-                        WIKI &#10142;
-                      </a>
+                      <span>Pro Status Verified</span>
+                      <span className="text-gray-500 font-bold">ACTIVE DRIVER</span>
                     </div>
                   </div>
                 </div>

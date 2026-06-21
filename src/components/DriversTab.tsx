@@ -108,16 +108,7 @@ export default function DriversTab({ driverStandings, isLoading, season }: Drive
                   )}
                 </div>
 
-                {/* External link back */}
-                <a
-                  href={driver.url}
-                  target="_blank"
-                  rel="noreferrer referrerPolicy"
-                  className="absolute bottom-5 right-5 p-2 bg-gray-50 text-gray-400 rounded-full hover:bg-black hover:text-white transition-all duration-200 shadow-sm border border-gray-100"
-                  title="Wikipedia biography"
-                >
-                  <ExternalLink size={12} />
-                </a>
+
               </div>
             );
           })}

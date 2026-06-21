@@ -4,7 +4,7 @@ import { getSeasonMockData, getConstructorId } from '../data/mockData';
 const BASE_URL = '/api/ergast';
 
 // We list years from 2026 down to 1950 (or similar) to make the horizontal scroll immediate and zero-latency!
-export const SEASONS_LIST = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => String(2026 - i)).filter(y => y !== '2024' && y !== '2025');
+export const SEASONS_LIST = Array.from({ length: 2026 - 1950 + 1 }, (_, i) => String(2026 - i));
 
 // Elite In-Memory and LocalStorage Cache Layer with TTL (TimeToLive)
 const CACHE_PREFIX = 'f1_explorer_cache_';
@@ -76,7 +76,7 @@ async function safeFetchWithRetry(url: string, retries = 2, delay = 350): Promis
 
 // Dynamic season list fetcher from Jolpi's Ergast API with cache
 export async function fetchSeasonsList(): Promise<string[]> {
-  const cacheKey = 'seasons_list';
+  const cacheKey = 'seasons_list_v3';
   const cached = getCachedData(cacheKey);
   if (cached) return cached;
 
@@ -84,8 +84,8 @@ export async function fetchSeasonsList(): Promise<string[]> {
     const res = await safeFetchWithRetry(`${BASE_URL}/seasons.json?limit=1000`);
     if (res?.MRData?.SeasonTable?.Seasons) {
       const apiSeasons: string[] = res.MRData.SeasonTable.Seasons.map((s: any) => s.season);
-      // Ensure 2026 is top listed and remove 2024 and 2025
-      const combined = Array.from(new Set(['2026', ...apiSeasons])).filter(y => y !== '2024' && y !== '2025');
+      // Ensure modern 2024-2026 seasons are prominently included alongside historic telemetry lists
+      const combined = Array.from(new Set(['2026', '2025', '2024', ...apiSeasons]));
       const sorted = combined.sort((a, b) => parseInt(b) - parseInt(a));
       setCachedData(cacheKey, sorted);
       return sorted;

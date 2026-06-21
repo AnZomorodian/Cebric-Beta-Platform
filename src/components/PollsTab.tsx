@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Vote, Plus, Trash2, CheckCircle2, Lock, Unlock, BarChart3, Users, HelpCircle, RefreshCw, AlertTriangle, UserCheck, Megaphone, Clock, ShieldAlert } from 'lucide-react';
+import { Vote, Plus, Trash2, CheckCircle2, Lock, Unlock, BarChart3, Users, HelpCircle, RefreshCw, AlertTriangle, UserCheck, Megaphone, Clock, ShieldAlert, Pencil } from 'lucide-react';
 
 interface Poll {
   id: string;
@@ -24,8 +24,8 @@ export default function PollsTab() {
   // Current user from localStorage
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Admin Simulation Override State (enabled by default so users can always test live)
-  const [simulateAdmin, setSimulateAdmin] = useState<boolean>(true);
+  // Admin Simulation Override State (disabled by default to respect standard non-admin boundaries)
+  const [simulateAdmin, setSimulateAdmin] = useState<boolean>(false);
 
   // Announcement States
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -33,7 +33,34 @@ export default function PollsTab() {
   const [newAnnTitle, setNewAnnTitle] = useState<string>('');
   const [newAnnContent, setNewAnnContent] = useState<string>('');
   const [newAnnCategory, setNewAnnCategory] = useState<string>('REGULATIONS');
+  const [newAnnExpiry, setNewAnnExpiry] = useState<string>('0');
   const [releasingAnn, setReleasingAnn] = useState<boolean>(false);
+  const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
+
+  const handleEditAnnouncementClick = (ann: any) => {
+    setEditingAnnId(ann.id);
+    setNewAnnTitle(ann.title);
+    setNewAnnContent(ann.content);
+    setNewAnnCategory(ann.category || 'REGULATIONS');
+    if (ann.expiresAt) {
+      const remainingMinutes = Math.max(1, Math.round((new Date(ann.expiresAt).getTime() - Date.now()) / 60000));
+      setNewAnnExpiry(remainingMinutes.toString());
+    } else {
+      setNewAnnExpiry('0');
+    }
+    const formElement = document.getElementById('paddock-announcements-section');
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleCancelAnnEdit = () => {
+    setEditingAnnId(null);
+    setNewAnnTitle('');
+    setNewAnnContent('');
+    setNewAnnCategory('REGULATIONS');
+    setNewAnnExpiry('0');
+  };
 
   // Admin Form States
   const [newQuestion, setNewQuestion] = useState<string>('');
@@ -168,32 +195,39 @@ export default function PollsTab() {
     const contentText = newAnnContent.trim();
 
     if (!titleText || !contentText) {
-      setErrorMsg('Title and description are required to release announcements.');
+      setErrorMsg('Title and description are required.');
       return;
     }
 
     setReleasingAnn(true);
     try {
-      const response = await fetch('/api/announcements', {
-        method: 'POST',
+      const isEdit = !!editingAnnId;
+      const url = isEdit ? `/api/announcements/${editingAnnId}` : '/api/announcements';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: titleText,
           content: contentText,
           category: newAnnCategory,
+          expiryMinutes: Number(newAnnExpiry),
           createdBy: currentUser ? `${currentUser.givenName} ${currentUser.familyName}` : 'Admin Paddock'
         })
       });
 
       const resData = await response.json();
       if (!response.ok) {
-        throw new Error(resData.error || 'Failed to release announcement');
+        throw new Error(resData.error || 'Failed to process announcement');
       }
 
-      setSuccessMsg('Successfully published news release to the paddock updates!');
+      setSuccessMsg(isEdit ? 'Successfully updated paddock bulletin!' : 'Successfully published news release to the paddock updates!');
       setNewAnnTitle('');
       setNewAnnContent('');
       setNewAnnCategory('REGULATIONS');
+      setNewAnnExpiry('0');
+      setEditingAnnId(null);
       fetchAnnouncements();
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to publish announcement.');
@@ -202,10 +236,24 @@ export default function PollsTab() {
     }
   };
 
+  const getGuestUuid = () => {
+    let uuid = localStorage.getItem('cebric_guest_uuid');
+    if (!uuid) {
+      uuid = 'guest_' + Math.random().toString(36).substring(2, 11);
+      localStorage.setItem('cebric_guest_uuid', uuid);
+    }
+    return uuid;
+  };
+
   const handleCastVote = async (pollId: string, option: string) => {
     setErrorMsg(null);
     setSuccessMsg(null);
-    const voteIdentity = currentUser ? currentUser.username : null;
+    let voteIdentity = currentUser ? currentUser.username : null;
+    if (!voteIdentity && simulateAdmin) {
+      voteIdentity = 'AdminSimulation_' + getGuestUuid().substring(6);
+    } else if (!voteIdentity) {
+      voteIdentity = getGuestUuid();
+    }
 
     try {
       const response = await fetch(`/api/polls/${pollId}/vote`, {
@@ -223,6 +271,7 @@ export default function PollsTab() {
       }
 
       setSuccessMsg(`Your vote for "${option}" has been registered!`);
+      localStorage.setItem(`voted_poll_${pollId}`, 'true');
       fetchPolls();
     } catch (err: any) {
       setErrorMsg(err.message || 'Vote failed.');
@@ -286,12 +335,16 @@ export default function PollsTab() {
   const isAdmin = currentUser?.isAdmin || currentUser?.username === 'Admin' || simulateAdmin;
 
   const hasVotedPoll = (poll: Poll) => {
-    const voteIdentity = currentUser ? currentUser.username.toLowerCase() : '';
-    // Let's also fallback checking localStorage if they are guest
-    if (!voteIdentity) {
-      const guestVoted = localStorage.getItem(`voted_poll_${poll.id}`);
-      return guestVoted === 'true';
+    let voteIdentity = currentUser ? currentUser.username.toLowerCase() : '';
+    if (!voteIdentity && simulateAdmin) {
+      voteIdentity = ('AdminSimulation_' + getGuestUuid().substring(6)).toLowerCase();
+    } else if (!voteIdentity) {
+      voteIdentity = getGuestUuid().toLowerCase();
     }
+
+    const guestVoted = localStorage.getItem(`voted_poll_${poll.id}`) === 'true';
+    if (guestVoted) return true;
+
     return poll.votedUsers && poll.votedUsers.some(u => u.toLowerCase() === voteIdentity);
   };
 
@@ -356,7 +409,7 @@ export default function PollsTab() {
         <div className="flex items-center gap-2">
           <ShieldAlert size={15} className="text-red-650" />
           <span className="font-mono text-gray-700 font-medium">
-            Currently simulated as <strong className="font-black text-black">PADDOCK REPRESENTATIVE</strong>. Use switches to test administrator flows.
+            Authorized Simulation Area
           </span>
         </div>
         <div className="flex items-center gap-2 font-mono">
@@ -584,7 +637,7 @@ export default function PollsTab() {
                         const percentage = pollTotalVotes > 0 ? Math.round((optionVotes / pollTotalVotes) * 100) : 0;
                         
                         // Show results if user voted or if poll is closed
-                        const showResults = hasVoted || isClosed || isAdmin;
+                        const showResults = hasVoted || isClosed;
 
                         return (
                           <div key={option} className="group relative">
@@ -614,11 +667,17 @@ export default function PollsTab() {
                               // Unvoted state / Interactive selection
                               <button
                                 onClick={() => handleCastVote(poll.id, option)}
-                                className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-800 bg-gray-50 hover:bg-neutral-900 hover:text-white border border-gray-200 hover:border-black rounded-xl p-3 transition-all duration-200 cursor-pointer outline-none font-sans"
+                                className="w-full flex items-center justify-between text-left text-xs font-bold text-gray-850 bg-gray-50/70 hover:bg-red-50 hover:text-red-700 border border-gray-200 hover:border-red-300 rounded-xl p-3.5 transition-all duration-200 cursor-pointer outline-none font-sans group relative shadow-2xs"
                               >
-                                <span>{option}</span>
-                                <span className="opacity-0 group-hover:opacity-100 text-[10px] font-mono tracking-wider font-semibold">
-                                  CAST VOTE →
+                                <div className="flex items-center gap-2.5">
+                                  {/* Beautiful and visible Custom Radio bullet indicator */}
+                                  <div className="w-4 h-4 rounded-full border border-gray-350 group-hover:border-[#EF1A2D] flex items-center justify-center shrink-0 bg-white transition-colors">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-transparent group-hover:bg-[#EF1A2D] transition-colors" />
+                                  </div>
+                                  <span className="text-gray-900 group-hover:text-red-800 transition-colors leading-tight">{option}</span>
+                                </div>
+                                <span className="text-[9px] font-mono uppercase bg-[#EF1A2D]/10 text-[#EF1A2D] group-hover:bg-[#EF1A2D] group-hover:text-white px-2.5 py-1 rounded-md transition-colors font-extrabold tracking-widest shrink-0">
+                                  VOTE
                                 </span>
                               </button>
                             )}
@@ -684,17 +743,17 @@ export default function PollsTab() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Post announcement form (Admin only) */}
           {isAdmin && (
-            <div className="lg:col-span-5 bg-neutral-950 text-white rounded-2xl p-5 space-y-4 shadow-md font-mono">
-              <div className="flex items-center gap-2 border-b border-neutral-800 pb-3">
-                <Megaphone size={16} className="text-red-500" />
-                <h4 className="text-xs font-black uppercase text-white tracking-widest">
-                  Release Paddock Bulletin
-                </h4>
+            <div className="lg:col-span-5 bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-sm text-black">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                <Megaphone size={18} className="text-[#EF1A2D]" />
+                <h3 className="text-xs font-black font-sans uppercase text-gray-900 tracking-wider">
+                  {editingAnnId ? 'Modify Paddock Bulletin' : 'Release Paddock Bulletin'}
+                </h3>
               </div>
 
-              <form onSubmit={handleCreateAnnouncementSubmit} className="space-y-3.5">
+              <form onSubmit={handleCreateAnnouncementSubmit} className="space-y-4 font-mono">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-extrabold text-neutral-400 uppercase tracking-wider block">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-sans">
                     Bulletin Header / Title
                   </label>
                   <input
@@ -703,50 +762,79 @@ export default function PollsTab() {
                     placeholder="e.g., Mandatory Baseline Tire Inflation Mandate"
                     value={newAnnTitle}
                     onChange={(e) => setNewAnnTitle(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 focus:border-red-500 outline-none rounded-xl px-3 py-2 text-xs text-neutral-100 font-semibold transition-colors"
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2 text-xs text-black font-semibold transition-colors"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-extrabold text-neutral-400 uppercase tracking-wider block">
-                      Release Category
-                    </label>
-                    <select
-                      value={newAnnCategory}
-                      onChange={(e) => setNewAnnCategory(e.target.value)}
-                      className="w-full bg-neutral-900 border border-neutral-800 focus:border-red-500 outline-none rounded-lg p-2 text-xs text-neutral-100 font-semibold uppercase"
-                    >
-                      <option value="REGULATIONS">Regulations</option>
-                      <option value="SAFETY">Safety briefing</option>
-                      <option value="TECH">Engineering</option>
-                      <option value="PENALTY">Stewards Penalty</option>
-                      <option value="WEATHER">Weather flash</option>
-                    </select>
-                  </div>
+                <div className="space-y-1 flex flex-col">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-sans">
+                    Release Category
+                  </label>
+                  <select
+                    value={newAnnCategory}
+                    onChange={(e) => setNewAnnCategory(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-lg p-2 text-xs text-black font-semibold uppercase"
+                  >
+                    <option value="REGULATIONS">Regulations</option>
+                    <option value="SAFETY">Safety briefing</option>
+                    <option value="TECH">Engineering</option>
+                    <option value="PENALTY">Stewards Penalty</option>
+                    <option value="WEATHER">Weather flash</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1 flex flex-col">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-sans">
+                    Auto-Expiration Timer
+                  </label>
+                  <select
+                    value={newAnnExpiry}
+                    onChange={(e) => setNewAnnExpiry(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-lg p-2 text-xs text-black font-semibold uppercase"
+                  >
+                    <option value="0">No Expiration Timer</option>
+                    <option value="1">1 Minute (Test timer)</option>
+                    <option value="5">5 Minutes</option>
+                    <option value="15">15 Minutes</option>
+                    <option value="30">30 Minutes</option>
+                    <option value="60">1 Hour</option>
+                    <option value="1440">24 Hours</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[9px] font-extrabold text-neutral-400 uppercase tracking-wider block">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block font-sans">
                     Announcement Body content
                   </label>
                   <textarea
                     required
-                    rows={3}
+                    rows={4}
                     placeholder="Explain the technical or regulatory change released..."
                     value={newAnnContent}
                     onChange={(e) => setNewAnnContent(e.target.value)}
-                    className="w-full bg-neutral-900 border border-neutral-800 focus:border-red-500 outline-none rounded-xl px-3 py-2 text-xs text-neutral-100 transition-colors font-sans resize-none"
+                    className="w-full bg-gray-50 border border-gray-200 focus:border-black outline-none rounded-xl px-3 py-2 text-xs text-black transition-colors font-sans resize-none"
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={releasingAnn}
-                  className="w-full py-2 bg-[#EF1A2D] hover:bg-[#c91222] text-white font-black rounded-lg text-[9px] uppercase tracking-wider transition-all cursor-pointer border-none"
-                >
-                  {releasingAnn ? 'Broadcasting Release...' : 'Publish Official Bulletin'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={releasingAnn}
+                    className="flex-1 py-2 bg-[#EF1A2D] hover:bg-[#c91222] text-white font-black rounded-lg text-[9px] uppercase tracking-wider transition-all cursor-pointer border-none"
+                  >
+                    {releasingAnn ? 'Broadcasting Release...' : editingAnnId ? 'Update Official Bulletin' : 'Publish Official Bulletin'}
+                  </button>
+
+                  {editingAnnId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelAnnEdit}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-[9px] uppercase transition-all cursor-pointer border-none"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           )}
@@ -778,23 +866,38 @@ export default function PollsTab() {
                     >
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span className={`px-2 py-0.5 rounded text-[8.5px] font-mono font-black border uppercase tracking-wider ${badgeColor}`}>
                               {ann.category || 'NEWS'}
                             </span>
                             <span className="text-[9px] text-gray-400 font-semibold font-mono">
                               {new Date(ann.createdAt).toLocaleString()}
                             </span>
+                            {ann.expiresAt && (
+                              <span className="px-2 py-0.5 rounded text-[8px] font-mono font-black border border-amber-250 bg-amber-50 text-amber-800 uppercase tracking-wider flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse" />
+                                EXPIRES: {Math.max(1, Math.round((new Date(ann.expiresAt).getTime() - Date.now()) / 60000))} MIN
+                              </span>
+                            )}
                           </div>
                           
                           {isAdmin && (
-                            <button
-                              onClick={() => handleDeleteAnnouncement(ann.id)}
-                              title="Delete Announcement"
-                              className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleEditAnnouncementClick(ann)}
+                                title="Edit Announcement"
+                                className="p-1 text-gray-400 hover:text-indigo-650 hover:bg-indigo-50 rounded transition-colors"
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAnnouncement(ann.id)}
+                                title="Delete Announcement"
+                                className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           )}
                         </div>
 

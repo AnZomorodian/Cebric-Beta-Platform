@@ -1010,8 +1010,8 @@ function getFallbackGroundingNews() {
   ];
 }
 
-// Autosport RSS XML Parser Utility
-function parseAutosportRSS(xmlText: string): any[] {
+// Generic RSS XML Parser Utility
+function parseRSSFeed(xmlText: string, sourceName: string, defaultUrl: string): any[] {
   const items: any[] = [];
   const itemMatches = xmlText.match(/<item>([\s\S]*?)<\/item>/g) || [];
   const fallbackF1Images = [
@@ -1038,11 +1038,13 @@ function parseAutosportRSS(xmlText: string): any[] {
     const pubDateStr = extractTag('pubDate');
 
     let date = "Recent";
+    let timestamp = Date.now();
     if (pubDateStr) {
       try {
         const d = new Date(pubDateStr);
         if (!isNaN(d.getTime())) {
           date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          timestamp = d.getTime();
         }
       } catch (e) {}
     }
@@ -1074,16 +1076,22 @@ function parseAutosportRSS(xmlText: string): any[] {
     if (title) {
       items.push({
         title,
-        url: link || "https://www.autosport.com/f1",
-        description: cleanDescription || "Formula 1 updates directly from Autosport world feeds.",
+        url: link || defaultUrl,
+        description: cleanDescription || `Formula 1 updates directly from ${sourceName} world feeds.`,
         date,
+        timestamp,
         imageUrl,
-        source: "Autosport RSS"
+        source: sourceName
       });
     }
   }
 
   return items;
+}
+
+// Autosport RSS XML Parser for compatibility
+function parseAutosportRSS(xmlText: string): any[] {
+  return parseRSSFeed(xmlText, "Autosport RSS", "https://www.autosport.com/f1");
 }
 
 // News Cache & Cooldown
@@ -1116,26 +1124,52 @@ app.get("/api/news", async (req, res) => {
 
   let finalArticles: any[] = [];
 
-  // 1. Fetch live Autosport RSS News Feed
+  // 1. Fetch live Autosport and Motorsport RSS News Feeds in parallel
   try {
-    console.log("Fetching live Autosport RSS Feed...");
-    const rssRes = await fetch("https://www.autosport.com/rss/f1/news/", {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) F1-Cebric-Reports"
-      }
-    });
-    if (rssRes.ok) {
-      const xmlText = await rssRes.text();
-      const rssArticles = parseAutosportRSS(xmlText);
-      if (rssArticles && rssArticles.length > 0) {
-        console.log(`Successfully parsed ${rssArticles.length} articles from Autosport RSS.`);
-        finalArticles.push(...rssArticles);
-      }
-    } else {
-      console.warn("Autosport RSS response failed with status:", rssRes.status);
+    console.log("Fetching live Autosport and Motorsport RSS Feeds...");
+    const feedUrls = [
+      { url: "https://www.autosport.com/rss/f1/news/", source: "Autosport RSS", fallbackUrl: "https://www.autosport.com/f1" },
+      { url: "https://www.motorsport.com/rss/f1/news/", source: "Motorsport.com RSS", fallbackUrl: "https://www.motorsport.com/f1" }
+    ];
+
+    const feedPromises = feedUrls.map(feed => 
+      fetch(feed.url, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) F1-Cebric-Reports"
+        }
+      }).then(async r => {
+        if (r.ok) {
+          const xmlText = await r.text();
+          return parseRSSFeed(xmlText, feed.source, feed.fallbackUrl);
+        }
+        console.warn(`${feed.source} response failed with status:`, r.status);
+        return [];
+      }).catch(err => {
+        console.warn(`${feed.source} fetch exception occurred:`, err.message);
+        return [];
+      })
+    );
+
+    const feedsResults = await Promise.all(feedPromises);
+    const tempArticles: any[] = [];
+    for (const articlesList of feedsResults) {
+      tempArticles.push(...articlesList);
     }
-  } catch (rssErr: any) {
-    console.warn("Autosport RSS fetch or parse exception occurred:", rssErr.message);
+
+    // Sort by timestamp descending
+    tempArticles.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    // Keep unique elements by normalized title to prevent duplicates across feeds!
+    const seenTitles = new Set<string>();
+    for (const art of tempArticles) {
+      const normalizedTitle = art.title.toLowerCase().trim();
+      if (!seenTitles.has(normalizedTitle)) {
+        seenTitles.add(normalizedTitle);
+        finalArticles.push(art);
+      }
+    }
+  } catch (err: any) {
+    console.warn("Main RSS fetch operation failed:", err.message);
   }
 
   // 2. Combine or supplement with RapidAPI F1 News source (if not on cooldown)
@@ -1477,8 +1511,8 @@ function getSimulatedFiaDocs(raceName: string = "") {
 }
 
 // RapidAPI f1-live-pulse FIA Documents proxy endpoint
-app.get("/api/fia-documents", async (req, res) => {
-  const raceNameQuery = String(req.query.race || "").trim();
+const fiaDocsHandler = async (req: any, res: any) => {
+  const raceNameQuery = String(req.query.race || req.query.raceName || "").trim();
 
   try {
     console.log(`Connecting to live f1-live-pulse API for GP Documents... [Query: ${raceNameQuery}]`);
@@ -1523,6 +1557,9 @@ app.get("/api/fia-documents", async (req, res) => {
       );
       if (filtered.length > 0) {
         return res.json(filtered);
+      } else {
+        // Deterministic high-fidelity simulated docs fallback specifically for this race name query
+        return res.json(getSimulatedFiaDocs(raceNameQuery));
       }
     }
 
@@ -1531,7 +1568,10 @@ app.get("/api/fia-documents", async (req, res) => {
     console.warn("f1-live-pulse API exception occurred. Falling back gracefully:", err.message);
     return res.json(getSimulatedFiaDocs(raceNameQuery));
   }
-});
+};
+
+app.get("/api/fia-docs", fiaDocsHandler);
+app.get("/api/fia-documents", fiaDocsHandler);
 
 function getSimulatedLaps(driverNumber: number, baseLapTime: number, sessionKey: number = 9161, count: number = 20) {
   const laps = [];
@@ -2728,24 +2768,7 @@ const ANNOUNCEMENTS_DATABASE_PATH = path.join(process.cwd(), "DatabaseAnnounceme
 function readAnnouncements(): any[] {
   try {
     if (!fs.existsSync(ANNOUNCEMENTS_DATABASE_PATH)) {
-      const defaultAnnouncements = [
-        {
-          id: "ann-1",
-          title: "Aerodynamics Strategy Guidelines Finalized",
-          content: "Detailed specifications for dynamic wing configurations have been cleared by engineering councils to minimize clean-air turbulence behind active chasing cars.",
-          category: "REGULATIONS",
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          createdBy: "Admin"
-        },
-        {
-          id: "ann-2",
-          title: "New Tyre Pressure Mandate Registered",
-          content: "Extreme heat readings for Silverstone's sweeping layouts have mandated a 1.2 PSI baseline increase for all premium medium compound allocations.",
-          category: "SAFETY",
-          createdAt: new Date().toISOString(),
-          createdBy: "Admin"
-        }
-      ];
+      const defaultAnnouncements: any[] = [];
       fs.writeFileSync(ANNOUNCEMENTS_DATABASE_PATH, JSON.stringify(defaultAnnouncements, null, 2));
       return defaultAnnouncements;
     }
@@ -2770,8 +2793,26 @@ function writeAnnouncements(announcements: any[]): boolean {
 // REST Endpoints: Announcements
 app.get("/api/announcements", (req, res) => {
   try {
-    const announcements = readAnnouncements();
-    return res.json({ success: true, announcements });
+    let announcements = readAnnouncements();
+    const now = Date.now();
+    // Filter out announcements where expiresAt is populated and in the past
+    let writeBackNeeded = false;
+    const activeAnnouncements = announcements.filter(a => {
+      if (a.expiresAt) {
+        const hasExpired = new Date(a.expiresAt).getTime() < now;
+        if (hasExpired) {
+          writeBackNeeded = true;
+          return false;
+        }
+      }
+      return true;
+    });
+    
+    if (writeBackNeeded) {
+      writeAnnouncements(activeAnnouncements);
+    }
+    
+    return res.json({ success: true, announcements: activeAnnouncements });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || "Failed to retrieve announcements" });
   }
@@ -2779,18 +2820,25 @@ app.get("/api/announcements", (req, res) => {
 
 app.post("/api/announcements", (req, res) => {
   try {
-    const { title, content, category, createdBy } = req.body;
+    const { title, content, category, createdBy, expiryMinutes } = req.body;
     if (!title || !content) {
       return res.status(400).json({ error: "Title and content are required to release announcements" });
     }
 
     const announcements = readAnnouncements();
+    
+    let expiresAt = null;
+    if (expiryMinutes && Number(expiryMinutes) > 0) {
+      expiresAt = new Date(Date.now() + Number(expiryMinutes) * 60000).toISOString();
+    }
+
     const newAnn = {
       id: `ann-${Date.now()}`,
       title: title.trim(),
       content: content.trim(),
       category: category ? category.trim().toUpperCase() : "GENERAL",
       createdAt: new Date().toISOString(),
+      expiresAt,
       createdBy: createdBy || "Paddock Control"
     };
 
@@ -2800,6 +2848,42 @@ app.post("/api/announcements", (req, res) => {
     return res.json({ success: true, announcement: newAnn });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || "Failed to release announcement" });
+  }
+});
+
+app.put("/api/announcements/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content, category, expiryMinutes } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ error: "Title and content are required to modify announcements" });
+    }
+
+    const announcements = readAnnouncements();
+    const ann = announcements.find(a => a.id === id);
+
+    if (!ann) {
+      return res.status(404).json({ error: "Announcement not found" });
+    }
+
+    ann.title = title.trim();
+    ann.content = content.trim();
+    if (category) {
+      ann.category = category.trim().toUpperCase();
+    }
+    
+    if (expiryMinutes !== undefined) {
+      if (Number(expiryMinutes) > 0) {
+        ann.expiresAt = new Date(Date.now() + Number(expiryMinutes) * 60000).toISOString();
+      } else {
+        ann.expiresAt = null;
+      }
+    }
+
+    writeAnnouncements(announcements);
+    return res.json({ success: true, announcement: ann });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to edit announcement" });
   }
 });
 

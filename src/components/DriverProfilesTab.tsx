@@ -26,6 +26,20 @@ interface DriverData {
   };
 }
 
+export const getEnrichedIntelligence = (d: DriverData) => {
+  // Determine consistent deterministic stats based on their baseline stats and driver number
+  const wetComp = Math.round(d.stats.awareness * 0.61 + d.stats.racecraft * 0.39 + (d.driver_number % 5 - 2));
+  const tyreMgmt = Math.round(d.stats.pace * 0.52 + d.stats.awareness * 0.48 + (d.driver_number % 7 - 3));
+  const qualTrim = Math.round(d.stats.speed * 0.78 + d.stats.pace * 0.22 + (d.driver_number % 4 - 2));
+  const consistency = Math.round(d.stats.racecraft * 0.44 + d.stats.awareness * 0.56 + (d.driver_number % 3 - 1));
+  return {
+    wetComp: Math.min(99, Math.max(70, wetComp)),
+    tyreMgmt: Math.min(99, Math.max(70, tyreMgmt)),
+    qualTrim: Math.min(99, Math.max(70, qualTrim)),
+    consistency: Math.min(99, Math.max(70, consistency)),
+  };
+};
+
 const DRIVERS_ROSTER: DriverData[] = [
   {
     driver_number: 1,
@@ -38,6 +52,18 @@ const DRIVERS_ROSTER: DriverData[] = [
     image_url: "/max_profile.jpg",
     stats: { overall: 98, speed: 99, racecraft: 98, awareness: 96, pace: 99 },
     paddockStats: { entries: 206, podiums: 111, wins: 62, worldTitles: 3 }
+  },
+  {
+    driver_number: 6,
+    full_name: "Isack Hadjar",
+    name_acronym: "HAD",
+    team_name: "Red Bull Racing",
+    team_colour: "3671C6",
+    country_code: "FRA",
+    bio: "Blistering French young talent drafted into the Premier Red Bull lineup following masterclasses in high-performance junior championships.",
+    image_url: "/isack_profile.jpg",
+    stats: { overall: 81, speed: 83, racecraft: 80, awareness: 82, pace: 79 },
+    paddockStats: { entries: 8, podiums: 0, wins: 0, worldTitles: 0 }
   },
   {
     driver_number: 4,
@@ -112,42 +138,6 @@ const DRIVERS_ROSTER: DriverData[] = [
     paddockStats: { entries: 12, podiums: 1, wins: 0, worldTitles: 0 }
   },
   {
-    driver_number: 6,
-    full_name: "Isack Hadjar",
-    name_acronym: "HAD",
-    team_name: "Red Bull Racing",
-    team_colour: "3671C6",
-    country_code: "FRA",
-    bio: "Blistering French young talent drafted into the Premier Red Bull lineup following masterclasses in high-performance junior championships.",
-    image_url: "/isack_profile.jpg",
-    stats: { overall: 81, speed: 83, racecraft: 80, awareness: 82, pace: 79 },
-    paddockStats: { entries: 8, podiums: 0, wins: 0, worldTitles: 0 }
-  },
-  {
-    driver_number: 55,
-    full_name: "Carlos Sainz Jr",
-    name_acronym: "SAI",
-    team_name: "Williams",
-    team_colour: "005AFF",
-    country_code: "ESP",
-    bio: "Deeply intellectual operator and race winner bringing world-class development capabilities and tactical pacing to Williams Racing.",
-    image_url: "/sainz_profile.jpg",
-    stats: { overall: 91, speed: 89, racecraft: 92, awareness: 93, pace: 90 },
-    paddockStats: { entries: 204, podiums: 25, wins: 4, worldTitles: 0 }
-  },
-  {
-    driver_number: 23,
-    full_name: "Alexander Albon",
-    name_acronym: "ALB",
-    team_name: "Williams",
-    team_colour: "005AFF",
-    country_code: "GBR",
-    bio: "Williams team leader, highly revered for maximizing midfield opportunities and showing immense grit during long tire stints.",
-    image_url: "/albon_profile.jpg",
-    stats: { overall: 88, speed: 87, racecraft: 88, awareness: 90, pace: 87 },
-    paddockStats: { entries: 102, podiums: 2, wins: 0, worldTitles: 0 }
-  },
-  {
     driver_number: 14,
     full_name: "Fernando Alonso",
     name_acronym: "ALO",
@@ -170,6 +160,150 @@ const DRIVERS_ROSTER: DriverData[] = [
     image_url: "/stroll_profile.jpg",
     stats: { overall: 83, speed: 84, racecraft: 82, awareness: 81, pace: 84 },
     paddockStats: { entries: 163, podiums: 3, wins: 0, worldTitles: 0 }
+  },
+  {
+    driver_number: 10,
+    full_name: "Pierre Gasly",
+    name_acronym: "GAS",
+    team_name: "Alpine",
+    team_colour: "0093CC",
+    country_code: "FRA",
+    bio: "Experienced French race winner spearheading Alpine F1's project with remarkable dedication and consistent high-precision drives.",
+    image_url: "/gasly_profile.jpg",
+    stats: { overall: 87, speed: 86, racecraft: 88, awareness: 89, pace: 86 },
+    paddockStats: { entries: 150, podiums: 4, wins: 1, worldTitles: 0 }
+  },
+  {
+    driver_number: 43,
+    full_name: "Franco Colapinto",
+    name_acronym: "COL",
+    team_name: "Alpine",
+    team_colour: "0093CC",
+    country_code: "ARG",
+    bio: "Young and aggressive Argentinian talent stepping up to represent Alpine with high qualifying intensity and superb pace characteristics.",
+    image_url: "/colapinto_profile.jpg",
+    stats: { overall: 84, speed: 85, racecraft: 83, awareness: 84, pace: 84 },
+    paddockStats: { entries: 9, podiums: 0, wins: 0, worldTitles: 0 }
+  },
+  {
+    driver_number: 55,
+    full_name: "Carlos Sainz Jr.",
+    name_acronym: "SAI",
+    team_name: "Williams",
+    team_colour: "005AFF",
+    country_code: "ESP",
+    bio: "Deeply intellectual operator and race winner bringing world-class development capabilities and tactical pacing to Williams Racing.",
+    image_url: "/sainz_profile.jpg",
+    stats: { overall: 91, speed: 89, racecraft: 92, awareness: 93, pace: 90 },
+    paddockStats: { entries: 204, podiums: 25, wins: 4, worldTitles: 0 }
+  },
+  {
+    driver_number: 23,
+    full_name: "Alexander Albon",
+    name_acronym: "ALB",
+    team_name: "Williams",
+    team_colour: "005AFF",
+    country_code: "GBR",
+    bio: "Williams team leader, highly revered for maximizing midfield opportunities and showing immense grit during long tire stints.",
+    image_url: "/albon_profile.jpg",
+    stats: { overall: 88, speed: 87, racecraft: 88, awareness: 90, pace: 87 },
+    paddockStats: { entries: 102, podiums: 2, wins: 0, worldTitles: 0 }
+  },
+  {
+    driver_number: 31,
+    full_name: "Esteban Ocon",
+    name_acronym: "OCO",
+    team_name: "Haas F1 Team",
+    team_colour: "E6002B",
+    country_code: "FRA",
+    bio: "Incredibly defensive, tall, and resilient French Grand Prix winner bringing intense combativeness and high grit to Haas Racing.",
+    image_url: "/ocon_profile.jpg",
+    stats: { overall: 86, speed: 85, racecraft: 87, awareness: 84, pace: 86 },
+    paddockStats: { entries: 154, podiums: 3, wins: 1, worldTitles: 0 }
+  },
+  {
+    driver_number: 87,
+    full_name: "Oliver Bearman",
+    name_acronym: "BEA",
+    team_name: "Haas F1 Team",
+    team_colour: "E6002B",
+    country_code: "GBR",
+    bio: "Highly praised British stellar young talent joining Haas full-time with mature instincts and impressive point-scoring debuts.",
+    image_url: "/bearman_profile.jpg",
+    stats: { overall: 83, speed: 84, racecraft: 83, awareness: 85, pace: 82 },
+    paddockStats: { entries: 3, podiums: 0, wins: 0, worldTitles: 0 }
+  },
+  {
+    driver_number: 30,
+    full_name: "Liam Lawson",
+    name_acronym: "LAW",
+    team_name: "Racing Bulls",
+    team_colour: "6600CC",
+    country_code: "NZL",
+    bio: "Fearless New Zealand driver bringing strong defensive positioning, wet-weather masterclasses, and incredible confidence to RB.",
+    image_url: "/lawson_profile.jpg",
+    stats: { overall: 85, speed: 84, racecraft: 86, awareness: 88, pace: 83 },
+    paddockStats: { entries: 16, podiums: 0, wins: 0, worldTitles: 0 }
+  },
+  {
+    driver_number: 95,
+    full_name: "Arvid Lindblad",
+    name_acronym: "LIN",
+    team_name: "Racing Bulls",
+    team_colour: "6600CC",
+    country_code: "GBR",
+    bio: "Promising Red Bull junior prodigy debuting at Racing Bulls with exciting qualifying performance and lightning reflex stats.",
+    image_url: "/lindblad_profile.jpg",
+    stats: { overall: 80, speed: 82, racecraft: 79, awareness: 80, pace: 81 },
+    paddockStats: { entries: 0, podiums: 0, wins: 0, worldTitles: 0 }
+  },
+  {
+    driver_number: 27,
+    full_name: "Nico Hülkenberg",
+    name_acronym: "HUL",
+    team_name: "Audi",
+    team_colour: "1A1A1A",
+    country_code: "GER",
+    bio: "Legendary German qualifying artist and veterans hero, leading Audi’s historic factory entry into Formula 1 with absolute precision.",
+    image_url: "/hulkenberg_profile.jpg",
+    stats: { overall: 88, speed: 90, racecraft: 85, awareness: 89, pace: 87 },
+    paddockStats: { entries: 224, podiums: 0, wins: 0, worldTitles: 0 }
+  },
+  {
+    driver_number: 17,
+    full_name: "Gabriel Bortoleto",
+    name_acronym: "BOR",
+    team_name: "Audi",
+    team_colour: "1A1A1A",
+    country_code: "BRA",
+    bio: "Reigning high-performance junior champion making Brazil proud as he pilots the cutting-edge Audi cockpit with supreme tactical intelligence.",
+    image_url: "/bortoleto_profile.jpg",
+    stats: { overall: 82, speed: 83, racecraft: 81, awareness: 85, pace: 81 },
+    paddockStats: { entries: 0, podiums: 0, wins: 0, worldTitles: 0 }
+  },
+  {
+    driver_number: 11,
+    full_name: "Sergio Pérez",
+    name_acronym: "PER",
+    team_name: "Cadillac Formula 1 Team",
+    team_colour: "FCC01E",
+    country_code: "MEX",
+    bio: "The seasoned Mexican Minister of Defense bringing legendary rear-tire maintenance and masterclass street-track execution to Cadillac.",
+    image_url: "/perez_profile.jpg",
+    stats: { overall: 89, speed: 87, racecraft: 92, awareness: 88, pace: 89 },
+    paddockStats: { entries: 282, podiums: 39, wins: 6, worldTitles: 0 }
+  },
+  {
+    driver_number: 77,
+    full_name: "Valtteri Bottas",
+    name_acronym: "BOT",
+    team_name: "Cadillac Formula 1 Team",
+    team_colour: "FCC01E",
+    country_code: "FIN",
+    bio: "Highly experienced Finn, multiple Grand Prix winner and team anchor bringing raw single-lap pace and high experience to Cadillac.",
+    image_url: "/bottas_profile.jpg",
+    stats: { overall: 88, speed: 89, racecraft: 86, awareness: 89, pace: 87 },
+    paddockStats: { entries: 244, podiums: 67, wins: 10, worldTitles: 0 }
   }
 ];
 
@@ -184,6 +318,62 @@ interface TrackScenario {
 
 const TRACK_SCENARIOS: TrackScenario[] = [
   {
+    id: 'sakhir',
+    name: 'Sakhir (Bahrain) Desert Grip',
+    type: 'Desert Technical Asphalt',
+    favoredStat: 'speed',
+    description: 'Hot desert wind and highly abrasive tarmac testing brake stability and traction levels.',
+    ambientFactor: 'Blustery sand breezes, falling night temperatures'
+  },
+  {
+    id: 'jeddah',
+    name: 'Jeddah Corniche (Saudi Arabia)',
+    type: 'Sinking G-Force Street Lane',
+    favoredStat: 'awareness',
+    description: 'The fastest street track on the planet, featuring blind high-speed corners and zero runoffs.',
+    ambientFactor: 'Severe wall-impact risk, rapid tyre heating'
+  },
+  {
+    id: 'melbourne',
+    name: 'Albert Park (Australia) Lake Flow',
+    type: 'Semi-Street Park Circuit',
+    favoredStat: 'pace',
+    description: 'Fast, flowing sweepers flanking the lakeside, requiring high aerodynamic balance and mid-corner adjustments.',
+    ambientFactor: 'Mild sunshine, variable lakeside track dust'
+  },
+  {
+    id: 'suzuka',
+    name: 'Suzuka (Japan) Figure-Eight',
+    type: 'High-G Technical Curves',
+    favoredStat: 'racecraft',
+    description: 'The ultimate driver favorite - narrow, fast, featuring Degner corners and the infamous 130R sweep.',
+    ambientFactor: 'High sidewall loading, potential sudden autumn rain'
+  },
+  {
+    id: 'shanghai',
+    name: 'Shanghai (China) Endless Turn 1',
+    type: 'Heavy Braking and Long Straights',
+    favoredStat: 'speed',
+    description: 'Unique tightening helical turns and an endless 1.2km back straight putting power units to the test.',
+    ambientFactor: 'Chilly damp morning, heavy front-left graining'
+  },
+  {
+    id: 'miami',
+    name: 'Miami Autodrome (USA)',
+    type: 'Hybrid Street Speed Loop',
+    favoredStat: 'pace',
+    description: 'Tight chicane sections contrasted with sweeping high-speed curves framed by stadium structures.',
+    ambientFactor: 'Extreme ambient humidity, high track surface heat'
+  },
+  {
+    id: 'imola',
+    name: 'Imola (Italy) Santerno Curbs',
+    type: 'Classic Narrow Elevation',
+    favoredStat: 'racecraft',
+    description: 'Old-school grass runoffs and aggressive curbs where overtaking requires exceptional bravery and precision.',
+    ambientFactor: 'Cool Italian river breeze, damp curb risks'
+  },
+  {
     id: 'monaco',
     name: 'Monaco Street Precision',
     type: 'Tight Street Circuit',
@@ -192,12 +382,60 @@ const TRACK_SCENARIOS: TrackScenario[] = [
     ambientFactor: 'Low margin for error, heavy tire degradation'
   },
   {
+    id: 'montreal',
+    name: 'Montreal (Canada) Wall of Champions',
+    type: 'Semi-Permanent Stop-Start Lane',
+    favoredStat: 'speed',
+    description: 'Violent curb hopping and heavy deceleration zones finished by the iconic exit barrier.',
+    ambientFactor: 'Frequent safety cars, sudden morning gusts'
+  },
+  {
+    id: 'barcelona',
+    name: 'Barcelona-Catalunya (Spain)',
+    type: 'Aero Flow Reference Track',
+    favoredStat: 'pace',
+    description: 'The standard testbed for chassis dynamics. Features long sweeping turns that expose aerodynamic weaknesses.',
+    ambientFactor: 'Wind direction shifting on main straight, tyre wear'
+  },
+  {
+    id: 'spielberg',
+    name: 'Red Bull Ring (Austria) Sprints',
+    type: 'Power Altitude Elevation',
+    favoredStat: 'speed',
+    description: 'Only 10 turns with steep climbs and hard braking zones testing throttle response in thin alpine air.',
+    ambientFactor: 'Mountain micro-climate storms, front wing stress'
+  },
+  {
+    id: 'silverstone',
+    name: 'Silverstone High-G curves',
+    type: 'Aerodynamic Flow Track',
+    favoredStat: 'pace',
+    description: 'Intense high-speed sweeping corners requiring absolute throttle management pacing.',
+    ambientFactor: 'Heavy side-winds affecting active downforce'
+  },
+  {
+    id: 'hungaroring',
+    name: 'Hungaroring (Hungary) Curvy Maze',
+    type: 'Hot Low-Speed Twisty Chicanes',
+    favoredStat: 'racecraft',
+    description: 'Often compared to a go-kart track. Non-stop corners and high ambient heat with minimal straights.',
+    ambientFactor: 'Blistering summer heat, radiator cooling stress'
+  },
+  {
     id: 'spa',
-    name: 'Spa Rain Storm Chaos',
+    name: 'Spa-Francorchamps (Belgium) Ardennes',
     type: 'Wet Fast Track',
     favoredStat: 'awareness',
     description: 'Soaking track and unpredictable visibility where tactical reaction prevents crashes.',
     ambientFactor: 'Torrential downpour, delayed traction recovery'
+  },
+  {
+    id: 'zandvoort',
+    name: 'Zandvoort (Netherlands) Banking',
+    type: 'Steep Banked Dunes',
+    favoredStat: 'pace',
+    description: 'Intense 18-degree banked turns and narrow high-speed paths winding through coastal sand dunes.',
+    ambientFactor: 'Severe sea wind, coastal sand covering tarmac'
   },
   {
     id: 'monza',
@@ -208,12 +446,68 @@ const TRACK_SCENARIOS: TrackScenario[] = [
     ambientFactor: 'Blistering summer heat, power unit heat stress'
   },
   {
-    id: 'silverstone',
-    name: 'Silverstone High-G curves',
-    type: 'Aerodynamic Flow Track',
+    id: 'baku',
+    name: 'Baku City Castle (Azerbaijan)',
+    type: 'Dual Speed Street Maze',
+    favoredStat: 'speed',
+    description: 'Features a tight 7-meter wide castle sequence contrasted with an endless flat-out 2.2km main straight.',
+    ambientFactor: 'High slipstream drafts, cross-wind gusts'
+  },
+  {
+    id: 'singapore',
+    name: 'Marina Bay (Singapore) Humidity',
+    type: 'Twisty Physical Night Lane',
+    favoredStat: 'racecraft',
+    description: 'An exhausting 23-turn physical street maze lit by thousands of floodlights in sweltering tropical humidity.',
+    ambientFactor: 'Extreme cabin heat exhaustion, heavy brake disk wear'
+  },
+  {
+    id: 'austin',
+    name: 'COTA Austin (USA) Hills',
+    type: 'Modern Multi-Apex Arena',
     favoredStat: 'pace',
-    description: 'Intense high-speed sweeping corners requiring absolute throttle management pacing.',
-    ambientFactor: 'Heavy side-winds affecting active downforce'
+    description: 'Inspiring combinations of classic tracks, starting with a steep blind uphill climb into Turn 1.',
+    ambientFactor: 'Heavy track bumps, high tyre carcass thermal stress'
+  },
+  {
+    id: 'mexico',
+    name: 'Hermanos Rodríguez (Mexico) Altitude',
+    type: 'Thin Air Speed Loop',
+    favoredStat: 'speed',
+    description: 'Located 2,200 meters above sea level where thin air reduces aerodynamic downforce and engine drag.',
+    ambientFactor: 'Extremely low downforce grip, thin cooling airflow'
+  },
+  {
+    id: 'interlagos',
+    name: 'Interlagos (Brazil) Bowl Bowl',
+    type: 'Anticlockwise Rolling Basin',
+    favoredStat: 'awareness',
+    description: 'An aggressive, short, bumpy classic roller-coaster with a high frequency of mixed-weather rain drama.',
+    ambientFactor: 'Sudden tropical deluges, low visibility'
+  },
+  {
+    id: 'vegas',
+    name: 'Las Vegas Strip (USA)',
+    type: 'Freezing Desert Neon Boulevard',
+    favoredStat: 'speed',
+    description: 'Flat-out sprints past world-famous casinos on cold night pavement testing tyre core temperatures.',
+    ambientFactor: 'Extremely cold pavement, tyre heat retention crisis'
+  },
+  {
+    id: 'losail',
+    name: 'Lusail International (Qatar)',
+    type: 'Fast Physical Sweepers',
+    favoredStat: 'pace',
+    description: 'Medium and high-speed corner sequences requiring relentless lateral neck force stamina.',
+    ambientFactor: 'Desert heat, heavy wind-blown dust accumulation'
+  },
+  {
+    id: 'yas_marina',
+    name: 'Yas Marina (Abu Dhabi)',
+    type: 'Twilight Harbor Lanes',
+    favoredStat: 'pace',
+    description: 'Technically demanding sector 3, culminating the grand prix calendar in stunning twilight luxury.',
+    ambientFactor: 'Sunset visibility shifts, cooling pavement temperatures'
   }
 ];
 
@@ -232,6 +526,14 @@ export default function DriverProfilesTab() {
   const [simWinner, setSimWinner] = useState<DriverData | null>(null);
   const [scoreA, setScoreA] = useState<number>(0);
   const [scoreB, setScoreB] = useState<number>(0);
+
+  // Sandbox states
+  const [tyreA, setTyreA] = useState<string>('medium');
+  const [tyreB, setTyreB] = useState<string>('medium');
+  const [aeroA, setAeroA] = useState<string>('balanced');
+  const [aeroB, setAeroB] = useState<string>('balanced');
+  const [stratA, setStratA] = useState<string>('balanced');
+  const [stratB, setStratB] = useState<string>('balanced');
 
   // Teams mapping lists
   const filterTeams = Array.from(new Set(DRIVERS_ROSTER.map(d => d.team_name)));
@@ -256,60 +558,147 @@ export default function DriverProfilesTab() {
     setSimCommentary([]);
     
     const logs: string[] = [];
-    logs.push(`🔴 LIGHTS OUT: ${driverA.full_name} (#${driverA.driver_number}) and ${driverB.full_name} (#${driverB.driver_number}) charge side-by-side down towards Turn 1!`);
+    const isWetTrack = selectedScenario.id === 'spa';
 
-    // Let's perform calculation
+    // Start comment
+    logs.push(`🔴 LIGHTS OUT: ${driverA.full_name} (${driverA.name_acronym}) on [${tyreA.toUpperCase()}] and ${driverB.full_name} (${driverB.name_acronym}) on [${tyreB.toUpperCase()}] drop clutches and charge into Turn 1!`);
+
+    // Calculate core intelligence-oriented ratings
+    const intelA = getEnrichedIntelligence(driverA);
+    const intelB = getEnrichedIntelligence(driverB);
+
     const statKey = selectedScenario.favoredStat;
     
-    // Base scores
-    let valA = driverA.stats.overall * 0.4 + driverA.stats[statKey] * 0.4 + Math.random() * 20;
-    let valB = driverB.stats.overall * 0.4 + driverB.stats[statKey] * 0.4 + Math.random() * 20;
+    // Base scores using new derived intelligence parameters
+    let scoreValA = driverA.stats.overall * 0.2 + driverA.stats[statKey] * 0.3 + (intelA.consistency + intelA.qualTrim) * 0.25;
+    let scoreValB = driverB.stats.overall * 0.2 + driverB.stats[statKey] * 0.3 + (intelB.consistency + intelB.qualTrim) * 0.25;
 
-    // Track specifics commentary addition
+    // TYRE MODIFIERS
+    if (isWetTrack) {
+      // Pilot A
+      if (tyreA === 'wet' || tyreA === 'inter') {
+        scoreValA += 15 + (intelA.wetComp * 0.1);
+      } else {
+        scoreValA -= 25;
+        logs.push(`⚠️ WARNING: ${driverA.name_acronym} is sliding dangerously on slicks under pooling water. Out of traction control boundaries!`);
+      }
+      // Pilot B
+      if (tyreB === 'wet' || tyreB === 'inter') {
+        scoreValB += 15 + (intelB.wetComp * 0.1);
+      } else {
+        scoreValB -= 25;
+        logs.push(`⚠️ WARNING: ${driverB.name_acronym} is sliding dangerously on slicks under pooling water. Out of traction control boundaries!`);
+      }
+    } else {
+      // Dry Tracks
+      // Pilot A
+      if (tyreA === 'wet' || tyreA === 'inter') {
+        scoreValA -= 20;
+        logs.push(`⚠️ HEAT WARNING: ${driverA.name_acronym}'s wet tires have blistered on dry asphalt, losing thermodynamic stability!`);
+      } else if (tyreA === 'soft') {
+        scoreValA += 12;
+      } else if (tyreA === 'hard') {
+        scoreValA += 4 + (intelA.tyreMgmt * 0.05);
+      } else {
+        scoreValA += 8;
+      }
+      // Pilot B
+      if (tyreB === 'wet' || tyreB === 'inter') {
+        scoreValB -= 20;
+        logs.push(`⚠️ HEAT WARNING: ${driverB.name_acronym}'s wet tires have blistered on dry asphalt, losing thermodynamic stability!`);
+      } else if (tyreB === 'soft') {
+        scoreValB += 12;
+      } else if (tyreB === 'hard') {
+        scoreValB += 4 + (intelB.tyreMgmt * 0.05);
+      } else {
+        scoreValB += 8;
+      }
+    }
+
+    // AERO MODIFIERS
+    if (selectedScenario.id === 'monaco') {
+      if (aeroA === 'high') scoreValA += 15;
+      if (aeroA === 'low') scoreValA -= 12;
+      if (aeroB === 'high') scoreValB += 15;
+      if (aeroB === 'low') scoreValB -= 12;
+    } else if (selectedScenario.id === 'monza') {
+      if (aeroA === 'low') scoreValA += 15;
+      if (aeroA === 'high') scoreValA -= 12;
+      if (aeroB === 'low') scoreValB += 15;
+      if (aeroB === 'high') scoreValB -= 12;
+    } else {
+      if (aeroA === 'balanced') scoreValA += 8;
+      if (aeroB === 'balanced') scoreValB += 8;
+    }
+
+    // STRATEGY MODE MODIFIERS
+    if (stratA === 'attack') scoreValA += (driverA.stats.speed * 0.15) - 6;
+    if (stratA === 'defend') scoreValA += (driverA.stats.awareness * 0.15) - 4;
+    if (stratA === 'balanced') scoreValA += 5;
+
+    if (stratB === 'attack') scoreValB += (driverB.stats.speed * 0.15) - 6;
+    if (stratB === 'defend') scoreValB += (driverB.stats.awareness * 0.15) - 4;
+    if (stratB === 'balanced') scoreValB += 5;
+
+    // Random contingency factor
+    const randomChance = Math.random();
+    let contingencyAlert = "";
+    if (randomChance < 0.35) {
+      if (stratA === 'attack') {
+        contingencyAlert = `🛡️ LAP 3: ${driverA.name_acronym} pushing in ATTACK mode triggers severe thermal tire fade, losing sector 3 grip!`;
+        scoreValA -= 10;
+      } else {
+        contingencyAlert = `⏱️ LAP 3: Perfect tyre cruise limits for both pilots as they nail apex clipping points!`;
+      }
+    } else if (randomChance < 0.7) {
+      if (stratB === 'attack') {
+        contingencyAlert = `🛡️ LAP 3: ${driverB.name_acronym} locking up his fronts under intense overtake attempts! flat-spots on intermediate sensors!`;
+        scoreValB -= 10;
+      } else {
+        contingencyAlert = `🏎️ LAP 3: Strategic duel peaks: ${driverA.name_acronym} on ${stratA.toUpperCase()} tactics vs ${driverB.name_acronym} playing ${stratB.toUpperCase()} defensively.`;
+      }
+    } else {
+      contingencyAlert = `⚡ LAP 3: Dynamic slipstream zone in sector 2. Both pilots hit full fuel-burn trim!`;
+    }
+
+    // Trigger sequential commentary displays
     setTimeout(() => {
       setSimCommentary(prev => [...prev, logs[0]]);
     }, 10);
 
+    // Filter warnings to print as Lap 2
+    const warningAlerts = logs.filter(l => l.includes('WARNING:'));
     setTimeout(() => {
-      const lap2Text = `🏎️ LAP 2: They enter the core sections of ${selectedScenario.name}. Under ${selectedScenario.ambientFactor}, the cars are sliding. ${
-        driverA.stats[statKey] > driverB.stats[statKey] 
-          ? `${driverA.name_acronym} leverages superior ${statKey.toUpperCase()} characteristics to pin inside line.` 
-          : `${driverB.name_acronym} gains the dynamic launch out of the apex.`
-      }`;
+      let lap2Text = `🏎️ LAP 2: Telemetry tracks them sweeping key sectors. `;
+      if (warningAlerts.length > 0) {
+        lap2Text += `Critical telemetry notes alert: ${warningAlerts.join(' ')}`;
+      } else {
+        lap2Text += `Superior setups are clear. ${driverA.name_acronym} leverages ${aeroA.toUpperCase()} aero trim; ${driverB.name_acronym} counters on ${aeroB.toUpperCase()}.`;
+      }
       setSimCommentary(prev => [...prev, lap2Text]);
-    }, 1000);
-
-    // Random day contingency event
-    const randomChance = Math.random();
-    let contingencyAlert = "";
-    if (randomChance < 0.3) {
-      contingencyAlert = `⚠️ LAP 4: Carbon debris on the track! ${driverA.name_acronym} has to take evasive actions, taxing their AWARENESS.`;
-      valA -= 5;
-    } else if (randomChance < 0.6) {
-      contingencyAlert = `⚠️ LAP 4: Gusty crosswinds hit! ${driverB.name_acronym} locks up tires under braking into Sector 3, smoking the fronts!`;
-      valB -= 5;
-    } else {
-      contingencyAlert = `⏱️ LAP 4: Pit stop window is active! Flawless wheel guns sync from the pit lane crews.`;
-    }
+    }, 1100);
 
     setTimeout(() => {
       setSimCommentary(prev => [...prev, contingencyAlert]);
-    }, 2200);
+    }, 2400);
 
     setTimeout(() => {
-      // Crown winner
-      const finalWinner = valA >= valB ? driverA : driverB;
+      // Add random small delta to keep it unpredictable
+      const finalA = scoreValA + Math.random() * 8;
+      const finalB = scoreValB + Math.random() * 8;
+      
+      const finalWinner = finalA >= finalB ? driverA : driverB;
       const winnerAcronym = finalWinner.name_acronym;
-      const margin = Math.abs(valA - valB).toFixed(2);
+      const margin = Math.abs(finalA - finalB).toFixed(2);
       
-      const lap5Text = `🏁 FINAL LAP: ${winnerAcronym} leads across the checkered flag line! A masterpiece drive to claim absolute victory in the telemetry simulator by a microscopic margin of just +${margin} points!`;
+      const lap5Text = `🏁 CHECKERED FLAG: ${winnerAcronym} seals the dual simulation victory! A high-intelligence ${finalWinner === driverA ? stratA.toUpperCase() : stratB.toUpperCase()} masterclass configuration. Winning Delta: +${margin} Telemetry Points!`;
       
-      setScoreA(Math.round(valA));
-      setScoreB(Math.round(valB));
+      setScoreA(Math.round(finalA));
+      setScoreB(Math.round(finalB));
       setSimCommentary(prev => [...prev, lap5Text]);
       setSimWinner(finalWinner);
       setIsSimulating(false);
-    }, 3500);
+    }, 3800);
   };
 
   return (
@@ -488,7 +877,7 @@ export default function DriverProfilesTab() {
             </h3>
 
             {/* Selection row A */}
-            <div className="space-y-1 bg-neutral-50/50 p-3 rounded-xl border border-gray-150">
+            <div className="space-y-1.5 bg-neutral-50/50 p-3 rounded-xl border border-gray-150">
               <label className="text-[10px] font-black tracking-widest text-[#EF1A2D] uppercase block font-mono">
                 Pilot A (Left Lane)
               </label>
@@ -502,15 +891,59 @@ export default function DriverProfilesTab() {
               >
                 {DRIVERS_ROSTER.map(d => (
                   <option key={d.driver_number} value={d.driver_number}>
-                    #{d.driver_number} - {d.full_name} ({d.name_acronym})
+                     #{d.driver_number} - {d.full_name} ({d.name_acronym})
                   </option>
                 ))}
               </select>
+
+              {/* Options Pilot A */}
+              <div className="grid grid-cols-3 gap-1.5 pt-1 text-[10px]">
+                <div>
+                  <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block font-sans mb-0.5">Tyre</label>
+                  <select
+                    value={tyreA}
+                    onChange={(e) => setTyreA(e.target.value)}
+                    className="w-full bg-white border border-gray-200 px-1 py-1 rounded text-[9px] uppercase font-bold outline-none cursor-pointer"
+                  >
+                    <option value="soft">🔴 Soft</option>
+                    <option value="medium">🟡 Med</option>
+                    <option value="hard">⚪ Hard</option>
+                    <option value="inter">🟢 Int</option>
+                    <option value="wet">🔵 Wet</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block font-sans mb-0.5">Aero</label>
+                  <select
+                    value={aeroA}
+                    onChange={(e) => setAeroA(e.target.value)}
+                    className="w-full bg-white border border-gray-200 px-1 py-1 rounded text-[9px] uppercase font-bold outline-none cursor-pointer"
+                  >
+                    <option value="high">HighDF</option>
+                    <option value="balanced">Bal</option>
+                    <option value="low">LowDrag</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block font-sans mb-0.5">Strategy</label>
+                  <select
+                    value={stratA}
+                    onChange={(e) => setStratA(e.target.value)}
+                    className="w-full bg-white border border-gray-200 px-1 py-1 rounded text-[9px] uppercase font-bold outline-none cursor-pointer"
+                  >
+                    <option value="attack">Attack</option>
+                    <option value="balanced">Bal</option>
+                    <option value="defend">Defend</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Selection row B */}
-            <div className="space-y-1 bg-neutral-50/50 p-3 rounded-xl border border-gray-150">
-              <label className="text-[10px] font-black tracking-widest text-neutral-550 uppercase block font-mono">
+            <div className="space-y-1.5 bg-neutral-50/50 p-3 rounded-xl border border-gray-150">
+              <label className="text-[10px] font-black tracking-widest text-[#229971] uppercase block font-mono">
                 Pilot B (Right Lane)
               </label>
               <select
@@ -523,10 +956,54 @@ export default function DriverProfilesTab() {
               >
                 {DRIVERS_ROSTER.map(d => (
                   <option key={d.driver_number} value={d.driver_number}>
-                    #{d.driver_number} - {d.full_name} ({d.name_acronym})
+                     #{d.driver_number} - {d.full_name} ({d.name_acronym})
                   </option>
                 ))}
               </select>
+
+              {/* Options Pilot B */}
+              <div className="grid grid-cols-3 gap-1.5 pt-1 text-[10px]">
+                <div>
+                  <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block font-sans mb-0.5">Tyre</label>
+                  <select
+                    value={tyreB}
+                    onChange={(e) => setTyreB(e.target.value)}
+                    className="w-full bg-white border border-gray-200 px-1 py-1 rounded text-[9px] uppercase font-bold outline-none cursor-pointer"
+                  >
+                    <option value="soft">🔴 Soft</option>
+                    <option value="medium">🟡 Med</option>
+                    <option value="hard">⚪ Hard</option>
+                    <option value="inter">🟢 Int</option>
+                    <option value="wet">🔵 Wet</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block font-sans mb-0.5">Aero</label>
+                  <select
+                    value={aeroB}
+                    onChange={(e) => setAeroB(e.target.value)}
+                    className="w-full bg-white border border-gray-200 px-1 py-1 rounded text-[9px] uppercase font-bold outline-none cursor-pointer"
+                  >
+                    <option value="high">HighDF</option>
+                    <option value="balanced">Bal</option>
+                    <option value="low">LowDrag</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[8px] font-bold text-gray-400 uppercase tracking-widest block font-sans mb-0.5">Strategy</label>
+                  <select
+                    value={stratB}
+                    onChange={(e) => setStratB(e.target.value)}
+                    className="w-full bg-white border border-gray-200 px-1 py-1 rounded text-[9px] uppercase font-bold outline-none cursor-pointer"
+                  >
+                    <option value="attack">Attack</option>
+                    <option value="balanced">Bal</option>
+                    <option value="defend">Defend</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             {/* Scenario selection */}
@@ -792,9 +1269,12 @@ export default function DriverProfilesTab() {
                   <span>Interactive Intelligence Ratings</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Rating slides */}
                   <div className="space-y-3 bg-neutral-50/50 border border-gray-150/40 p-4 rounded-xl">
+                    <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider font-mono flex items-center gap-1 mb-2">
+                      <Gauge size={12} /> Core Profile Ratings
+                    </div>
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-gray-500 font-sans font-medium flex items-center gap-1">
@@ -843,6 +1323,58 @@ export default function DriverProfilesTab() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Column 2: Advanced Telemetry Profiles */}
+                  {(() => {
+                    const intel = getEnrichedIntelligence(selectedDriver);
+                    return (
+                      <div className="space-y-3 bg-red-50/30 border border-dashed border-red-200/60 p-4 rounded-xl">
+                        <div className="text-[10px] text-[#EF1A2D] font-bold uppercase tracking-wider font-mono flex items-center gap-1 mb-2">
+                          <Cpu size={12} className="animate-pulse" /> Advanced Telemetry
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-600 font-sans font-medium">Wet Competency</span>
+                            <strong className="font-mono text-neutral-850">{intel.wetComp}</strong>
+                          </div>
+                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-[#EF1A2D] h-full rounded-full" style={{ width: `${intel.wetComp}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-600 font-sans font-medium">Tyre Thermodynamic</span>
+                            <strong className="font-mono text-neutral-850">{intel.tyreMgmt}</strong>
+                          </div>
+                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-[#EF1A2D] h-full rounded-full" style={{ width: `${intel.tyreMgmt}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-600 font-sans font-medium">Aero Qualifying Trim</span>
+                            <strong className="font-mono text-neutral-850">{intel.qualTrim}</strong>
+                          </div>
+                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-[#EF1A2D] h-full rounded-full" style={{ width: `${intel.qualTrim}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-600 font-sans font-medium">Lap Delta Consistency</span>
+                            <strong className="font-mono text-neutral-850">{intel.consistency}</strong>
+                          </div>
+                          <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-[#EF1A2D] h-full rounded-full" style={{ width: `${intel.consistency}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Career stats block */}
                   <div className="bg-neutral-900 border border-neutral-850 p-4 rounded-xl text-xs space-y-3 font-mono flex flex-col justify-between">

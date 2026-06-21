@@ -70,6 +70,9 @@ export default function NewsTab() {
     if (activeCategory === 'tech' && !matchText.includes('upgrade') && !matchText.includes('tech') && !matchText.includes('engine') && !matchText.includes('aerodynamic') && !matchText.includes('regulation') && !matchText.includes('floor')) {
       return false;
     }
+    if (activeCategory === 'rumors' && !matchText.includes('rumor') && !matchText.includes('transfer') && !matchText.includes('contract') && !matchText.includes('market') && !matchText.includes('silly season') && !matchText.includes('seat') && !matchText.includes('future') && !matchText.includes('sign')) {
+      return false;
+    }
 
     return query ? matchText.includes(query) : true;
   });
@@ -149,6 +152,16 @@ export default function NewsTab() {
             }`}
           >
             TECH & UPGRADES
+          </button>
+          <button
+            onClick={() => setActiveCategory('rumors')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold font-mono transition-all duration-150 cursor-pointer outline-none border-none ${
+              activeCategory === 'rumors'
+                ? 'bg-black text-white'
+                : 'text-gray-550 hover:text-black hover:bg-gray-100 bg-neutral-50'
+            }`}
+          >
+            RUMORS & TRANSFERS
           </button>
         </div>
 
@@ -252,20 +265,18 @@ export default function NewsTab() {
                 </div>
               </div>
             </motion.div>
-          )}
-
-          {/* MAIN TWO-COLUMN SPLIT PANEL */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          )}          {/* MAIN BALANCED GALLERY */}
+          <div className="space-y-6">
             
-            {/* Left Column: Feed Cards */}
-            <div className="lg:col-span-8 space-y-6">
+            {/* Full Width Grid: Feed Cards */}
+            <div className="space-y-6">
               <span className="text-[10px] text-gray-400 font-mono font-black uppercase tracking-wider block">
                 Paddock News Wire Stream ({feedArticles.length} stories)
               </span>
 
               <motion.div 
                 id="news-grid-lane"
-                className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
                 initial="hidden"
                 animate="show"
                 variants={{
@@ -319,7 +330,7 @@ export default function NewsTab() {
 
                     {/* Action area footer */}
                     <div className="p-5 pt-3 border-t border-gray-100 flex items-center justify-between mt-4 font-mono">
-                      <span className="text-[9px] text-gray-450 font-bold uppercase tracking-wider">CEBRIC ENGINE REPORT</span>
+                      <span className="text-[9px] text-gray-455 font-bold uppercase tracking-wider">CEBRIC ENGINE REPORT</span>
                       <a
                         href={article.url}
                         target="_blank"
@@ -334,42 +345,6 @@ export default function NewsTab() {
                   </motion.div>
                 ))}
               </motion.div>
-            </div>
-
-            {/* Right Column: Sentiment Poll and Rumors Checklist */}
-            <div className="lg:col-span-4 space-y-6">
-              
-              {/* Widget 2: Paddock Technical Rumors Dashboard */}
-              <div className="bg-neutral-950 text-white rounded-2xl p-5 space-y-4 border border-neutral-850 shadow-md">
-                <div className="flex items-center justify-between border-b border-neutral-850 pb-3">
-                  <span className="text-xs font-black font-sans uppercase text-white">Grid Technical Rumor Mill</span>
-                </div>
-
-                <div className="space-y-3.5">
-                  {[
-                    { title: "Audi power-unit output expectations", status: "Plausible", color: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-                    { title: "Hamilton cockpit positioning adjustment", status: "Confirmed", color: "bg-emerald-600/20 text-emerald-300 border-emerald-500/30" },
-                    { title: "Active active-aero wind tunnel testing", status: "Under Review", color: "bg-blue-600/20 text-blue-300 border-blue-500/30" },
-                    { title: "Cebric advanced FP telemetry accuracy", status: "Verified", color: "bg-red-650/20 text-red-300 border-red-500/30" }
-                  ].map((rumor, index) => (
-                    <div 
-                      key={index} 
-                      className="p-3 bg-neutral-900 rounded-xl border border-neutral-850 space-y-2"
-                    >
-                      <h5 className="text-[11px] font-bold leading-normal font-sans text-neutral-200 uppercase">
-                        {rumor.title}
-                      </h5>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[8px] text-neutral-450 font-mono font-bold tracking-wider">CEBRIC LOGS</span>
-                        <span className={`px-1.5 py-0.5 rounded border text-[8px] font-mono font-black uppercase ${rumor.color}`}>
-                          {rumor.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
             </div>
 
           </div>

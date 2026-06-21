@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle, Database, Clock, Check, Shield } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle, Database, Clock, Check, Shield, Bell } from 'lucide-react';
 
 interface UserSession {
   username: string;
@@ -178,6 +178,15 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
   const [loadingDatasets, setLoadingDatasets] = useState<boolean>(false);
   const [deletingTelemetryId, setDeletingTelemetryId] = useState<string | null>(null);
 
+  // States for Paddock Bulletins (Admin Notifications section)
+  const [bulletins, setBulletins] = useState<any[]>([]);
+  const [bulletinTitle, setBulletinTitle] = useState<string>('');
+  const [bulletinContent, setBulletinContent] = useState<string>('');
+  const [bulletinCategory, setBulletinCategory] = useState<string>('ALERT');
+  const [bulletinExpiry, setBulletinExpiry] = useState<string>('0'); 
+  const [editingBulletinId, setEditingBulletinId] = useState<string | null>(null);
+  const [loadingBulletins, setLoadingBulletins] = useState<boolean>(false);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'laps' | 'telemetry') => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -286,6 +295,111 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
       fetchUploadedDatasets();
     } catch (err: any) {
       setAdminActionError(err.message || "An error occurred while deleting telemetry");
+    }
+  };
+
+  const fetchBulletins = async () => {
+    setLoadingBulletins(true);
+    try {
+      const res = await fetch('/api/announcements');
+      const data = await res.json();
+      if (data.success && data.announcements) {
+        setBulletins(data.announcements);
+      }
+    } catch (err) {
+      console.error('Error loading bulletins:', err);
+    } finally {
+      setLoadingBulletins(false);
+    }
+  };
+
+  const handleCreateOrUpdateBulletin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulletinTitle.trim() || !bulletinContent.trim()) {
+      setAdminActionError('Please fill in both title and content fields.');
+      return;
+    }
+    
+    setAdminActionError(null);
+    setAdminActionSuccess(null);
+
+    try {
+      const bodyPayload = {
+        title: bulletinTitle.trim(),
+        content: bulletinContent.trim(),
+        category: bulletinCategory.trim().toUpperCase(),
+        expiryMinutes: parseInt(bulletinExpiry) || 0,
+        createdBy: 'Administrator'
+      };
+
+      let url = '/api/announcements';
+      let method = 'POST';
+
+      if (editingBulletinId) {
+        url = `/api/announcements/${editingBulletinId}`;
+        method = 'PUT';
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setAdminActionSuccess(
+          editingBulletinId 
+            ? 'Official paddock notification successfully updated.' 
+            : 'New official paddock notification published to board.'
+        );
+        // Clear form
+        setBulletinTitle('');
+        setBulletinContent('');
+        setBulletinCategory('ALERT');
+        setBulletinExpiry('0');
+        setEditingBulletinId(null);
+        fetchBulletins();
+      } else {
+        setAdminActionError(data.error || 'Failed to submit paddock notification.');
+      }
+    } catch (err: any) {
+      setAdminActionError(err.message || 'An error occurred during submission.');
+    }
+  };
+
+  const handleEditBulletinClick = (b: any) => {
+    setEditingBulletinId(b.id);
+    setBulletinTitle(b.title);
+    setBulletinContent(b.content);
+    setBulletinCategory(b.category || 'ALERT');
+    
+    if (b.expiresAt) {
+      const minutesRemaining = Math.max(1, Math.round((new Date(b.expiresAt).getTime() - Date.now()) / 60000));
+      setBulletinExpiry(String(minutesRemaining));
+    } else {
+      setBulletinExpiry('0');
+    }
+    setAdminActionError(null);
+    setAdminActionSuccess(null);
+  };
+
+  const handleDeleteBulletin = async (id: string) => {
+    setAdminActionError(null);
+    setAdminActionSuccess(null);
+    try {
+      const response = await fetch(`/api/announcements/${id}`, {
+        method: 'DELETE'
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAdminActionSuccess('Notification successfully deleted.');
+        fetchBulletins();
+      } else {
+        setAdminActionError(data.error || 'Failed to delete notification.');
+      }
+    } catch (err: any) {
+      setAdminActionError(err.message || 'Error deleting notification.');
     }
   };
 
@@ -466,6 +580,7 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
     if (currentUser?.username === 'Admin') {
       fetchAdminUsers();
       fetchUploadedDatasets();
+      fetchBulletins();
       const cachedLock = localStorage.getItem('f1_predictions_globallock');
       setPredLockSetting(cachedLock === 'true');
     }
@@ -1498,6 +1613,160 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                       })}
                     </div>
                   )}
+                </div>
+
+                {/* PADDOCK BULLETIN & SYSTEM NOTIFICATIONS MANAGER */}
+                <div className="bg-neutral-900 border border-neutral-850 rounded-2xl p-3 md:p-5 space-y-4">
+                  <div className="flex items-center justify-between border-b border-neutral-850 pb-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <Bell size={15} className="text-red-500 animate-pulse animate-bounce" />
+                      <span className="text-[10px] text-neutral-300 font-mono font-bold uppercase tracking-wider">
+                        Paddock Bulletins & Notifications Center
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Creator Form */}
+                  <form onSubmit={handleCreateOrUpdateBulletin} className="space-y-3 font-mono text-xs">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                      <div className="md:col-span-8 space-y-1">
+                        <label className="block text-[8px] text-neutral-450 uppercase font-bold">Bulletin Header / Title</label>
+                        <input 
+                          type="text"
+                          required
+                          value={bulletinTitle}
+                          onChange={(e) => setBulletinTitle(e.target.value)}
+                          placeholder="e.g. RED FLAG IN SECTOR 3, SESSION PAUSED"
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white outline-none focus:border-red-500"
+                        />
+                      </div>
+                      <div className="md:col-span-4 space-y-1">
+                        <label className="block text-[8px] text-neutral-450 uppercase font-bold">Severity / Category</label>
+                        <select
+                          value={bulletinCategory}
+                          onChange={(e) => setBulletinCategory(e.target.value)}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white outline-none focus:border-red-500 font-semibold"
+                        >
+                          <option value="ALERT">🚨 ALERT</option>
+                          <option value="DIRECTIVE">📋 DIRECTIVE</option>
+                          <option value="WEATHER">🌧️ WEATHER</option>
+                          <option value="PADDOCK_INFO">🎟️ PADDOCK INFO</option>
+                          <option value="TECHNICAL">⚙️ TECHNICAL</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-[8px] text-neutral-450 uppercase font-bold">Detailed Content / Notice body</label>
+                      <textarea
+                        required
+                        rows={2}
+                        value={bulletinContent}
+                        onChange={(e) => setBulletinContent(e.target.value)}
+                        placeholder="Describe the bulletin or paddock instructions in detail..."
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white outline-none focus:border-red-500 resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="block text-[8px] text-neutral-450 uppercase font-bold">Expiration Timer (Minutes)</label>
+                        <select
+                          value={bulletinExpiry}
+                          onChange={(e) => setBulletinExpiry(e.target.value)}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white outline-none focus:border-red-500 font-semibold"
+                        >
+                          <option value="0">∞ Keep active indefinitely</option>
+                          <option value="1">⏱️ 1 Minute (For testing)</option>
+                          <option value="5">⏱️ 5 Minutes</option>
+                          <option value="15">⏱️ 15 Minutes</option>
+                          <option value="30">⏱️ 30 Minutes</option>
+                          <option value="60">⏱️ 1 Hour</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-end gap-2">
+                        <button
+                          type="submit"
+                          className="flex-1 py-2 bg-red-650 hover:bg-red-755 text-white font-bold rounded-lg uppercase tracking-wider transition duration-150 text-[10px] cursor-pointer outline-none"
+                        >
+                          {editingBulletinId ? "Update Bulletin" : "Publish to Paddock"}
+                        </button>
+                        {editingBulletinId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingBulletinId(null);
+                              setBulletinTitle('');
+                              setBulletinContent('');
+                              setBulletinCategory('ALERT');
+                              setBulletinExpiry('0');
+                            }}
+                            className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-355 rounded-lg uppercase transition-all duration-150 font-bold text-[10px] cursor-pointer outline-none"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </form>
+
+                  {/* Active Bulletins Board */}
+                  <div className="border-t border-neutral-850 pt-3 space-y-2">
+                    <span className="block text-[8px] text-neutral-455 uppercase font-mono font-bold">Active Bulletins Board ({bulletins.length})</span>
+                    {loadingBulletins ? (
+                      <div className="text-center py-2 text-[10.5px] font-mono text-neutral-500 animate-pulse">
+                        Retrieving notifications feed...
+                      </div>
+                    ) : bulletins.length === 0 ? (
+                      <div className="text-center py-4 text-[10px] font-mono text-neutral-550 border border-dashed border-neutral-850 rounded-xl">
+                        No active paddock notices scheduled.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                        {bulletins.map((b) => (
+                          <div key={b.id} className="flex items-center justify-between bg-neutral-955 p-2.5 border border-neutral-850 rounded-lg text-xs font-mono">
+                            <div className="space-y-0.5 truncate pr-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                  b.category === 'ALERT' ? 'bg-red-950/80 text-red-400 border border-red-900/40' : 'bg-neutral-800 text-neutral-300'
+                                }`}>
+                                  {b.category}
+                                </span>
+                                <span className="text-white font-bold truncate max-w-sm hover:text-red-400 cursor-help" title={b.content}>
+                                  {b.title}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-neutral-400 truncate mt-0.5" title={b.content}>{b.content}</p>
+                              {b.expiresAt && (
+                                <span className="text-[9px] text-rose-450 block mt-0.5">
+                                  ⏱️ Auto-Expires: {new Date(b.expiresAt).toLocaleTimeString()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleEditBulletinClick(b)}
+                                className="p-1 text-neutral-400 hover:text-white transition-colors cursor-pointer outline-none"
+                                title="Edit Notice"
+                              >
+                                <Settings size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBulletin(b.id)}
+                                className="p-1 text-neutral-400 hover:text-red-400 transition-colors cursor-pointer outline-none"
+                                title="Delete Notice"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

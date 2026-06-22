@@ -241,8 +241,27 @@ interface ParsedLapTiming {
 export default function LapTimesTab({ data, isLoading }: LapTimesTabProps) {
   const { season, driverStandings = [], races = [] } = data || {};
 
+  // Filter out any GP that has not been completed yet!
+  const completedRaces = useMemo(() => {
+    return races.filter(race => {
+      if (!race.date) return false;
+      const raceDate = new Date(`${race.date}T23:59:59`);
+      return raceDate < new Date();
+    });
+  }, [races]);
+
   // Default to round 1
   const [selectedRound, setSelectedRound] = useState<string>('1');
+
+  // Sync selectedRound to first completed race round if current selectedRound is not completed
+  useEffect(() => {
+    if (completedRaces.length > 0) {
+      const exists = completedRaces.some(r => r.round === selectedRound);
+      if (!exists) {
+        setSelectedRound(completedRaces[0].round);
+      }
+    }
+  }, [completedRaces, selectedRound]);
   const [selectedDrivers, setSelectedDrivers] = useState<string[]>([]);
   const [hoveredLap, setHoveredLap] = useState<number | null>(null);
 
@@ -433,6 +452,14 @@ export default function LapTimesTab({ data, isLoading }: LapTimesTabProps) {
       if (res.ok) {
         const list = await res.json();
         setUploadedDatasets(list);
+        if (list.length > 0) {
+          const barcelonaItem = list.find((item: any) => item.gp.toLowerCase() === "barcelona" && Number(item.year) === 2026);
+          const defaultItem = barcelonaItem || list[0];
+          setTelSelYear(Number(defaultItem.year));
+          setTelSelGp(defaultItem.gp);
+          setTelSelSession(defaultItem.session);
+          setTelSelDriver(defaultItem.driver);
+        }
       }
     } catch (e) {
       console.error("Failed to load uploaded telemetry list from database", e);
@@ -599,13 +626,18 @@ export default function LapTimesTab({ data, isLoading }: LapTimesTabProps) {
     
     const width = maxX - minX || 1;
     const height = maxY - minY || 1;
+    const maxDimension = Math.max(width, height);
+    
+    // Centering offset formulas to draw maps in a nice balanced bounding layout
+    const xOffset = 40 + (420 - (width / maxDimension) * 420) / 2;
+    const yOffset = 460 - (420 - (height / maxDimension) * 420) / 2;
     
     const scX = (val: number) => {
-      return 40 + ((val - minX) / width) * 420;
+      return xOffset + ((val - minX) / maxDimension) * 420;
     };
     
     const scY = (val: number) => {
-      return 460 - ((val - minY) / height) * 420;
+      return yOffset - ((val - minY) / maxDimension) * 420;
     };
 
     return {
@@ -1917,8 +1949,8 @@ export default function LapTimesTab({ data, isLoading }: LapTimesTabProps) {
 
   // Currently selected race matching selectedRound
   const selectedRace = useMemo(() => {
-    return races.find(r => r.round === selectedRound) || races[0] || null;
-  }, [races, selectedRound]);
+    return completedRaces.find(r => r.round === selectedRound) || completedRaces[0] || races[0] || null;
+  }, [completedRaces, races, selectedRound]);
 
   // Match currently checked drivers from the Roster Grid Filters to their acronym codes
   const selectedDriverCodes = useMemo(() => {
@@ -2342,7 +2374,7 @@ export default function LapTimesTab({ data, isLoading }: LapTimesTabProps) {
                   onChange={(e) => setSelectedRound(e.target.value)}
                   className="w-full bg-white border border-gray-200 hover:border-black outline-none rounded-xl py-3 px-4 font-bold text-sm focus:ring-1 focus:ring-black appearance-none cursor-pointer"
                 >
-                  {races.map((race) => (
+                  {completedRaces.map((race) => (
                     <option key={race.round} value={race.round}>
                       Round {race.round}: {race.raceName.split(' Grand Prix')[0]}
                     </option>

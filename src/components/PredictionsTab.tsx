@@ -4,7 +4,7 @@ import {
   Trophy, ShieldCheck, Lock, Unlock, Sparkles, Send, RefreshCw, 
   AlertTriangle, Compass, HelpCircle, Check, Calendar, MapPin, 
   Watch, Settings, Shield, Sliders, ChevronDown, ChevronUp, Star, TrendingUp,
-  X, ShieldAlert, Clock
+  X, ShieldAlert, Clock, BadgeCheck
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -212,6 +212,22 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
       console.error("Failed to load user predictions:", e);
     } finally {
       setLoadingUsersPredictions(false);
+    }
+  };
+
+  // Toggle user verification status
+  const handleToggleVerify = async (username: string) => {
+    try {
+      const res = await fetch("/api/admin/users/toggle-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usernameToToggle: username })
+      });
+      if (res.ok) {
+        await fetchUsersPredictions();
+      }
+    } catch (e) {
+      console.error("Failed to toggle verification:", e);
     }
   };
 
@@ -1083,10 +1099,26 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                         <div key={usr.username} className="bg-neutral-950 border border-neutral-850 rounded-xl p-3.5 space-y-3">
                           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-850/40 pb-2">
                             <div>
-                              <strong className="text-white text-xs block font-bold">{usr.givenName} {usr.familyName} (@{usr.username})</strong>
+                              <strong className="text-white text-xs flex items-center gap-1 font-bold">
+                                {usr.givenName} {usr.familyName} (@{usr.username})
+                                {usr.isVerified && (
+                                  <BadgeCheck size={14} className="text-blue-500 fill-blue-500/10 shrink-0 animate-pulse" title="Verified Player" />
+                                )}
+                              </strong>
                               <span className="text-[10px] text-neutral-500 font-mono block mt-0.5">{usr.email || "No Email"} | Passport ID: {usr.passportNumber || "N/A"}</span>
                             </div>
                             <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleVerify(usr.username)}
+                                className={`px-2 py-0.5 rounded text-[8px] font-mono uppercase font-bold transition-all cursor-pointer ${
+                                  usr.isVerified 
+                                    ? 'bg-blue-950 text-blue-400 border border-blue-800 hover:bg-blue-900/30' 
+                                    : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:bg-neutral-850'
+                                }`}
+                              >
+                                {usr.isVerified ? '✓ Verified' : 'Verify User'}
+                              </button>
                               <span className="text-[9px] font-mono bg-neutral-900 text-neutral-400 px-2 py-0.5 rounded-full">
                                 Score: {usr.score} pts
                               </span>
@@ -1564,8 +1596,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
 
         {/* Dynamic Leaderboard Side Rail */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Historical Accuracy Visualization Section */}
-          {sessionUser && userHistory && userHistory.length > 0 && (
+          {/* Historical Accuracy Visualization Section - Admin Only */}
+          {sessionUser && sessionUser.username === "Admin" && userHistory && userHistory.length > 0 && (
             <div className="bg-white border border-gray-150 rounded-2xl p-5 space-y-4 shadow-xs">
               <div className="border-b border-gray-100 pb-2.5">
                 <span className="text-[8px] font-black font-mono text-gray-400 uppercase tracking-widest leading-none mb-0.5 block">

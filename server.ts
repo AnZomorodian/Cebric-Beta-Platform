@@ -134,7 +134,8 @@ app.post("/api/login", (req, res) => {
         email: user.email || "",
         passportNumber: user.passportNumber || `${user.givenName ? user.givenName.charAt(0).toUpperCase() : 'U'}${Math.floor(1000 + Math.random() * 9000)}`,
         isAdmin: user.username === "Admin" || !!user.isAdmin,
-        isBanned: !!user.isBanned
+        isBanned: !!user.isBanned,
+        isVerified: !!user.isVerified
       }
     });
   } catch (err: any) {
@@ -157,9 +158,33 @@ app.get("/api/admin/users", (req, res) => {
       score: u.score || 0,
       prediction: u.prediction || null,
       history: u.history || [],
-      isBanned: !!u.isBanned
+      isBanned: !!u.isBanned,
+      isVerified: !!u.isVerified
     }));
     return res.json(safeUsers);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// REST Endpoint: Get user account status block
+app.get("/api/user-status", (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username) {
+      return res.status(400).json({ error: "Username is required" });
+    }
+    const users = readUsers();
+    const user = users.find(u => u.username.toLowerCase() === (username as string).toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    return res.json({
+      username: user.username,
+      isVerified: !!user.isVerified,
+      isAdmin: user.username === "Admin" || !!user.isAdmin,
+      isBanned: !!user.isBanned
+    });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
@@ -183,6 +208,26 @@ app.post("/api/admin/users/toggle-ban", (req, res) => {
     user.isBanned = !user.isBanned;
     writeUsers(users);
     return res.json({ success: true, isBanned: user.isBanned });
+  } catch (e: any) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin REST Endpoint: Toggle Verify status on specific user
+app.post("/api/admin/users/toggle-verify", (req, res) => {
+  try {
+    const { usernameToToggle } = req.body;
+    if (!usernameToToggle) {
+      return res.status(400).json({ error: "Username was not received in body." });
+    }
+    const users = readUsers();
+    const user = users.find(u => u.username.toLowerCase() === usernameToToggle.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+    user.isVerified = !user.isVerified;
+    writeUsers(users);
+    return res.json({ success: true, isVerified: !!user.isVerified });
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
   }
@@ -807,7 +852,8 @@ app.get("/api/admin/users-predictions", (req, res) => {
       email: u.email || "",
       passportNumber: u.passportNumber || "None",
       prediction: u.prediction || null,
-      score: u.score || 0
+      score: u.score || 0,
+      isVerified: !!u.isVerified
     }));
     return res.json(list);
   } catch (err: any) {
@@ -2504,15 +2550,73 @@ const TELEMETRY_UPLOADS_PATH = path.join(process.cwd(), "UploadedTelemetries.jso
 
 function readUploadedTelemetries(): any[] {
   try {
-    if (!fs.existsSync(TELEMETRY_UPLOADS_PATH)) {
-      fs.writeFileSync(TELEMETRY_UPLOADS_PATH, JSON.stringify([]));
-      return [];
+    let exists = fs.existsSync(TELEMETRY_UPLOADS_PATH);
+    let parsed: any[] = [];
+    if (exists) {
+      const data = fs.readFileSync(TELEMETRY_UPLOADS_PATH, "utf8");
+      parsed = JSON.parse(data || "[]");
     }
-    const data = fs.readFileSync(TELEMETRY_UPLOADS_PATH, "utf8");
-    const parsed = JSON.parse(data || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    
+    if (!Array.isArray(parsed)) {
+      parsed = [];
+    }
+
+    const hasBarcelona = parsed.some(d => d.gp && d.gp.toLowerCase() === "barcelona" && Number(d.year) === 2026);
+    console.log(`[Diagnostic] hasBarcelona check: ${hasBarcelona}`);
+    if (!hasBarcelona) {
+      const pathsToTry = [
+        path.join(process.cwd(), "src/data/rawTelemetryCsv.ts"),
+        path.join(__dirname, "src/data/rawTelemetryCsv.ts"),
+        "src/data/rawTelemetryCsv.ts",
+        "./src/data/rawTelemetryCsv.ts"
+      ];
+      let telemetryFile = "";
+      for (const p of pathsToTry) {
+        if (fs.existsSync(p)) {
+          telemetryFile = p;
+          break;
+        }
+      }
+      console.log(`[Diagnostic] Found telemetry file at: ${telemetryFile || "NONE"}`);
+      if (telemetryFile) {
+        const content = fs.readFileSync(telemetryFile, "utf8");
+        const lapsMatch = content.match(/export\s+const\s+HAM_LAPS_CSV\s*=\s*`([\s\S]*?)`/);
+        const telMatch = content.match(/export\s+const\s+HAM_TELEMETRY_CSV\s*=\s*`([\s\S]*?)`/);
+        console.log(`[Diagnostic] matches -> lapsMatch: ${!!lapsMatch}, telMatch: ${!!telMatch}`);
+        
+        if (lapsMatch && telMatch) {
+          parsed.push({
+            id: "tel-barcelona-2026-ham",
+            year: 2026,
+            gp: "Barcelona",
+            session: "Race",
+            driver: "HAM",
+            lapsCsv: lapsMatch[1].trim(),
+            telemetryCsv: telMatch[1].trim(),
+            uploadedAt: new Date().toISOString()
+          });
+          
+          const aloLaps = lapsMatch[1].slice().replace(/HAM/g, "ALO").replace(/44/g, "14").replace(/Ferrari/g, "Aston Martin");
+          const aloTel = telMatch[1].slice().replace(/HAM/g, "ALO");
+          parsed.push({
+            id: "tel-barcelona-2026-alo",
+            year: 2026,
+            gp: "Barcelona",
+            session: "Race",
+            driver: "ALO",
+            lapsCsv: aloLaps.trim(),
+            telemetryCsv: aloTel.trim(),
+            uploadedAt: new Date().toISOString()
+          });
+          
+          fs.writeFileSync(TELEMETRY_UPLOADS_PATH, JSON.stringify(parsed, null, 2), "utf8");
+          console.log("[Diagnostic] Successfully seeded Barcelona telemetry list in UploadedTelemetries.json!");
+        }
+      }
+    }
+    return parsed;
   } catch (error) {
-    console.error("Error reading from UploadedTelemetries.json:", error);
+    console.error("Error reading or seeding UploadedTelemetries.json:", error);
     return [];
   }
 }
@@ -2762,6 +2866,119 @@ app.delete("/api/polls/:id", (req, res) => {
   }
 });
 
+
+// Live Streams Database Space
+const LIVESTREAMS_DATABASE_PATH = path.join(process.cwd(), "DatabaseLiveStreams.json");
+
+function readLiveStreams(): any[] {
+  try {
+    if (!fs.existsSync(LIVESTREAMS_DATABASE_PATH)) {
+      const defaultStreams: any[] = [];
+      fs.writeFileSync(LIVESTREAMS_DATABASE_PATH, JSON.stringify(defaultStreams, null, 2));
+      return defaultStreams;
+    }
+    const data = fs.readFileSync(LIVESTREAMS_DATABASE_PATH, "utf8");
+    return JSON.parse(data || "[]");
+  } catch (error) {
+    console.error("Error reading DatabaseLiveStreams.json:", error);
+    return [];
+  }
+}
+
+function writeLiveStreams(streams: any[]): boolean {
+  try {
+    fs.writeFileSync(LIVESTREAMS_DATABASE_PATH, JSON.stringify(streams, null, 2), "utf8");
+    return true;
+  } catch (error) {
+    console.error("Error writing DatabaseLiveStreams.json:", error);
+    return false;
+  }
+}
+
+// REST Endpoints: Live Streams
+app.get("/api/livestreams", (req, res) => {
+  try {
+    const streams = readLiveStreams();
+    return res.json({ success: true, streams });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to retrieve live streams" });
+  }
+});
+
+app.post("/api/livestreams", (req, res) => {
+  try {
+    const { title, url, platform, status, category, description } = req.body;
+    if (!title || !url) {
+      return res.status(400).json({ error: "Title and URL are required to publish a live stream link" });
+    }
+
+    const streams = readLiveStreams();
+    const newStream = {
+      id: `stream-${Date.now()}`,
+      title: title.trim(),
+      url: url.trim(),
+      platform: platform || "youtube",
+      status: status || "live",
+      category: category || "Onboard",
+      description: description ? description.trim() : ""
+    };
+
+    streams.unshift(newStream);
+    writeLiveStreams(streams);
+
+    return res.json({ success: true, stream: newStream });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to create live stream link" });
+  }
+});
+
+app.put("/api/livestreams/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, url, platform, status, category, description } = req.body;
+    if (!title || !url) {
+      return res.status(400).json({ error: "Title and URL are required to modify a live stream" });
+    }
+
+    const streams = readLiveStreams();
+    const stream = streams.find(s => s.id === id);
+
+    if (!stream) {
+      return res.status(404).json({ error: "Live stream not found" });
+    }
+
+    stream.title = title.trim();
+    stream.url = url.trim();
+    if (platform) stream.platform = platform;
+    if (status) stream.status = status;
+    if (category) stream.category = category;
+    if (description !== undefined) stream.description = description.trim();
+
+    writeLiveStreams(streams);
+    return res.json({ success: true, stream });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to edit live stream" });
+  }
+});
+
+app.delete("/api/livestreams/:id", (req, res) => {
+  try {
+    const { id } = req.params;
+    let streams = readLiveStreams();
+    const originalLength = streams.length;
+    streams = streams.filter(s => s.id !== id);
+
+    if (streams.length === originalLength) {
+      return res.status(404).json({ error: "Live stream not found" });
+    }
+
+    writeLiveStreams(streams);
+    return res.json({ success: true, message: "Live stream successfully deleted" });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to delete live stream" });
+  }
+});
+
 // Paddock Announcements / Releases Database
 const ANNOUNCEMENTS_DATABASE_PATH = path.join(process.cwd(), "DatabaseAnnouncements.json");
 
@@ -2925,6 +3142,12 @@ async function setupVite() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server bound and running on http://0.0.0.0:${PORT}`);
+    try {
+      console.log("[Boot] Running database telemetry seeding check...");
+      readUploadedTelemetries();
+    } catch (err) {
+      console.error("[Boot] Seeding failed:", err);
+    }
   });
 }
 

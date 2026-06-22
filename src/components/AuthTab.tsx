@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle, Database, Clock, Check, Shield, Bell } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle, Database, Clock, Check, Shield, Bell, BadgeCheck } from 'lucide-react';
 
 interface UserSession {
   username: string;
@@ -480,6 +480,23 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
       if (!res.ok) throw new Error('Failed to change user ban status.');
       const data = await res.json();
       setAdminActionSuccess(`Successfully changed status for @${userToToggle}: ${data.isBanned ? 'BANNED' : 'UNBANNED / ACTIVE'}`);
+      fetchAdminUsers();
+      setTimeout(() => setAdminActionSuccess(null), 3000);
+    } catch (err: any) {
+      setAdminActionError(err.message || 'Error occurred.');
+    }
+  };
+
+  const handleToggleVerifyUser = async (userToToggle: string) => {
+    try {
+      const res = await fetch('/api/admin/users/toggle-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usernameToToggle: userToToggle })
+      });
+      if (!res.ok) throw new Error('Failed to change user verification status.');
+      const data = await res.json();
+      setAdminActionSuccess(`Successfully changed verification for @${userToToggle}: ${data.isVerified ? 'VERIFIED' : 'UNVERIFIED'}`);
       fetchAdminUsers();
       setTimeout(() => setAdminActionSuccess(null), 3000);
     } catch (err: any) {
@@ -1375,8 +1392,11 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                       {adminUsers.map((u) => (
                         <div key={u.username} className="flex items-center justify-between text-xs font-mono py-2.5 first:pt-0">
                           <div>
-                            <span className="text-white font-extrabold block">
+                            <span className="text-white font-extrabold flex items-center gap-1.5">
                               @{u.username}
+                              {u.isVerified && (
+                                <BadgeCheck size={14} className="text-blue-500 fill-blue-500/10 shrink-0" title="Verified Player" />
+                              )}
                               {u.isBanned && (
                                 <span className="text-[8px] bg-rose-600 text-white font-mono font-black uppercase px-1.5 py-0.5 rounded ml-1.5 inline-block align-middle">
                                   BANNED
@@ -1391,6 +1411,18 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                             <span className="text-[9.5px] text-neutral-550 block hidden sm:inline">{u.email}</span>
                             {u.username !== 'Admin' && (
                               <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleVerifyUser(u.username)}
+                                  className={`p-1 rounded transition-all cursor-pointer outline-none border-none ${
+                                    u.isVerified
+                                      ? 'text-blue-400 bg-blue-950/50 border border-blue-900/60'
+                                      : 'text-neutral-500 hover:text-blue-400 hover:bg-neutral-800'
+                                  }`}
+                                  title={u.isVerified ? `Remove verify @${u.username}` : `Verify user @${u.username}`}
+                                >
+                                  <BadgeCheck size={12} className={u.isVerified ? "animate-pulse" : ""} />
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => handleToggleBanUser(u.username)}
@@ -1619,7 +1651,6 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                 <div className="bg-neutral-900 border border-neutral-850 rounded-2xl p-3 md:p-5 space-y-4">
                   <div className="flex items-center justify-between border-b border-neutral-850 pb-2.5">
                     <div className="flex items-center gap-1.5">
-                      <Bell size={15} className="text-red-500 animate-pulse animate-bounce" />
                       <span className="text-[10px] text-neutral-300 font-mono font-bold uppercase tracking-wider">
                         Paddock Bulletins & Notifications Center
                       </span>
@@ -1647,11 +1678,11 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                           onChange={(e) => setBulletinCategory(e.target.value)}
                           className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white outline-none focus:border-red-500 font-semibold"
                         >
-                          <option value="ALERT">🚨 ALERT</option>
-                          <option value="DIRECTIVE">📋 DIRECTIVE</option>
-                          <option value="WEATHER">🌧️ WEATHER</option>
-                          <option value="PADDOCK_INFO">🎟️ PADDOCK INFO</option>
-                          <option value="TECHNICAL">⚙️ TECHNICAL</option>
+                          <option value="ALERT">ALERT</option>
+                          <option value="DIRECTIVE">DIRECTIVE</option>
+                          <option value="WEATHER">WEATHER</option>
+                          <option value="PADDOCK_INFO">PADDOCK INFO</option>
+                          <option value="TECHNICAL">TECHNICAL</option>
                         </select>
                       </div>
                     </div>

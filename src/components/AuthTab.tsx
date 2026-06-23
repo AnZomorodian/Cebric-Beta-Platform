@@ -1969,7 +1969,7 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                 {isRegistering ? <UserPlus size={20} /> : <LogIn size={20} />}
               </div>
               <h2 className="text-2xl font-black text-black tracking-tight leading-none">
-                {isRegistering ? 'Register F1 Roster Account' : 'Sign in to F1 Explorer'}
+                {isRegistering ? 'Register Cebric' : 'Sign in to Cebric'}
               </h2>
               <p className="text-xs text-gray-450">
                 {isRegistering 

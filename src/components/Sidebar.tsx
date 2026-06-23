@@ -153,7 +153,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isOpenMo
 
         {/* Footer Info Accent */}
         <div className="mt-auto pt-4 flex flex-col items-center gap-1.5 text-[10px] font-mono text-gray-400 tracking-tighter w-full">
-          <span>V1.3</span>
+          <span>V1.4</span>
         </div>
       </aside>
     </>

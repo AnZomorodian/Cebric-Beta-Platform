@@ -7,11 +7,39 @@ interface LiveStream {
   id: string;
   title: string;
   url: string;
-  platform: 'youtube' | 'twitch' | 'custom';
+  platform: 'youtube' | 'twitch' | 'custom' | 'ok_ru';
   status: 'live' | 'upcoming' | 'offline';
   category: string;
   description: string;
 }
+
+// Utility to auto-detect platform from stream URL
+const detectPlatformFromUrl = (url: string): 'youtube' | 'twitch' | 'custom' | 'ok_ru' => {
+  const cleanUrl = url.toLowerCase();
+  if (cleanUrl.includes('ok.ru')) {
+    return 'ok_ru';
+  }
+  if (cleanUrl.includes('youtube.com') || cleanUrl.includes('youtu.be')) {
+    return 'youtube';
+  }
+  if (cleanUrl.includes('twitch.tv')) {
+    return 'twitch';
+  }
+  return 'custom';
+};
+
+// Utility to extract OK.ru video/live ID
+const extractOkRuId = (url: string): string => {
+  const match = url.match(/(?:ok\.ru\/(?:video|videoembed|live|embed)\/|ok\.ru\/embed\/)(\d+)/i) || url.match(/ok\.ru\D*(\d+)/i);
+  if (match) {
+    return match[1];
+  }
+  const numericMatch = url.match(/\d{10,}/);
+  if (numericMatch) {
+    return numericMatch[0];
+  }
+  return '';
+};
 
 export default function LiveStreamTab() {
   const [streams, setStreams] = useState<LiveStream[]>([]);
@@ -33,7 +61,7 @@ export default function LiveStreamTab() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formTitle, setFormTitle] = useState<string>('');
   const [formUrl, setFormUrl] = useState<string>('');
-  const [formPlatform, setFormPlatform] = useState<'youtube' | 'twitch' | 'custom'>('youtube');
+  const [formPlatform, setFormPlatform] = useState<'youtube' | 'twitch' | 'custom' | 'ok_ru'>('youtube');
   const [formStatus, setFormStatus] = useState<'live' | 'upcoming' | 'offline'>('live');
   const [formCategory, setFormCategory] = useState<string>('Main Broadcast');
   const [formDescription, setFormDescription] = useState<string>('');
@@ -221,6 +249,26 @@ export default function LiveStreamTab() {
           allowFullScreen
         />
       );
+    } else if (s.platform === 'ok_ru' || s.url.toLowerCase().includes('ok.ru')) {
+      const okId = extractOkRuId(s.url);
+      if (okId) {
+        return (
+          <iframe
+            className="w-full h-full border-none shadow-xl"
+            src={`https://ok.ru/videoembed/${okId}`}
+            title={s.title}
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+          />
+        );
+      }
+      return (
+        <div className="w-full h-full bg-neutral-950 flex flex-col items-center justify-center p-8 text-center select-none relative overflow-hidden font-mono text-white">
+          <AlertCircle size={40} className="text-[#EF1A2D] mb-4" />
+          <p className="text-sm font-black tracking-widest uppercase mb-1">INVALID OK.RU STREAM SOURCE</p>
+          <p className="text-xs text-neutral-450 mb-4 max-w-sm">Unable to parse OK.ru video or stream ID from the provided URL. Please verify the link.</p>
+        </div>
+      );
     } else {
       if (s.url.toLowerCase().includes('.m3u8')) {
         return <HlsPlayer url={s.url} title={s.title} />;
@@ -328,9 +376,16 @@ export default function LiveStreamTab() {
                   <input
                     type="text"
                     required
-                    placeholder="YouTube URL or Twitch Channel Name"
+                    placeholder="YouTube, Twitch, or Odnoklassniki (ok.ru) URL"
                     value={formUrl}
-                    onChange={(e) => setFormUrl(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormUrl(val);
+                      const detected = detectPlatformFromUrl(val);
+                      if (detected !== 'custom') {
+                        setFormPlatform(detected);
+                      }
+                    }}
                     className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 text-white outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
@@ -346,6 +401,7 @@ export default function LiveStreamTab() {
                   >
                     <option value="youtube">💻 YouTube Embed</option>
                     <option value="twitch">🔮 Twitch Player</option>
+                    <option value="ok_ru">🎥 Odnoklassniki (ok.ru) Player</option>
                     <option value="custom">🌐 Custom External Tab URL</option>
                   </select>
                 </div>

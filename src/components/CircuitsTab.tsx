@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Search } from 'lucide-react';
+import { Search, X, Layers, Zap, Gauge, TrendingUp } from 'lucide-react';
 import { Race } from '../types';
 
 const TRACK_DETAILS: Record<string, { length: string; laps: number; record: string; capacity: string; corners: number; path: string }> = {
@@ -50,7 +50,7 @@ const TRACK_DETAILS: Record<string, { length: string; laps: number; record: stri
     record: '1:12.909 (L. Hamilton)',
     capacity: '37,000',
     corners: 19,
-    path: 'M 15,15 L 45,20 L 60,15 L 85,40 L 45,45 L 35,35 L 15,30 Z'
+    path: 'M 28.58,40.96 L 28.53,39.67 L 28.61,38.26 L 28.65,37.60 L 28.71,37.00 L 28.82,36.15 L 28.97,35.20 L 29.07,34.70 L 29.18,34.17 L 29.39,33.36 L 29.54,32.80 L 29.65,32.41 L 29.80,31.97 L 30.01,31.43 L 30.22,31.05 L 30.65,30.73 L 31.13,30.53 L 31.67,30.43 L 32.44,30.34 L 32.98,30.29 L 33.76,30.22 L 34.29,30.17 L 34.72,30.12 L 35.24,30.05 L 35.98,29.92 L 36.61,29.78 L 37.32,29.61 L 38.34,29.35 L 38.96,29.21 L 40.23,28.88 L 40.89,28.71 L 42.51,28.32 L 44.21,28.10 L 44.91,28.08 L 45.44,27.97 L 46.44,27.73 L 46.98,27.59 L 47.36,27.35 L 48.12,26.97 L 49.11,26.47 L 49.73,26.21 L 50.13,26.05 L 50.92,25.79 L 51.59,25.63 L 52.26,25.49 L 52.92,25.40 L 53.57,25.31 L 54.28,25.23 L 55.12,25.12 L 56.18,24.89 L 57.12,24.53 L 57.59,24.28 L 58.01,23.99 L 58.39,23.68 L 58.79,23.25 L 59.41,22.07 L 59.53,21.68 L 59.56,21.27 L 59.58,20.84 L 59.52,20.29 L 59.40,19.63 L 59.20,19.14 L 58.92,18.56 L 58.66,18.12 L 58.19,17.47 L 57.88,17.10 L 57.42,16.54 L 57.17,16.19 L 56.95,15.78 L 56.80,15.28 L 56.80,14.73 L 56.93,14.20 L 57.26,13.45 L 57.47,13.09 L 57.89,12.48 L 58.54,20.66 L 58.23,12.06 L 58.60,11.64 L 58.88,11.33 L 59.44,10.71 L 60.12,9.85 L 60.49,9.30 L 61.34,8.08 L 61.90,7.32 L 62.16,7.00 L 62.74,6.31 L 63.01,6.00 L 63.30,5.69 L 63.79,5.27 L 64.20,5.15 L 64.79,5.30 L 65.24,5.69 L 65.45,6.15 L 65.56,6.53 L 65.70,7.07 L 65.85,7.57 L 66.10,8.28 L 66.26,8.67 L 66.45,9.07 L 66.66,9.44 L 67.07,10.01 L 67.40,10.32 L 67.79,10.49 L 68.21,10.41 L 68.35,9.98 L 68.24,9.55 L 68.05,9.19 L 67.77,8.83 L 67.30,8.33 L 66.96,7.96 L 66.73,7.58 L 66.64,7.12 L 66.74,6.64 L 67.07,6.21 L 67.50,5.91 L 68.13,5.58 L 68.62,5.38 L 69.18,5.18 L 69.68,5.03 L 70.43,5.00 L 70.82,5.15 L 71.16,5.60 L 71.31,6.00 L 71.42,6.54 L 71.47,7.19 L 71.45,8.01 L 71.41,8.46 L 71.34,9.08 L 71.25,9.90 L 71.20,10.36 L 71.15,10.76 L 71.10,11.27 L 70.99,12.30 L 70.88,13.25 L 70.73,14.09 L 70.54,14.85 L 70.26,15.75 L 69.77,17.11 L 69.52,17.76 L 69.34,18.18 L 69.14,18.68 L 68.87,19.29 L 68.59,19.88 L 68.28,20.47 L 67.52,21.61 L 67.00,22.23 L 66.69,22.53 L 66.29,22.86 L 65.56,23.39 L 65.19,23.64 L 64.34,24.09 L 63.85,24.31 L 63.24,24.60 L 62.59,24.91 L 61.91,25.25 L 60.93,25.75 L 60.16,26.14 L 59.30,26.55 L 58.68,26.85 L 57.93,27.18 L 57.31,27.44 L 56.42,27.78 L 55.71,28.02 L 55.03,28.22 L 54.54,28.34 L 53.37,28.60 L 52.57,28.73 L 51.92,28.81 L 50.69,28.93 L 50.07,29.00 L 49.64,29.06 L 49.06,29.20 L 48.68,29.46 L 48.48,29.82 L 48.28,30.17 L 47.90,30.52 L 47.39,30.66 L 46.99,30.64 L 46.59,30.56 L 46.10,30.44 L 45.57,30.37 L 45.13,30.37 L 44.26,30.49 L 43.61,30.59 L 40.95,30.95 L 40.48,31.01 L 40.03,31.06 L 39.42,31.13 L 38.57,31.22 L 37.84,31.30 L 37.42,31.33 L 36.57,31.39 L 35.77,31.45 L 35.34,31.47 L 34.35,31.63 L 33.87,31.85 L 33.07,32.54 L 32.54,33.24 L 32.23,33.75 L 32.01,34.17 L 31.74,34.85 L 31.54,35.52 L 31.39,36.14 L 31.29,36.86 L 31.21,37.65 L 31.17,38.26 L 31.17,38.73 L 31.29,39.83 L 32.23,41.21 L 32.55,41.74 L 32.74,42.27 L 33.01,43.12 L 33.36,44.42 L 33.51,45.09 L 33.63,45.78 L 33.76,46.70 L 33.83,47.40 L 33.87,47.87 L 33.89,48.42 L 33.86,49.02 L 33.39,49.83 L 33.12,50.15 L 33.02,50.57 L 33.04,51.16 L 33.15,51.82 L 33.29,52.36 L 33.45,52.87 L 33.63,53.34 L 33.85,53.82 L 34.04,54.19 L 34.72,55.22 L 35.04,55.61 L 35.34,55.93 L 35.67,56.25 L 36.09,56.55 L 36.84,56.98 L 37.28,57.20 L 38.00,57.65 L 38.41,58.05 L 38.55,58.43 L 38.52,58.96 L 38.28,59.44 L 37.28,59.89 L 36.87,59.94 L 36.45,59.98 L 35.89,60.00 L 35.49,60.00 L 34.84,59.93 L 34.43,59.84 L 34.04,59.61 L 33.76,59.23 L 33.62,58.81 L 33.50,58.27 L 33.35,57.63 L 33.18,57.18 L 32.90,56.65 L 32.28,55.74 L 31.73,54.89 L 31.48,54.45 L 31.26,53.97 L 31.03,53.42 L 30.80,52.78 L 30.36,51.41 L 30.15,50.67 L 29.98,50.06 L 29.59,48.64 L 29.40,47.94 L 29.23,47.17 L 29.05,46.23 L 28.94,45.55 L 28.81,44.30 L 28.77,43.88 L 28.74,43.47 L 28.67,42.51 Z'
   },
   catalunya: {
     length: '4.657 km',
@@ -58,7 +58,7 @@ const TRACK_DETAILS: Record<string, { length: string; laps: number; record: stri
     record: '1:16.330 (M. Verstappen)',
     capacity: '140,000',
     corners: 14,
-    path: 'M 15,25 L 45,15 L 85,25 L 75,45 L 45,50 L 25,40 Z'
+    path: 'M 65.82,25.54 L 63.95,28.49 L 63.42,29.33 L 62.98,30.02 L 62.51,30.76 L 61.96,31.62 L 61.59,32.21 L 61.07,33.01 L 60.73,33.56 L 60.28,34.27 L 59.57,35.38 L 58.81,36.58 L 58.43,37.17 L 58.08,37.69 L 57.54,38.51 L 56.79,39.64 L 56.14,40.61 L 55.74,41.21 L 55.34,41.81 L 54.64,42.85 L 53.94,43.90 L 53.49,44.57 L 52.99,45.31 L 52.49,46.05 L 51.90,46.94 L 51.24,47.94 L 50.82,48.58 L 49.95,50.05 L 49.56,50.75 L 49.15,51.47 L 48.78,52.13 L 47.82,53.85 L 47.04,55.13 L 46.60,55.75 L 46.21,56.24 L 45.56,56.92 L 45.03,57.35 L 44.34,57.69 L 43.46,57.78 L 42.79,57.63 L 42.21,57.39 L 41.52,57.06 L 40.96,56.84 L 40.18,56.71 L 39.46,56.81 L 38.70,57.10 L 38.16,57.40 L 37.43,57.88 L 36.74,58.38 L 35.60,59.10 L 34.55,59.62 L 33.93,59.79 L 33.20,59.94 L 32.55,60.00 L 31.77,59.89 L 30.88,59.71 L 29.90,59.27 L 29.05,58.67 L 28.44,58.03 L 27.78,56.93 L 27.56,56.38 L 27.38,55.73 L 27.22,54.63 L 27.21,53.38 L 27.31,52.33 L 27.44,51.56 L 27.60,50.77 L 27.77,50.15 L 28.00,49.38 L 28.39,48.46 L 28.86,47.63 L 29.23,47.02 L 29.82,46.21 L 30.38,45.43 L 31.29,43.99 L 31.77,43.18 L 32.35,42.24 L 33.02,41.24 L 33.83,40.06 L 34.26,39.51 L 35.01,38.76 L 35.54,38.40 L 36.26,38.13 L 37.26,38.12 L 38.06,38.40 L 38.67,38.82 L 39.41,39.74 L 39.80,40.59 L 39.97,41.26 L 40.03,41.89 L 39.97,42.87 L 39.69,43.83 L 39.44,44.42 L 39.06,45.01 L 38.58,45.71 L 37.98,46.54 L 37.37,47.37 L 36.87,48.05 L 36.39,48.71 L 35.80,49.53 L 35.30,50.25 L 34.85,51.00 L 34.58,51.59 L 34.38,52.22 L 34.45,53.30 L 34.82,53.84 L 35.38,54.17 L 36.14,54.27 L 36.75,54.17 L 37.48,53.91 L 38.51,53.39 L 39.06,53.09 L 39.87,52.65 L 40.52,52.33 L 41.73,51.81 L 43.01,51.25 L 43.68,50.91 L 44.55,50.35 L 45.23,49.83 L 45.73,49.39 L 46.22,48.89 L 46.92,48.01 L 47.29,47.53 L 47.93,46.59 L 48.45,45.84 L 48.92,45.09 L 49.14,44.53 L 49.25,43.68 L 49.17,42.74 L 48.94,42.15 L 48.27,41.42 L 47.52,40.88 L 46.98,40.43 L 46.56,39.99 L 45.92,39.00 L 45.63,38.37 L 45.27,37.57 L 44.90,36.79 L 44.52,36.00 L 44.17,35.25 L 43.78,34.43 L 43.32,33.46 L 43.06,32.91 L 42.66,31.83 L 42.51,30.29 L 42.56,29.54 L 42.74,28.72 L 43.04,27.85 L 43.32,27.28 L 43.75,26.67 L 44.42,26.07 L 45.41,25.56 L 46.06,25.30 L 46.84,24.99 L 47.44,24.72 L 48.82,24.07 L 49.49,23.76 L 50.08,23.48 L 50.90,23.09 L 52.14,22.50 L 53.03,22.07 L 53.62,21.79 L 54.34,21.42 L 55.31,20.91 L 56.77,20.13 L 57.74,19.61 L 58.72,19.09 L 59.46,18.69 L 60.10,18.35 L 61.05,17.86 L 61.69,17.56 L 62.47,17.22 L 63.26,16.91 L 63.89,16.65 L 64.67,16.30 L 65.31,15.92 L 65.83,15.40 L 65.80,13.54 L 65.21,12.74 L 64.64,12.34 L 64.01,12.13 L 63.30,12.02 L 62.68,12.02 L 61.93,12.13 L 61.24,12.35 L 60.57,12.67 L 59.65,13.27 L 58.81,13.84 L 57.61,14.38 L 56.78,14.55 L 56.11,14.54 L 55.44,14.41 L 54.64,13.80 L 54.28,13.13 L 54.14,12.34 L 54.19,11.74 L 54.40,11.00 L 54.67,10.47 L 55.17,9.79 L 56.06,8.95 L 56.69,8.46 L 57.53,7.80 L 58.04,7.36 L 58.54,6.93 L 59.05,6.51 L 59.78,5.93 L 60.53,5.46 L 61.11,5.21 L 61.76,5.04 L 62.84,5.00 L 63.59,5.12 L 64.37,5.36 L 65.08,5.65 L 65.74,5.99 L 66.63,6.53 L 67.34,6.98 L 68.13,7.48 L 68.78,7.90 L 69.42,8.31 L 70.35,8.94 L 71.08,9.52 L 71.62,10.07 L 72.04,10.59 L 72.40,11.24 L 72.69,12.14 L 72.81,13.06 L 72.77,13.77 L 72.63,14.41 L 72.46,15.00 L 72.16,15.67 L 71.77,16.36 L 71.11,17.40 L 70.62,18.15 L 70.26,18.71 L 69.88,19.29 L 69.49,19.88 L 69.13,20.44 L 68.61,21.24 L 68.26,21.78 L 67.86,22.39 L 67.43,23.05 L 66.96,23.78 L 66.39,24.66 Z'
   },
   red_bull_ring: {
     length: '4.318 km',
@@ -373,6 +373,11 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
   const [searchQuery, setSearchQuery] = useState('');
   const [lengthFilter, setLengthFilter] = useState<'all' | 'short' | 'long'>('all');
   const [cornersFilter, setCornersFilter] = useState<'all' | 'flowing' | 'technical'>('all');
+  const [isInteractiveViewerOpen, setIsInteractiveViewerOpen] = useState(false);
+  const [activeLayer, setActiveLayer] = useState<'default' | 'racing' | 'drs' | 'elevation'>('default');
+  const pathRef = useRef<SVGPathElement>(null);
+  const [carPosition, setCarPosition] = useState({ x: 0, y: 0 });
+  const [simStats, setSimStats] = useState({ speed: 120, throttle: 100, brake: 0, gForce: 1.2, gear: 4 });
   const [sortBy, setSortBy] = useState<'round' | 'length' | 'corners' | 'name'>('round');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -395,6 +400,53 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
     setCheckedInVenues(next);
     localStorage.setItem('f1_passport_checked_in', JSON.stringify(next));
   };
+
+  useEffect(() => {
+    if (!isInteractiveViewerOpen || !pathRef.current) return;
+    let animId: number;
+    let progress = 0;
+    
+    const update = () => {
+      if (!pathRef.current) return;
+      progress = (progress + 0.35) % 100;
+      const len = pathRef.current.getTotalLength();
+      if (len > 0) {
+        const pt = pathRef.current.getPointAtLength((progress / 100) * len);
+        setCarPosition({ x: pt.x, y: pt.y });
+        
+        const sec = progress / 100;
+        let speed = 210;
+        let throttle = 100;
+        let brake = 0;
+        let gear = 5;
+        if (sec > 0.05 && sec < 0.2) {
+          speed = Math.floor(210 + (sec - 0.05) * 600);
+          throttle = 100; brake = 0; gear = 7;
+        } else if (sec >= 0.2 && sec < 0.35) {
+          speed = Math.floor(190 - (sec - 0.2) * 300);
+          throttle = 40; brake = 30; gear = 3;
+        } else if (sec >= 0.35 && sec < 0.55) {
+          speed = Math.max(48, Math.floor(140 - (sec - 0.35) * 450));
+          throttle = 10; brake = 90; gear = 1;
+        } else if (sec >= 0.55 && sec < 0.72) {
+          speed = Math.floor(180 + (sec - 0.55) * 670);
+          throttle = 100; brake = 0; gear = 8;
+        } else if (sec >= 0.72 && sec < 0.88) {
+          speed = Math.floor(220 - (sec - 0.72) * 350);
+          throttle = 50; brake = 40; gear = 4;
+        } else {
+          speed = Math.max(65, Math.floor(160 - (sec - 0.88) * 800));
+          throttle = 20; brake = 75; gear = 2;
+        }
+        const gForce = (0.6 + Math.random() * 0.3 + (speed > 160 ? (speed / 130) * 1.8 : 0.8)).toFixed(1);
+        setSimStats({ speed, throttle, brake, gForce: parseFloat(gForce), gear });
+      }
+      animId = requestAnimationFrame(update);
+    };
+    
+    animId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animId);
+  }, [isInteractiveViewerOpen, selectedCircuitId, activeLayer]);
 
   // Map F1 country codes/countries to flags
   const getCountryEmoji = (countryName: string) => {
@@ -536,14 +588,11 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
             WORLD TOUR DESTINATIONS
           </span>
           <h1 className="text-2xl font-black tracking-tight text-neutral-900 leading-none">
-            {season} FIA Circuit Passport & Journal
+            {season} F1 Circuit Explorer
           </h1>
           <p className="text-xs text-neutral-500 max-w-xl">
-            A minimal, elegant travel log of the {season} F1 host tracks, complete with historical logs, stamp certifications, and checked-in passenger entries.
+            A minimal, elegant map database of the {season} F1 host tracks, complete with historical logs, interactive high-fidelity vector sweeps, and official technical track metrics.
           </p>
-        </div>
-        <div className="text-xs font-mono bg-neutral-50 px-3 py-1.5 rounded-lg border border-gray-200 shrink-0 select-none text-gray-500">
-          💼 JOURNAL CHECK-INS: <strong className="text-neutral-900">{checkedInVenues.length}/{races.length || 24}</strong>
         </div>
       </header>
 
@@ -639,9 +688,6 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                           }`}>
                             RD {circuit.visitedRound}
                           </span>
-                          {checked && (
-                            <span className="text-[10px]" title="Checked in">✔️</span>
-                          )}
                         </div>
                         <h4 className="text-xs font-bold tracking-tight truncate mt-1">
                           {circuit.circuitName}
@@ -667,10 +713,9 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
           {selectedCircuitData && activeTrackInfo ? (
             <div className="space-y-4">
               
-              {/* THE WHITE SEWED PASSPORT IMMIGRATION STAMP COMPONENT */}
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-xs overflow-hidden relative">
-                {/* Visual Passport header binder bar */}
-                <div className="bg-amber-800/10 h-2 w-full border-b border-amber-800/20" />
+              {/* HIGH TECH GRID DETAILS COMPONENT */}
+              <div className="bg-white border border-gray-250 rounded-2xl shadow-sm overflow-hidden relative">
+                <div className="bg-neutral-900 h-1.5 w-full" />
                 
                 <div className="p-6 md:p-8 space-y-6">
                   
@@ -680,72 +725,93 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{getCountryEmoji(selectedCircuitData.Location.country)}</span>
                         <span className="text-[9px] font-mono font-bold tracking-widest text-[#EF1A2D] uppercase block">
-                          GRAND PRIX ADMISSION / ENTRY ROUND {selectedCircuitData.visitedRound}
+                          GRAND PRIX SPECIFICATIONS / ROUND {selectedCircuitData.visitedRound}
                         </span>
                       </div>
                       <h2 className="text-2xl font-semibold tracking-tight text-neutral-900">
                         {selectedCircuitData.circuitName}
                       </h2>
                       <p className="text-xs font-mono text-neutral-500">
-                        IMMIGRATION CODE: <strong className="text-neutral-800 font-medium">GP-{selectedCircuitData.circuitId.slice(0, 4).toUpperCase()}-{season}</strong>
+                        GRID IDENTIFIER: <strong className="text-neutral-800 font-medium">GP-{selectedCircuitData.circuitId.slice(0, 4).toUpperCase()}-{season}</strong>
                       </p>
                     </div>
 
-                    {/* VINTAGE IMMIGRATION CIRCLE CERTIFICATE STAMP */}
-                    <div className={`shrink-0 border-2 border-double rounded-full p-2.5 px-4 text-center font-mono select-none uppercase tracking-tighter ${getStampColor(selectedCircuitData.circuitId)} transform rotate-2 shadow-xs max-w-xs mx-auto sm:mx-0`}>
-                      <div className="text-[7px] font-bold tracking-widest">★ FIA WORLD TOUR ★</div>
-                      <div className="text-xs font-black font-mono leading-none my-1">{selectedCircuitData.Location.country}</div>
-                      <div className="text-[7.5px] tracking-tight font-medium">CERTIFIED ROUND {selectedCircuitData.visitedRound}</div>
-                    </div>
+                    {/* INTERACTIVE LAUNCHER BUTTON */}
+                    <button
+                      onClick={() => setIsInteractiveViewerOpen(true)}
+                      className="px-5 py-2.5 bg-[#EF1A2D] hover:bg-[#d61323] text-white rounded-xl text-xs font-mono font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 cursor-pointer select-none border border-transparent"
+                    >
+                      <Zap className="w-3.5 h-3.5 animate-pulse" />
+                      VIEW INTERACTIVE MAP
+                    </button>
                   </div>
 
-                  {/* Grid split inside the passport page of track */}
+                  {/* Grid split inside page of track */}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
                     
-                    {/* Left block: Vector Outline Sheet */}
-                    <div className="md:col-span-5 flex flex-col justify-between bg-neutral-50 border border-gray-150 rounded-xl p-5 relative overflow-hidden select-none" style={{ minHeight: '260px' }}>
-                      <div className="absolute top-3 left-3 text-[7.5px] font-mono text-gray-400 flex items-center gap-1">
-                        <span>VECTOR TRACE GRID: UNIT SCALE</span>
+                    {/* Left block: Vector Outline Sheet (Telemetry style) */}
+                    <div 
+                      onClick={() => setIsInteractiveViewerOpen(true)}
+                      className="md:col-span-5 flex flex-col justify-between bg-neutral-950 border border-neutral-850 hover:border-[#EF1A2D]/40 rounded-xl p-5 relative overflow-hidden select-none cursor-pointer group transition-all duration-300 shadow-inner" style={{ minHeight: '260px' }}
+                    >
+                      {/* Technical scanner lines */}
+                      <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:12px_12px] opacity-60" />
+                      
+                      <div className="absolute top-3 left-3 text-[7px] font-mono text-gray-400 flex items-center gap-1.5 z-10 uppercase tracking-widest bg-neutral-900/80 px-1.5 py-0.5 rounded border border-neutral-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>VECTOR GRID: GPS 3D SCALE</span>
+                      </div>
+
+                      <div className="absolute bottom-3 right-3 text-[7px] font-mono text-gray-400 z-10 uppercase tracking-widest bg-neutral-900/80 px-1.5 py-0.5 rounded border border-neutral-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        🔍 CLICK TO INTERACT
                       </div>
                       
                       {/* SVG Canvas block */}
-                      <div className="my-auto py-4 flex items-center justify-center">
+                      <div className="my-auto py-2 flex items-center justify-center z-10 transition-transform duration-300 group-hover:scale-105">
                         <svg 
                           viewBox="0 0 100 65" 
-                          className="w-44 h-44 drop-shadow-[0_4px_6px_rgba(0,0,0,0.06)]"
+                          className="w-44 h-44 drop-shadow-[0_0_8px_rgba(239,26,45,0.15)]"
                         >
-                          <motion.path
+                          {/* Outer glow stroke path */}
+                          <path
                             d={activeTrackInfo.path}
                             fill="none"
-                            stroke="#171717"
-                            strokeWidth="3"
+                            stroke="#EF1A2D"
+                            strokeWidth="4"
                             strokeLinecap="round"
                             strokeLinejoin="round"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ duration: 1.5, ease: "easeInOut" }}
+                            opacity="0.12"
+                          />
+                          {/* Solid backing vector line */}
+                          <path
+                            d={activeTrackInfo.path}
+                            fill="none"
+                            stroke="#262626"
+                            strokeWidth="3.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
                           {/* Inner glowing core line accent */}
                           <motion.path
                             d={activeTrackInfo.path}
                             fill="none"
                             stroke="#EF1A2D"
-                            strokeWidth="1"
+                            strokeWidth="1.5"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             initial={{ pathLength: 0 }}
                             animate={{ pathLength: 1 }}
-                            transition={{ duration: 1.5, ease: "easeInOut", delay: 0.2 }}
+                            transition={{ duration: 1.5, ease: "easeInOut", delay: 0.1 }}
                           />
                         </svg>
                       </div>
 
-                      <div className="text-center font-mono text-[8px] text-gray-450 z-10">
-                        SYSTEM PATH: SECURE VECTOR ENVELOPE
+                      <div className="text-center font-mono text-[7px] text-neutral-500 z-10 uppercase tracking-[0.15em] mt-2">
+                        SYSTEM PATH: ACTIVE TELEMETRY TRACING
                       </div>
                     </div>
 
-                    {/* Right block: Specs Passport Stamp Information Details */}
+                    {/* Right block: Specs Stamp Information Details */}
                     <div className="md:col-span-7 flex flex-col justify-between space-y-4">
                       
                       {/* Story log section */}
@@ -787,47 +853,333 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                     </div>
                   </div>
 
-                  {/* BOTTOM REVOLUTIONARY DIARY REGISTRY CHECK-IN BUTTON */}
-                  <div className="border-t border-dashed border-gray-200 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="text-xs font-mono text-center sm:text-left text-gray-500">
-                      Did you watch this historic Grand Prix or visit the track? Check into your passport.
-                    </div>
-                    <button
-                      onClick={() => toggleCheckIn(selectedCircuitData.circuitId)}
-                      className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-mono font-bold transition-all shadow-xs cursor-pointer select-none active:scale-95 flex items-center justify-center gap-2 border ${
-                        checkedInVenues.includes(selectedCircuitData.circuitId)
-                          ? "bg-emerald-550 hover:bg-emerald-600 text-white border-emerald-600 font-extrabold"
-                          : "bg-white hover:bg-neutral-50 text-neutral-800 border-gray-200"
-                      }`}
-                    >
-                      {checkedInVenues.includes(selectedCircuitData.circuitId) ? (
-                        <>
-                          <span className="text-xs">✔</span> PASSPORT COMPLETED (CHECK-OUT)
-                        </>
-                      ) : (
-                        <>
-                          <span>✈</span> CERTIFY PASSPORT STAMP CHECK-IN
-                        </>
-                      )}
-                    </button>
-                  </div>
-
                 </div>
               </div>
 
               {/* Minimal Travel journal guidelines quote card */}
-              <div className="p-4 bg-amber-50/30 rounded-xl border border-amber-900/10 text-center font-mono text-[10px] text-neutral-550 select-none">
-                ℹ️ F1 World Tour Passport saves checked-in venues securely in browser cache memory. Use filters on the left to track achievements.
+              <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 text-center font-mono text-[10px] text-neutral-550 select-none">
+                ℹ️ Select any track venue from the left directory system to focus and fetch technical maps. Click on the track grid to trace laps.
               </div>
             </div>
           ) : (
             <div className="text-center py-24 bg-white border border-dashed border-gray-200 rounded-3xl font-mono text-gray-400">
-              ⚠️ Select a Grand Prix venue on the left passport router catalog list to print active journey metrics.
+              ⚠️ Select a Grand Prix venue on the left track directory list to print active journey metrics.
             </div>
           )}
         </div>
 
       </div>
+
+      {/* INTERACTIVE ZOOM/SWEEP TELEMETRY MODAL OVERLAY */}
+      {isInteractiveViewerOpen && selectedCircuitData && activeTrackInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/95 backdrop-blur-md overflow-y-auto">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl w-full max-w-5xl overflow-hidden shadow-2xl relative flex flex-col my-4 md:my-8">
+            
+            {/* Visual top indicator bar */}
+            <div className="h-1 bg-[#EF1A2D] w-full" />
+            
+            <button 
+              onClick={() => setIsInteractiveViewerOpen(false)}
+              className="absolute top-4 right-4 p-2 bg-neutral-800/80 hover:bg-[#EF1A2D] text-white rounded-full transition-colors cursor-pointer select-none z-35"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="p-6 md:p-8 flex-1 flex flex-col space-y-6">
+              {/* Header telemetry details */}
+              <div className="border-b border-neutral-800 pb-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{getCountryEmoji(selectedCircuitData.Location.country)}</span>
+                    <span className="text-[9.5px] font-mono font-bold tracking-widest text-[#EF1A2D] uppercase block">
+                      GRID MATRIX ANALYZER // ACTIVE VECTOR TRACE
+                    </span>
+                  </div>
+                  <h2 className="text-2xl font-black tracking-tight text-white uppercase sm:text-3xl">
+                    {selectedCircuitData.circuitName}
+                  </h2>
+                  <p className="text-xs font-mono text-neutral-400">
+                    SYSTEM ID: <span className="text-white font-medium">GP-{selectedCircuitData.circuitId.toUpperCase()}-{season}</span>
+                    {selectedCircuitData.circuitId === 'monaco' && (
+                      <span className="ml-2.5 text-[#EF1A2D] font-bold bg-[#EF1A2D]/10 px-2 py-0.5 rounded border border-[#EF1A2D]/35">
+                        ✓ REAL GPS XYZ DATA ACTIVATED (539 COORDINATES)
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { id: 'default', label: 'DEFAULT PATH' },
+                    { id: 'racing', label: 'IDEAL APEX LINE' },
+                    { id: 'drs', label: 'DRS ZONES' },
+                    { id: 'elevation', label: 'Z-ELEVATION PROFILE' }
+                  ].map((layer) => (
+                    <button
+                      key={layer.id}
+                      onClick={() => setActiveLayer(layer.id as any)}
+                      className={`px-3 py-1.5 rounded-xl font-mono text-[10px] font-bold tracking-wider transition-all cursor-pointer ${
+                        activeLayer === layer.id
+                          ? "bg-[#EF1A2D] text-white"
+                          : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
+                      }`}
+                    >
+                      {layer.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dynamic Interactive Split Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch flex-1">
+                
+                {/* Main Giant Vector Box */}
+                <div className="lg:col-span-7 bg-black rounded-2xl border border-neutral-800 p-6 flex flex-col justify-between relative overflow-hidden h-[340px] md:h-[400px]">
+                  {/* Grid background */}
+                  <div className="absolute inset-0 bg-[radial-gradient(#ffffff04_1px,transparent_1px)] [background-size:16px_16px] opacity-80" />
+                  <div className="absolute top-4 left-4 text-[8px] font-mono text-neutral-400 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping" />
+                    <span>LIVE TRACK SWEEP SCANNER</span>
+                  </div>
+
+                  {/* Render Map */}
+                  <div className="mx-auto my-auto relative flex items-center justify-center">
+                    <svg 
+                      viewBox="0 0 100 65" 
+                      className="w-full max-w-[28rem] h-auto drop-shadow-[0_0_12px_rgba(239,26,45,0.25)]"
+                    >
+                      {/* SVG path background for contrast */}
+                      <path
+                        d={activeTrackInfo.path}
+                        fill="none"
+                        stroke="#171717"
+                        strokeWidth="6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+
+                      {/* Base reference line */}
+                      <path
+                        ref={pathRef}
+                        id="telemetry-path"
+                        d={activeTrackInfo.path}
+                        fill="none"
+                        stroke={activeLayer === 'racing' ? '#262626' : '#2d2d2d'}
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+
+                      {/* Ideal Racing Line Overlay with multi-color stroke simulation */}
+                      {activeLayer === 'racing' && (
+                        <>
+                          <path
+                            d={activeTrackInfo.path}
+                            fill="none"
+                            stroke="#10b981"
+                            strokeWidth="3.5"
+                            strokeDasharray="20 40 10 15"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d={activeTrackInfo.path}
+                            fill="none"
+                            stroke="#f59e0b"
+                            strokeWidth="3.5"
+                            strokeDashoffset="15"
+                            strokeDasharray="15 35 12 25"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d={activeTrackInfo.path}
+                            fill="none"
+                            stroke="#ef4444"
+                            strokeWidth="3.5"
+                            strokeDashoffset="45"
+                            strokeDasharray="10 40 8 30"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </>
+                      )}
+
+                      {/* DRS Activation / Detection Highlight Overlay */}
+                      {activeLayer === 'drs' && (
+                        <path
+                          d={activeTrackInfo.path}
+                          fill="none"
+                          stroke="#eab308"
+                          strokeDasharray="25 65"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+
+                      {/* Elevation Heat highlight */}
+                      {activeLayer === 'elevation' && (
+                        <path
+                          d={activeTrackInfo.path}
+                          fill="none"
+                          stroke="#a855f7"
+                          strokeDasharray="40 50 15 20"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+
+                      {/* Sliding Sim Racing car indicator representing real physics */}
+                      {carPosition.x > 0 && (
+                        <g>
+                          {/* Glowing outer aura */}
+                          <circle 
+                            cx={carPosition.x} 
+                            cy={carPosition.y} 
+                            r="4" 
+                            fill="#EF1A2D" 
+                            opacity="0.4"
+                            className="animate-pulse"
+                          />
+                          {/* Inner high intensity core */}
+                          <circle 
+                            cx={carPosition.x} 
+                            cy={carPosition.y} 
+                            r="2" 
+                            fill="#ffffff" 
+                            stroke="#EF1A2D"
+                            strokeWidth="1.5"
+                          />
+                        </g>
+                      )}
+                    </svg>
+                  </div>
+
+                  {/* Active sector metrics for Monaco */}
+                  <div className="flex justify-between items-center bg-neutral-900/80 px-4 py-2 rounded-xl border border-neutral-850 z-10 font-mono text-[9px] text-neutral-450">
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      SECTOR 1 (SPEED)
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      SECTOR 2 (HAIRPIN)
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                      SECTOR 3 (HARBOR)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Telemetry Control Dashboard */}
+                <div className="lg:col-span-5 flex flex-col justify-between gap-4">
+                  
+                  {/* Realtime Live Gauges */}
+                  <div className="bg-neutral-950 p-5 rounded-2xl border border-neutral-800 space-y-4">
+                    <div className="flex items-center gap-2 font-mono text-[10px] text-neutral-400 border-b border-neutral-850 pb-2">
+                      <Gauge className="w-3.5 h-3.5 text-[#EF1A2D]" />
+                      <span className="tracking-widest uppercase">REAL-TIME LAP METRICS</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800 font-mono text-center relative">
+                        <span className="text-[7.5px] text-neutral-400 uppercase block tracking-wider">SPEED</span>
+                        <strong className="text-xl text-white font-extrabold block mt-1">{simStats.speed} <span className="text-[10px] text-neutral-550">KM/H</span></strong>
+                        <div className="bg-neutral-800 h-1 w-full rounded-full mt-2 overflow-hidden">
+                          <div className="bg-[#EF1A2D] h-full transition-all duration-100" style={{ width: `${(simStats.speed / 340) * 100}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800 font-mono text-center">
+                        <span className="text-[7.5px] text-neutral-400 uppercase block tracking-wider">LATERAL G-FORCE</span>
+                        <strong className="text-xl text-white font-extrabold block mt-1">{simStats.gForce} <span className="text-[10px] text-neutral-550">G</span></strong>
+                        <div className="bg-neutral-800 h-1 w-full rounded-full mt-2 overflow-hidden">
+                          <div className="bg-amber-400 h-full transition-all duration-100" style={{ width: `${(simStats.gForce / 5.5) * 100}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800 font-mono">
+                        <div className="flex justify-between text-[7.5px] text-neutral-400 uppercase tracking-wider mb-1">
+                          <span>THROTTLE</span>
+                          <span>{simStats.throttle}%</span>
+                        </div>
+                        <div className="bg-neutral-800 h-2 w-full rounded-full overflow-hidden">
+                          <div className="bg-emerald-500 h-full transition-all duration-150" style={{ width: `${simStats.throttle}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800 font-mono">
+                        <div className="flex justify-between text-[7.5px] text-neutral-400 uppercase tracking-wider mb-1">
+                          <span>BRAKING FORCE</span>
+                          <span>{simStats.brake}%</span>
+                        </div>
+                        <div className="bg-neutral-800 h-2 w-full rounded-full overflow-hidden">
+                          <div className="bg-rose-500 h-full transition-all duration-150" style={{ width: `${simStats.brake}%` }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-neutral-900 p-3.5 rounded-xl border border-neutral-800 flex justify-between items-center font-mono">
+                      <span className="text-xs text-neutral-300">SELECTED GEAR</span>
+                      <span className="text-2xl text-white font-extrabold leading-none">{simStats.gear || 4} <span className="text-[9px] text-neutral-500 font-bold">GR</span></span>
+                    </div>
+                  </div>
+
+                  {/* Elevation chart or coordinate metrics */}
+                  <div className="bg-neutral-950 p-5 rounded-2xl border border-neutral-800 space-y-3">
+                    <div className="flex items-center gap-2 font-mono text-[10px] text-neutral-400 border-b border-neutral-850 pb-2 justify-between">
+                      <span className="flex items-center gap-2 uppercase tracking-widest leading-none">
+                        <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
+                        Z-Elevation Profile
+                      </span>
+                      <span className="text-[7.5px] text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded">GP COORD EXTRACT</span>
+                    </div>
+
+                    {selectedCircuitData.circuitId === 'monaco' ? (
+                      <div className="space-y-3">
+                        <div className="h-16 flex items-end">
+                          <svg viewBox="0 0 100 20" className="w-full h-full text-purple-500 overflow-visible">
+                            <path
+                              d="M 0,20 L 5,19 Q 10,18 15,14 T 25,10 T 35,6 T 45,4 T 55,2 T 65,4 T 75,10 Q 80,14 85,18 L 100,20"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              className="animate-pulse"
+                            />
+                            <path
+                              d="M 0,20 L 5,19 Q 10,18 15,14 T 25,10 T 35,6 T 45,4 T 55,2 T 65,4 T 75,10 Q 80,14 85,18 L 100,20 L 100,20 L 0,20 Z"
+                              fill="rgba(168, 85, 247, 0.08)"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex justify-between items-center font-mono text-[8.5px] text-neutral-500 border-t border-neutral-900 pt-2 shrink-0">
+                          <span>MIN: 476M (HARBOR)</span>
+                          <span className="text-center text-purple-400 font-bold">DELTA: 419M</span>
+                          <span>MAX: 895M (CASINO)</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="py-2 flex items-center justify-center font-mono text-[9px] text-neutral-500 italic text-center">
+                        Standard elevation profiles modeled from race lap logs. Max delta altitude varies by round.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom stats notes */}
+                  <div className="p-3.5 bg-neutral-900 rounded-xl border border-neutral-800 max-w-full overflow-hidden text-[9px] text-neutral-400 text-center font-mono">
+                    💡 Selecting filters in the analyzer configures active overlay traces. Record is {activeTrackInfo.record}.
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

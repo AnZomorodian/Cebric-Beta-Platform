@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "stream-okru-demo",
+    "title": "Odnoklassniki Demo Broadcast",
+    "url": "https://ok.ru/video/14667730193068",
+    "platform": "ok_ru",
+    "status": "live",
+    "category": "Demo Feed",
+    "description": "High fidelity playback of user requested OK.ru broadcast streaming link."
+  }
+]

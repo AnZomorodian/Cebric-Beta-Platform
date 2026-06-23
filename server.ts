@@ -2575,68 +2575,17 @@ function readUploadedTelemetries(): any[] {
     if (exists) {
       const data = fs.readFileSync(TELEMETRY_UPLOADS_PATH, "utf8");
       parsed = JSON.parse(data || "[]");
+    } else {
+      // Create empty persistent file if it does not exist
+      fs.writeFileSync(TELEMETRY_UPLOADS_PATH, "[]", "utf8");
     }
     
     if (!Array.isArray(parsed)) {
       parsed = [];
     }
-
-    const hasBarcelona = parsed.some(d => d.gp && d.gp.toLowerCase() === "barcelona" && Number(d.year) === 2026);
-    console.log(`[Diagnostic] hasBarcelona check: ${hasBarcelona}`);
-    if (!hasBarcelona) {
-      const pathsToTry = [
-        path.join(process.cwd(), "src/data/rawTelemetryCsv.ts"),
-        path.join(__dirname, "src/data/rawTelemetryCsv.ts"),
-        "src/data/rawTelemetryCsv.ts",
-        "./src/data/rawTelemetryCsv.ts"
-      ];
-      let telemetryFile = "";
-      for (const p of pathsToTry) {
-        if (fs.existsSync(p)) {
-          telemetryFile = p;
-          break;
-        }
-      }
-      console.log(`[Diagnostic] Found telemetry file at: ${telemetryFile || "NONE"}`);
-      if (telemetryFile) {
-        const content = fs.readFileSync(telemetryFile, "utf8");
-        const lapsMatch = content.match(/export\s+const\s+HAM_LAPS_CSV\s*=\s*`([\s\S]*?)`/);
-        const telMatch = content.match(/export\s+const\s+HAM_TELEMETRY_CSV\s*=\s*`([\s\S]*?)`/);
-        console.log(`[Diagnostic] matches -> lapsMatch: ${!!lapsMatch}, telMatch: ${!!telMatch}`);
-        
-        if (lapsMatch && telMatch) {
-          parsed.push({
-            id: "tel-barcelona-2026-ham",
-            year: 2026,
-            gp: "Barcelona",
-            session: "Race",
-            driver: "HAM",
-            lapsCsv: lapsMatch[1].trim(),
-            telemetryCsv: telMatch[1].trim(),
-            uploadedAt: new Date().toISOString()
-          });
-          
-          const aloLaps = lapsMatch[1].slice().replace(/HAM/g, "ALO").replace(/44/g, "14").replace(/Ferrari/g, "Aston Martin");
-          const aloTel = telMatch[1].slice().replace(/HAM/g, "ALO");
-          parsed.push({
-            id: "tel-barcelona-2026-alo",
-            year: 2026,
-            gp: "Barcelona",
-            session: "Race",
-            driver: "ALO",
-            lapsCsv: aloLaps.trim(),
-            telemetryCsv: aloTel.trim(),
-            uploadedAt: new Date().toISOString()
-          });
-          
-          fs.writeFileSync(TELEMETRY_UPLOADS_PATH, JSON.stringify(parsed, null, 2), "utf8");
-          console.log("[Diagnostic] Successfully seeded Barcelona telemetry list in UploadedTelemetries.json!");
-        }
-      }
-    }
     return parsed;
   } catch (error) {
-    console.error("Error reading or seeding UploadedTelemetries.json:", error);
+    console.error("Error reading UploadedTelemetries.json:", error);
     return [];
   }
 }

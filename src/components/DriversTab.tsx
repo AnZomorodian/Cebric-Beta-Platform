@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { User, Globe, Calendar, ExternalLink } from 'lucide-react';
+import { User, Globe, Calendar } from 'lucide-react';
 import { DriverStanding } from '../types';
 import { TEAM_HEX, TEAM_BG } from '../data/mockData';
 
@@ -108,7 +108,6 @@ export default function DriversTab({ driverStandings, isLoading, season }: Drive
                   )}
                   {driver.url && (
                     <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-dashed border-gray-100 mt-1">
-                      <ExternalLink size={12} className="text-[#EF1A2D]" />
                       <a 
                         href={driver.url} 
                         target="_blank" 

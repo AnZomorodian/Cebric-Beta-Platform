@@ -106,6 +106,34 @@ export default function DriversTab({ driverStandings, isLoading, season }: Drive
                       <span>Born: <strong className="text-gray-700 font-semibold">{driver.dateOfBirth}</strong></span>
                     </div>
                   )}
+                  {driver.url && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-dashed border-gray-100 mt-1">
+                      <ExternalLink size={12} className="text-[#EF1A2D]" />
+                      <a 
+                        href={driver.url} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-[#EF1A2D] hover:underline font-bold text-[10px] uppercase font-mono tracking-wider"
+                        title={`${driver.givenName} Wikipedia BIO`}
+                      >
+                        Wiki Bio
+                      </a>
+                      {constructor?.url && (
+                        <>
+                          <span className="text-gray-300">•</span>
+                          <a 
+                            href={constructor.url} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-gray-500 hover:text-black hover:underline text-[10px] uppercase font-mono font-bold tracking-wider"
+                            title={`${constructor.name} Team Wiki`}
+                          >
+                            team wiki
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
 

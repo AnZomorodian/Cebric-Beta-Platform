@@ -134,6 +134,67 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
   // Biometric toggle
   const [biometricEnabled, setBiometricEnabled] = useState<boolean>(false);
 
+  // Sidebar config state
+  const [sidebarConfig, setSidebarConfig] = useState<Record<string, boolean>>(() => {
+    try {
+      const cached = localStorage.getItem(`sidebar_visibility_${currentUser?.username || 'guests'}`);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return {
+      dashboard: true,
+      news: true,
+      schedule: true,
+      standings: true,
+      drivers: true,
+      'live-stream': true,
+      circuits: true,
+      compare: true,
+      laps: true,
+      polls: true,
+      predictions: true,
+      auth: true,
+    };
+  });
+
+  const handleToggleSidebarItem = (itemId: string) => {
+    if (itemId === 'dashboard' || itemId === 'auth') return;
+    const updated = {
+      ...sidebarConfig,
+      [itemId]: sidebarConfig[itemId] === false ? true : false
+    };
+    setSidebarConfig(updated);
+    localStorage.setItem(`sidebar_visibility_${currentUser?.username || 'guests'}`, JSON.stringify(updated));
+    window.dispatchEvent(new Event('sidebar-customization-changed'));
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      try {
+        const cached = localStorage.getItem(`sidebar_visibility_${currentUser.username}`);
+        if (cached) {
+          setSidebarConfig(JSON.parse(cached));
+          return;
+        }
+      } catch (e) {}
+    }
+    setSidebarConfig({
+      dashboard: true,
+      news: true,
+      schedule: true,
+      standings: true,
+      drivers: true,
+      'live-stream': true,
+      circuits: true,
+      compare: true,
+      laps: true,
+      polls: true,
+      predictions: true,
+      auth: true,
+    });
+  }, [currentUser]);
+
   // Active sessions logs list
   const [sessions, setSessions] = useState<any[]>([
     { id: 1, location: 'Monaco Paddock Suite Lounge (Current)', device: 'AI Studio Sandbox Environment', ip: '172.56.230.14', time: 'Active now', icon: 'Cpu' },
@@ -487,16 +548,16 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
     }
   };
 
-  const handleToggleVerifyUser = async (userToToggle: string) => {
+  const handleToggleVerifyUser = async (userToToggle: string, style?: string) => {
     try {
       const res = await fetch('/api/admin/users/toggle-verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usernameToToggle: userToToggle })
+        body: JSON.stringify({ usernameToToggle: userToToggle, verifyStyle: style })
       });
       if (!res.ok) throw new Error('Failed to change user verification status.');
       const data = await res.json();
-      setAdminActionSuccess(`Successfully changed verification for @${userToToggle}: ${data.isVerified ? 'VERIFIED' : 'UNVERIFIED'}`);
+      setAdminActionSuccess(`Successfully changed verification for @${userToToggle}: ${data.isVerified ? 'VERIFIED (' + data.verifyStyle.toUpperCase() + ')' : 'UNVERIFIED'}`);
       fetchAdminUsers();
       setTimeout(() => setAdminActionSuccess(null), 3000);
     } catch (err: any) {
@@ -1331,6 +1392,66 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                     </div>
                   )}
                 </div>
+
+                {/* Sidebar Customizer Beta */}
+                <div className="bg-neutral-50/50 border border-gray-100 rounded-2xl p-5 mt-5 col-span-2">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Settings size={16} className="text-red-500 animate-[spin_8s_linear_infinite]" />
+                    <div>
+                      <h4 className="text-sm font-black font-sans text-black leading-none mb-1">Customize Sidebar Tabs (BETA)</h4>
+                      <p className="text-[10px] text-gray-500 font-mono">Toggle options to show or hide specialized paddock channels. User Hub and Dashboard cannot be deactivated.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 mt-4">
+                    {[
+                      { id: 'dashboard', label: 'Dashboard 🔒' },
+                      { id: 'news', label: 'News Feed' },
+                      { id: 'schedule', label: 'Race Schedule' },
+                      { id: 'standings', label: 'Standings' },
+                      { id: 'drivers', label: 'Drivers & Teams' },
+                      { id: 'live-stream', label: 'Live Stream' },
+                      { id: 'circuits', label: 'Circuits' },
+                      { id: 'compare', label: 'Head to Head' },
+                      { id: 'laps', label: 'Lap Telemetry' },
+                      { id: 'polls', label: 'Paddock Polls' },
+                      { id: 'predictions', label: 'F1 Prediction' },
+                      { id: 'auth', label: 'User Hub 🔒' },
+                    ].map((item) => {
+                      const isLocked = item.id === 'dashboard' || item.id === 'auth';
+                      const isVisible = isLocked ? true : (sidebarConfig[item.id] !== false);
+                      return (
+                        <div 
+                          key={item.id} 
+                          className={`flex items-center justify-between p-2.5 rounded-xl border text-[11px] font-mono transition-all ${
+                            isLocked 
+                              ? 'bg-neutral-150 text-neutral-400 border-neutral-250' 
+                              : isVisible 
+                                ? 'bg-white text-black border-red-500/20 hover:border-red-500/40' 
+                                : 'bg-neutral-50 text-neutral-400 border-neutral-150 opacity-60'
+                          }`}
+                        >
+                          <span className="font-extrabold">{item.label}</span>
+                          {!isLocked ? (
+                            <label className="relative inline-flex items-center cursor-pointer select-none">
+                              <input 
+                                type="checkbox" 
+                                checked={isVisible}
+                                disabled={isLocked}
+                                onChange={() => handleToggleSidebarItem(item.id)}
+                                className="sr-only peer"
+                              />
+                              <div className="w-7 h-3.5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-red-500"></div>
+                            </label>
+                          ) : (
+                            <span className="text-[9px] font-bold text-neutral-400 font-mono select-none">LOCKED</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
               </div>
             </div>
 
@@ -1395,7 +1516,11 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                             <span className="text-white font-extrabold flex items-center gap-1.5">
                               @{u.username}
                               {u.isVerified && (
-                                <BadgeCheck size={14} className="text-blue-500 fill-blue-500/10 shrink-0" title="Verified Player" />
+                                u.verifyStyle === 'admin' ? (
+                                  <BadgeCheck size={14} className="text-purple-500 fill-purple-500/10 shrink-0" title="Admin Verified" />
+                                ) : (
+                                  <BadgeCheck size={14} className="text-blue-500 fill-blue-500/10 shrink-0" title="Verified Player" />
+                                )
                               )}
                               {u.isBanned && (
                                 <span className="text-[8px] bg-rose-600 text-white font-mono font-black uppercase px-1.5 py-0.5 rounded ml-1.5 inline-block align-middle">
@@ -1413,15 +1538,27 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <button
                                   type="button"
-                                  onClick={() => handleToggleVerifyUser(u.username)}
-                                  className={`p-1 rounded transition-all cursor-pointer outline-none border-none ${
-                                    u.isVerified
-                                      ? 'text-blue-400 bg-blue-950/50 border border-blue-900/60'
+                                  onClick={() => handleToggleVerifyUser(u.username, 'regular')}
+                                  className={`p-1.5 rounded transition-all cursor-pointer outline-none border-none ${
+                                    u.isVerified && u.verifyStyle !== 'admin'
+                                      ? 'text-blue-450 bg-blue-950/50 border border-blue-900/60'
                                       : 'text-neutral-500 hover:text-blue-400 hover:bg-neutral-800'
                                   }`}
-                                  title={u.isVerified ? `Remove verify @${u.username}` : `Verify user @${u.username}`}
+                                  title="Toggle Regular Verification badge (Blue)"
                                 >
-                                  <BadgeCheck size={12} className={u.isVerified ? "animate-pulse" : ""} />
+                                  <BadgeCheck size={12} className={u.isVerified && u.verifyStyle !== 'admin' ? "animate-pulse mb-0.5" : "mb-0.5"} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleVerifyUser(u.username, 'admin')}
+                                  className={`p-1.5 rounded transition-all cursor-pointer outline-none border-none ${
+                                    u.isVerified && u.verifyStyle === 'admin'
+                                      ? 'text-purple-400 bg-purple-950/50 border border-purple-900/60 font-bold'
+                                      : 'text-neutral-555 hover:text-purple-400 hover:bg-neutral-800'
+                                  }`}
+                                  title="Toggle Premium Admin Verification badge (Purple)"
+                                >
+                                  <BadgeCheck size={12} className="text-purple-400" />
                                 </button>
                                 <button
                                   type="button"

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Home, Newspaper, Calendar, Trophy, BarChart3, MapPin, ArrowLeftRight, Timer, User, Sparkles, Users, Vote, X, Tv } from 'lucide-react';
 
 interface SidebarProps {
@@ -9,6 +10,37 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeTab, setActiveTab, currentUser, isOpenMobile, onCloseMobile }: SidebarProps) {
+  const [visibilityConfig, setVisibilityConfig] = useState<Record<string, boolean>>(() => {
+    if (currentUser) {
+      try {
+        const cached = localStorage.getItem(`sidebar_visibility_${currentUser.username}`);
+        if (cached) return JSON.parse(cached);
+      } catch (e) {}
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      if (currentUser) {
+        try {
+          const cached = localStorage.getItem(`sidebar_visibility_${currentUser.username}`);
+          if (cached) {
+            setVisibilityConfig(JSON.parse(cached));
+            return;
+          }
+        } catch (e) {}
+      }
+      setVisibilityConfig({});
+    };
+
+    handleUpdate();
+    window.addEventListener('sidebar-customization-changed', handleUpdate);
+    return () => {
+      window.removeEventListener('sidebar-customization-changed', handleUpdate);
+    };
+  }, [currentUser]);
+
   const rawMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'news', label: 'News Feed', icon: Newspaper },
@@ -25,6 +57,12 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isOpenMo
   ];
 
   const menuItems = rawMenuItems.filter(item => {
+    if (item.id === 'dashboard' || item.id === 'auth') {
+      return true;
+    }
+    if (currentUser && visibilityConfig && visibilityConfig[item.id] === false) {
+      return false;
+    }
     if (!currentUser) {
       if (item.id === 'predictions' || item.id === 'compare' || item.id === 'laps' || item.id === 'live-stream') {
         return false;

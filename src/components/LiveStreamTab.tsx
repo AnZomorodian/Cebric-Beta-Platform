@@ -176,7 +176,8 @@ export default function LiveStreamTab() {
         text: newMsgText.trim(),
         time: timeStr,
         color: '#EF1A2D',
-        isVerified: !!currentSessionUser?.isVerified
+        isVerified: !!currentSessionUser?.isVerified,
+        verifyStyle: currentSessionUser?.verifyStyle || 'regular'
       }
     ]);
     setNewMsgText('');
@@ -595,7 +596,11 @@ export default function LiveStreamTab() {
                     >
                       {m.user}
                       {m.isVerified && (
-                        <BadgeCheck size={12} className="text-blue-550 fill-blue-500/10 shrink-0 inline" title="Verified Player" />
+                        m.verifyStyle === 'admin' ? (
+                          <BadgeCheck size={12} className="text-purple-500 fill-purple-500/10 shrink-0 inline" title="Admin Verified" />
+                        ) : (
+                          <BadgeCheck size={12} className="text-blue-550 fill-blue-500/10 shrink-0 inline" title="Verified Player" />
+                        )
                       )}
                     </span>
                     <span>{m.time}</span>

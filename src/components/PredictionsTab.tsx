@@ -216,15 +216,16 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
   };
 
   // Toggle user verification status
-  const handleToggleVerify = async (username: string) => {
+  const handleToggleVerify = async (username: string, verifyStyle?: string) => {
     try {
       const res = await fetch("/api/admin/users/toggle-verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usernameToToggle: username })
+        body: JSON.stringify({ usernameToToggle: username, verifyStyle })
       });
       if (res.ok) {
         await fetchUsersPredictions();
+        await loadPaddockData();
       }
     } catch (e) {
       console.error("Failed to toggle verification:", e);
@@ -1102,22 +1103,37 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                               <strong className="text-white text-xs flex items-center gap-1 font-bold">
                                 {usr.givenName} {usr.familyName} (@{usr.username})
                                 {usr.isVerified && (
-                                  <BadgeCheck size={14} className="text-blue-500 fill-blue-500/10 shrink-0 animate-pulse" title="Verified Player" />
+                                  usr.verifyStyle === 'admin' ? (
+                                    <BadgeCheck size={14} className="text-purple-500 fill-purple-500/10 shrink-0" title="Admin Verified" />
+                                  ) : (
+                                    <BadgeCheck size={14} className="text-blue-500 fill-blue-500/10 shrink-0 animate-pulse" title="Verified Player" />
+                                  )
                                 )}
                               </strong>
                               <span className="text-[10px] text-neutral-500 font-mono block mt-0.5">{usr.email || "No Email"} | Passport ID: {usr.passportNumber || "N/A"}</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => handleToggleVerify(usr.username)}
+                                onClick={() => handleToggleVerify(usr.username, 'regular')}
                                 className={`px-2 py-0.5 rounded text-[8px] font-mono uppercase font-bold transition-all cursor-pointer ${
-                                  usr.isVerified 
+                                  usr.isVerified && usr.verifyStyle !== 'admin'
                                     ? 'bg-blue-950 text-blue-400 border border-blue-800 hover:bg-blue-900/30' 
                                     : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:bg-neutral-850'
                                 }`}
                               >
-                                {usr.isVerified ? '✓ Verified' : 'Verify User'}
+                                {usr.isVerified && usr.verifyStyle !== 'admin' ? '✓ Blue' : 'Verify Blue'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleVerify(usr.username, 'admin')}
+                                className={`px-2 py-0.5 rounded text-[8px] font-mono uppercase font-bold transition-all cursor-pointer ${
+                                  usr.isVerified && usr.verifyStyle === 'admin'
+                                    ? 'bg-purple-950 text-purple-400 border border-purple-800 hover:bg-purple-900/30' 
+                                    : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:bg-neutral-850'
+                                }`}
+                              >
+                                {usr.isVerified && usr.verifyStyle === 'admin' ? '✓ Purple' : 'Verify Purple'}
                               </button>
                               <span className="text-[9px] font-mono bg-neutral-900 text-neutral-400 px-2 py-0.5 rounded-full">
                                 Score: {usr.score} pts
@@ -1734,6 +1750,13 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                             <span className="text-black font-extrabold block leading-normal">
                               @{comp.username}
                             </span>
+                            {comp.isVerified && (
+                              comp.verifyStyle === 'admin' ? (
+                                <BadgeCheck size={13} className="text-purple-500 fill-purple-500/10 shrink-0 inline" title="Admin Verified Paddock Expert" />
+                              ) : (
+                                <BadgeCheck size={13} className="text-blue-500 fill-blue-500/10 shrink-0 inline" title="Verified Paddock Player" />
+                              )
+                            )}
                             {isCurUsr && <span className="bg-[#EF1A2D] text-white text-[8px] font-mono px-1 rounded-sm uppercase tracking-wide">You</span>}
                           </div>
                           <span className="text-[8.5px] text-gray-400 block leading-none">

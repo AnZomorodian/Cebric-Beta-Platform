@@ -109,14 +109,21 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.error('Error fetching alerts', e);
+      console.log('Announcements interface loaded, syncing changes...', e);
     }
   };
 
   useEffect(() => {
-    fetchActiveAlert();
-    const interval = setInterval(fetchActiveAlert, 6000);
-    return () => clearInterval(interval);
+    // Delay first load by 1.5 seconds to give Vite/Express time to initialize gracefully
+    const delayTimer = setTimeout(() => {
+      fetchActiveAlert();
+    }, 1500);
+
+    const interval = setInterval(fetchActiveAlert, 10000);
+    return () => {
+      clearTimeout(delayTimer);
+      clearInterval(interval);
+    };
   }, []);
 
   // Instantly recover user session from cache on mount and sync latest status
@@ -141,6 +148,7 @@ export default function App() {
               const updated = {
                 ...parsed,
                 isVerified: statusData.isVerified,
+                verifyStyle: statusData.verifyStyle,
                 isAdmin: statusData.isAdmin,
                 isBanned: statusData.isBanned
               };

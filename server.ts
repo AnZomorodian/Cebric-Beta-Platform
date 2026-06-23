@@ -135,7 +135,8 @@ app.post("/api/login", (req, res) => {
         passportNumber: user.passportNumber || `${user.givenName ? user.givenName.charAt(0).toUpperCase() : 'U'}${Math.floor(1000 + Math.random() * 9000)}`,
         isAdmin: user.username === "Admin" || !!user.isAdmin,
         isBanned: !!user.isBanned,
-        isVerified: !!user.isVerified
+        isVerified: !!user.isVerified,
+        verifyStyle: user.verifyStyle || "regular"
       }
     });
   } catch (err: any) {
@@ -159,7 +160,8 @@ app.get("/api/admin/users", (req, res) => {
       prediction: u.prediction || null,
       history: u.history || [],
       isBanned: !!u.isBanned,
-      isVerified: !!u.isVerified
+      isVerified: !!u.isVerified,
+      verifyStyle: u.verifyStyle || "regular"
     }));
     return res.json(safeUsers);
   } catch (err: any) {
@@ -182,6 +184,7 @@ app.get("/api/user-status", (req, res) => {
     return res.json({
       username: user.username,
       isVerified: !!user.isVerified,
+      verifyStyle: user.verifyStyle || "regular",
       isAdmin: user.username === "Admin" || !!user.isAdmin,
       isBanned: !!user.isBanned
     });
@@ -216,7 +219,7 @@ app.post("/api/admin/users/toggle-ban", (req, res) => {
 // Admin REST Endpoint: Toggle Verify status on specific user
 app.post("/api/admin/users/toggle-verify", (req, res) => {
   try {
-    const { usernameToToggle } = req.body;
+    const { usernameToToggle, verifyStyle } = req.body;
     if (!usernameToToggle) {
       return res.status(400).json({ error: "Username was not received in body." });
     }
@@ -225,9 +228,24 @@ app.post("/api/admin/users/toggle-verify", (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
-    user.isVerified = !user.isVerified;
+    
+    if (verifyStyle) {
+      if (user.isVerified && user.verifyStyle === verifyStyle) {
+        user.isVerified = false;
+        user.verifyStyle = "regular";
+      } else {
+        user.isVerified = true;
+        user.verifyStyle = verifyStyle;
+      }
+    } else {
+      user.isVerified = !user.isVerified;
+      if (!user.verifyStyle) {
+        user.verifyStyle = "regular";
+      }
+    }
+    
     writeUsers(users);
-    return res.json({ success: true, isVerified: !!user.isVerified });
+    return res.json({ success: true, isVerified: !!user.isVerified, verifyStyle: user.verifyStyle || "regular" });
   } catch (e: any) {
     return res.status(500).json({ error: e.message });
   }
@@ -960,7 +978,9 @@ app.get("/api/leaderboard", (req, res) => {
       givenName: u.givenName || u.username,
       familyName: u.familyName || "",
       score: u.score || 0,
-      hasPrediction: !!u.prediction
+      hasPrediction: !!u.prediction,
+      isVerified: !!u.isVerified,
+      verifyStyle: u.verifyStyle || "regular"
     })).sort((a, b) => b.score - a.score);
 
     return res.json(list);

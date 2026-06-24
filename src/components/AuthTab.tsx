@@ -1518,6 +1518,8 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                               {u.isVerified && (
                                 u.verifyStyle === 'admin' ? (
                                   <BadgeCheck size={14} className="text-purple-500 fill-purple-500/10 shrink-0" title="Admin Verified" />
+                                ) : u.verifyStyle === 'premium' ? (
+                                  <BadgeCheck size={14} className="text-red-500 fill-red-500/10 shrink-0" title="Premium Verified Player" />
                                 ) : (
                                   <BadgeCheck size={14} className="text-blue-500 fill-blue-500/10 shrink-0" title="Verified Player" />
                                 )
@@ -1540,13 +1542,25 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                                   type="button"
                                   onClick={() => handleToggleVerifyUser(u.username, 'regular')}
                                   className={`p-1.5 rounded transition-all cursor-pointer outline-none border-none ${
-                                    u.isVerified && u.verifyStyle !== 'admin'
+                                    u.isVerified && u.verifyStyle !== 'admin' && u.verifyStyle !== 'premium'
                                       ? 'text-blue-450 bg-blue-950/50 border border-blue-900/60'
                                       : 'text-neutral-500 hover:text-blue-400 hover:bg-neutral-800'
                                   }`}
                                   title="Toggle Regular Verification badge (Blue)"
                                 >
-                                  <BadgeCheck size={12} className={u.isVerified && u.verifyStyle !== 'admin' ? "animate-pulse mb-0.5" : "mb-0.5"} />
+                                  <BadgeCheck size={12} className={u.isVerified && u.verifyStyle !== 'admin' && u.verifyStyle !== 'premium' ? "animate-pulse mb-0.5" : "mb-0.5"} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleVerifyUser(u.username, 'premium')}
+                                  className={`p-1.5 rounded transition-all cursor-pointer outline-none border-none ${
+                                    u.isVerified && u.verifyStyle === 'premium'
+                                      ? 'text-red-500 bg-red-950/50 border border-red-900/60 font-bold'
+                                      : 'text-neutral-555 hover:text-red-500 hover:bg-neutral-800'
+                                  }`}
+                                  title="Toggle Premium User Verification badge (Red)"
+                                >
+                                  <BadgeCheck size={12} className="text-red-500" />
                                 </button>
                                 <button
                                   type="button"
@@ -1961,7 +1975,7 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="bg-white border border-gray-150 rounded-3xl p-6 md:p-8 space-y-6 shadow-sm select-none"
+            className="bg-white border border-gray-150 rounded-3xl p-6 md:p-8 space-y-6 shadow-sm"
           >
             {/* Form Title */}
             <header className="text-center space-y-1.5 pb-2 border-b border-gray-100">

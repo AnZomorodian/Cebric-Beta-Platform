@@ -90,7 +90,7 @@ export default function NewsTab() {
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.3 }}
       id="news-tab-view"
-      className="space-y-8 select-none"
+      className="space-y-8"
     >
       {/* Header section (strictly zero icons) */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">

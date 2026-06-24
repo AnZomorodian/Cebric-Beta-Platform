@@ -383,24 +383,6 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
 
   const [selectedCircuitId, setSelectedCircuitId] = useState<string>('bahrain');
   
-  // F1 Paddock Traveler Diary checklist stored in localStorage
-  const [checkedInVenues, setCheckedInVenues] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem('f1_passport_checked_in');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const toggleCheckIn = (id: string) => {
-    const next = checkedInVenues.includes(id) 
-      ? checkedInVenues.filter(item => item !== id)
-      : [...checkedInVenues, id];
-    setCheckedInVenues(next);
-    localStorage.setItem('f1_passport_checked_in', JSON.stringify(next));
-  };
-
   useEffect(() => {
     if (!isInteractiveViewerOpen || !pathRef.current) return;
     let animId: number;
@@ -668,7 +650,6 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
               filteredCircuits.map((circuit) => {
                 const isSelected = selectedCircuitId === circuit.circuitId;
                 const info = TRACK_DETAILS[circuit.circuitId] || { length: '5.10 km', corners: 16 };
-                const checked = checkedInVenues.includes(circuit.circuitId);
                 
                 return (
                   <div
@@ -770,7 +751,7 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                       <div className="my-auto py-2 flex items-center justify-center z-10 transition-transform duration-300 group-hover:scale-105">
                         <svg 
                           viewBox="0 0 100 65" 
-                          className="w-44 h-44 drop-shadow-[0_0_8px_rgba(239,26,45,0.15)]"
+                          className="w-full max-w-[11rem] aspect-[100/65] h-auto drop-shadow-[0_0_8px_rgba(239,26,45,0.15)]"
                         >
                           {/* Outer glow stroke path */}
                           <path
@@ -846,7 +827,7 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                       <div className="bg-neutral-50 p-3.5 rounded-xl border border-gray-150 flex items-center justify-between gap-2">
                         <div className="font-mono">
                           <span className="text-[8.5px] text-gray-400 block uppercase font-bold">OFFICIAL CIRCUIT RECORD</span>
-                          <strong className="text-neutral-850 text-[11px] block mt-0.5">{activeTrackInfo.record}</strong>
+                          <strong className="text-neutral-850 text-[11px] block mt-0.5">{activeTrackInfo.record.replace(/\s*\(.*?\)/g, '')}</strong>
                         </div>
                         <span className="text-lg" title="Track record master">🏆</span>
                       </div>
@@ -858,7 +839,7 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
 
               {/* Minimal Travel journal guidelines quote card */}
               <div className="p-4 bg-neutral-50 rounded-xl border border-neutral-200 text-center font-mono text-[10px] text-neutral-550 select-none">
-                ℹ️ Select any track venue from the left directory system to focus and fetch technical maps. Click on the track grid to trace laps.
+                Select any track venue from the left directory system to focus and fetch technical maps. Click on the track grid to trace laps.
               </div>
             </div>
           ) : (
@@ -908,25 +889,8 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { id: 'default', label: 'DEFAULT PATH' },
-                    { id: 'racing', label: 'IDEAL APEX LINE' },
-                    { id: 'drs', label: 'DRS ZONES' },
-                    { id: 'elevation', label: 'Z-ELEVATION PROFILE' }
-                  ].map((layer) => (
-                    <button
-                      key={layer.id}
-                      onClick={() => setActiveLayer(layer.id as any)}
-                      className={`px-3 py-1.5 rounded-xl font-mono text-[10px] font-bold tracking-wider transition-all cursor-pointer ${
-                        activeLayer === layer.id
-                          ? "bg-[#EF1A2D] text-white"
-                          : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300"
-                      }`}
-                    >
-                      {layer.label}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 font-mono text-[10px] text-neutral-400">
+                  <span>ACTIVE VECTOR PATH TRACE</span>
                 </div>
               </div>
 
@@ -946,7 +910,7 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                   <div className="mx-auto my-auto relative flex items-center justify-center">
                     <svg 
                       viewBox="0 0 100 65" 
-                      className="w-full max-w-[28rem] h-auto drop-shadow-[0_0_12px_rgba(239,26,45,0.25)]"
+                      className="w-full max-w-[28rem] aspect-[100/65] h-auto drop-shadow-[0_0_12px_rgba(239,26,45,0.25)]"
                     >
                       {/* SVG path background for contrast */}
                       <path
@@ -964,72 +928,11 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                         id="telemetry-path"
                         d={activeTrackInfo.path}
                         fill="none"
-                        stroke={activeLayer === 'racing' ? '#262626' : '#2d2d2d'}
+                        stroke="#2d2d2d"
                         strokeWidth="3.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
-
-                      {/* Ideal Racing Line Overlay with multi-color stroke simulation */}
-                      {activeLayer === 'racing' && (
-                        <>
-                          <path
-                            d={activeTrackInfo.path}
-                            fill="none"
-                            stroke="#10b981"
-                            strokeWidth="3.5"
-                            strokeDasharray="20 40 10 15"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d={activeTrackInfo.path}
-                            fill="none"
-                            stroke="#f59e0b"
-                            strokeWidth="3.5"
-                            strokeDashoffset="15"
-                            strokeDasharray="15 35 12 25"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d={activeTrackInfo.path}
-                            fill="none"
-                            stroke="#ef4444"
-                            strokeWidth="3.5"
-                            strokeDashoffset="45"
-                            strokeDasharray="10 40 8 30"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </>
-                      )}
-
-                      {/* DRS Activation / Detection Highlight Overlay */}
-                      {activeLayer === 'drs' && (
-                        <path
-                          d={activeTrackInfo.path}
-                          fill="none"
-                          stroke="#eab308"
-                          strokeDasharray="25 65"
-                          strokeWidth="4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      )}
-
-                      {/* Elevation Heat highlight */}
-                      {activeLayer === 'elevation' && (
-                        <path
-                          d={activeTrackInfo.path}
-                          fill="none"
-                          stroke="#a855f7"
-                          strokeDasharray="40 50 15 20"
-                          strokeWidth="4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      )}
 
                       {/* Sliding Sim Racing car indicator representing real physics */}
                       {carPosition.x > 0 && (
@@ -1128,49 +1031,9 @@ export default function CircuitsTab({ races, isLoading, season }: CircuitsTabPro
                     </div>
                   </div>
 
-                  {/* Elevation chart or coordinate metrics */}
-                  <div className="bg-neutral-950 p-5 rounded-2xl border border-neutral-800 space-y-3">
-                    <div className="flex items-center gap-2 font-mono text-[10px] text-neutral-400 border-b border-neutral-850 pb-2 justify-between">
-                      <span className="flex items-center gap-2 uppercase tracking-widest leading-none">
-                        <TrendingUp className="w-3.5 h-3.5 text-purple-400" />
-                        Z-Elevation Profile
-                      </span>
-                      <span className="text-[7.5px] text-purple-400 border border-purple-500/20 px-1.5 py-0.5 rounded">GP COORD EXTRACT</span>
-                    </div>
-
-                    {selectedCircuitData.circuitId === 'monaco' ? (
-                      <div className="space-y-3">
-                        <div className="h-16 flex items-end">
-                          <svg viewBox="0 0 100 20" className="w-full h-full text-purple-500 overflow-visible">
-                            <path
-                              d="M 0,20 L 5,19 Q 10,18 15,14 T 25,10 T 35,6 T 45,4 T 55,2 T 65,4 T 75,10 Q 80,14 85,18 L 100,20"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              className="animate-pulse"
-                            />
-                            <path
-                              d="M 0,20 L 5,19 Q 10,18 15,14 T 25,10 T 35,6 T 45,4 T 55,2 T 65,4 T 75,10 Q 80,14 85,18 L 100,20 L 100,20 L 0,20 Z"
-                              fill="rgba(168, 85, 247, 0.08)"
-                            />
-                          </svg>
-                        </div>
-                        <div className="flex justify-between items-center font-mono text-[8.5px] text-neutral-500 border-t border-neutral-900 pt-2 shrink-0">
-                          <span>MIN: 476M (HARBOR)</span>
-                          <span className="text-center text-purple-400 font-bold">DELTA: 419M</span>
-                          <span>MAX: 895M (CASINO)</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="py-2 flex items-center justify-center font-mono text-[9px] text-neutral-500 italic text-center">
-                        Standard elevation profiles modeled from race lap logs. Max delta altitude varies by round.
-                      </div>
-                    )}
-                  </div>
-
                   {/* Bottom stats notes */}
                   <div className="p-3.5 bg-neutral-900 rounded-xl border border-neutral-800 max-w-full overflow-hidden text-[9px] text-neutral-400 text-center font-mono">
-                    💡 Selecting filters in the analyzer configures active overlay traces. Record is {activeTrackInfo.record}.
+                    Active track path telemetry loaded. Record is {activeTrackInfo.record.replace(/\s*\(.*?\)/g, '')}.
                   </div>
                 </div>
 

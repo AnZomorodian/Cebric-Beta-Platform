@@ -323,6 +323,8 @@ function readPredictionSettings(): any {
         nextGpName: "British Grand Prix 2026",
         nextGpLocation: "Silverstone Circuit",
         nextGpDate: "2026-07-05T14:00:00Z",
+        qualifyingDeadline: "2026-07-04T13:00:00Z",
+        raceDeadline: "2026-07-05T14:00:00Z",
         globalLock: false,
         scoringRules: {
           pole: 10,
@@ -363,7 +365,16 @@ function readPredictionSettings(): any {
     }
     const data = fs.readFileSync(PRED_SETTINGS_PATH, "utf8");
     const parsed = JSON.parse(data || "{}");
-    return parsed && typeof parsed === "object" ? parsed : {};
+    if (parsed && typeof parsed === "object") {
+      if (!parsed.qualifyingDeadline) {
+        parsed.qualifyingDeadline = parsed.lockTime || "2026-07-04T13:00:00Z";
+      }
+      if (!parsed.raceDeadline) {
+        parsed.raceDeadline = parsed.nextGpDate || "2026-07-05T14:00:00Z";
+      }
+      return parsed;
+    }
+    return {};
   } catch (error) {
     console.error("Error reading from PredictionSettings.json:", error);
     return {};
@@ -526,12 +537,14 @@ app.post("/api/user/prediction", (req, res) => {
       return res.status(400).json({ error: "Missing required username or prediction details" });
     }
 
-    // Check if predictions are locked globally or automatically locked by time
     const settings = readPredictionSettings();
     const now = new Date();
-    const autoLock = settings.lockTime && now >= new Date(settings.lockTime);
-    if (settings.globalLock || autoLock) {
-      return res.status(403).json({ error: "Submissions are currently locked." });
+
+    const qDeadline = settings.qualifyingDeadline ? new Date(settings.qualifyingDeadline) : (settings.lockTime ? new Date(settings.lockTime) : new Date(settings.nextGpDate));
+    const rDeadline = settings.raceDeadline ? new Date(settings.raceDeadline) : new Date(settings.nextGpDate);
+
+    if (settings.globalLock || now >= rDeadline) {
+      return res.status(403).json({ error: "Main race predictions are currently closed and locked." });
     }
 
     const users = readUsers();
@@ -540,7 +553,17 @@ app.post("/api/user/prediction", (req, res) => {
       return res.status(404).json({ error: "User profile not found in database" });
     }
 
-    users[idx].prediction = prediction;
+    const existingPrediction = users[idx].prediction || {};
+    let mergedPrediction = { ...prediction };
+
+    if (now >= qDeadline) {
+      // Qualifying is locked! Revert any changes to Qualifying fields to original submitted values
+      mergedPrediction.poleDriver = existingPrediction.poleDriver || "";
+      mergedPrediction.qualifyingP2 = existingPrediction.qualifyingP2 || "";
+      mergedPrediction.qualifyingP3 = existingPrediction.qualifyingP3 || "";
+    }
+
+    users[idx].prediction = mergedPrediction;
     writeUsers(users);
 
     // Dynamic points calculation support if certified results exist
@@ -882,7 +905,7 @@ app.get("/api/admin/users-predictions", (req, res) => {
 // REST Endpoint: Archive active GP round and instantiate a new GP round
 app.post("/api/admin/archive-and-new-gp", (req, res) => {
   try {
-    const { nextGpName, nextGpLocation, nextGpDate, lockTime } = req.body;
+    const { nextGpName, nextGpLocation, nextGpDate, lockTime, qualifyingDeadline, raceDeadline } = req.body;
     if (!nextGpName || !nextGpLocation || !nextGpDate) {
       return res.status(400).json({ error: "Missing required details to initialize the new F1 Grand Prix session." });
     }
@@ -921,6 +944,8 @@ app.post("/api/admin/archive-and-new-gp", (req, res) => {
       nextGpName,
       nextGpLocation,
       nextGpDate,
+      qualifyingDeadline: qualifyingDeadline || lockTime || new Date(new Date(nextGpDate).getTime() - 24 * 60 * 60 * 1000).toISOString(),
+      raceDeadline: raceDeadline || nextGpDate,
       lockTime: lockTime || null,
       globalLock: false,
       scoringRules: settings.scoringRules || {
@@ -1178,142 +1203,167 @@ let groundingNewsCache: GroundingNewsCache | null = null;
 const GROUNDING_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache
 let groundingCooldownUntil = 0;
 
+// Helper to fetch with a timeout (default 2000ms) to prevent hanging requests in restricted environments
+async function fetchWithTimeout(url: string, options: any = {}, timeoutMs = 2000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 // Rapid F1 news endpoint AND Autosport RSS integration
 app.get("/api/news", async (req, res) => {
-  const now = Date.now();
-
-  // Try in-memory cache first if still valid
-  if (rapidNewsCache && (now - rapidNewsCache.timestamp < RAPID_CACHE_TTL_MS)) {
-    console.log("Serving F1 news from in-memory cache.");
-    return res.json(rapidNewsCache.data);
-  }
-
-  let finalArticles: any[] = [];
-
-  // 1. Fetch live Autosport and Motorsport RSS News Feeds in parallel
   try {
-    console.log("Fetching live Autosport and Motorsport RSS Feeds...");
-    const feedUrls = [
-      { url: "https://www.autosport.com/rss/f1/news/", source: "Autosport RSS", fallbackUrl: "https://www.autosport.com/f1" },
-      { url: "https://www.motorsport.com/rss/f1/news/", source: "Motorsport.com RSS", fallbackUrl: "https://www.motorsport.com/f1" }
-    ];
+    const now = Date.now();
 
-    const feedPromises = feedUrls.map(feed => 
-      fetch(feed.url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) F1-Cebric-Reports"
-        }
-      }).then(async r => {
-        if (r.ok) {
-          const xmlText = await r.text();
-          return parseRSSFeed(xmlText, feed.source, feed.fallbackUrl);
-        }
-        console.warn(`${feed.source} response failed with status:`, r.status);
-        return [];
-      }).catch(err => {
-        console.warn(`${feed.source} fetch exception occurred:`, err.message);
-        return [];
-      })
-    );
-
-    const feedsResults = await Promise.all(feedPromises);
-    const tempArticles: any[] = [];
-    for (const articlesList of feedsResults) {
-      tempArticles.push(...articlesList);
+    // Try in-memory cache first if still valid
+    if (rapidNewsCache && (now - rapidNewsCache.timestamp < RAPID_CACHE_TTL_MS)) {
+      console.log("Serving F1 news from in-memory cache.");
+      return res.json(rapidNewsCache.data);
     }
 
-    // Sort by timestamp descending
-    tempArticles.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+    let finalArticles: any[] = [];
 
-    // Keep unique elements by normalized title to prevent duplicates across feeds!
-    const seenTitles = new Set<string>();
-    for (const art of tempArticles) {
-      const normalizedTitle = art.title.toLowerCase().trim();
-      if (!seenTitles.has(normalizedTitle)) {
-        seenTitles.add(normalizedTitle);
-        finalArticles.push(art);
-      }
-    }
-  } catch (err: any) {
-    console.warn("Main RSS fetch operation failed:", err.message);
-  }
-
-  // 2. Combine or supplement with RapidAPI F1 News source (if not on cooldown)
-  if (now >= rapidNewsCooldownUntil && finalArticles.length < 10) {
+    // 1. Fetch live Autosport and Motorsport RSS News Feeds in parallel
     try {
-      console.log("Supplementing with F1-Motorsport-Data via RapidAPI...");
-      const response = await fetch("https://f1-motorsport-data.p.rapidapi.com/news", {
-        method: "GET",
-        headers: {
-          "x-rapidapi-key": "64d2b1172cmsh862fc39e54b0220p1c551djsneb7dbe8ad351",
-          "x-rapidapi-host": "f1-motorsport-data.p.rapidapi.com",
-          "Content-Type": "application/json"
-        }
-      });
+      console.log("Fetching live Autosport and Motorsport RSS Feeds with timeout...");
+      const feedUrls = [
+        { url: "https://www.autosport.com/rss/f1/news/", source: "Autosport RSS", fallbackUrl: "https://www.autosport.com/f1" },
+        { url: "https://www.motorsport.com/rss/f1/news/", source: "Motorsport.com RSS", fallbackUrl: "https://www.motorsport.com/f1" }
+      ];
 
-      if (response.ok) {
-        const data = await response.json();
-        const rawList = Array.isArray(data) ? data : (data && typeof data === 'object' && Array.isArray((data as any).articles) ? (data as any).articles : []);
-        
-        const standardRapidArticles = rawList.map((item: any) => {
-          const title = item.title || item.heading || item.headline || item.name || "Formula 1 News Update";
-          // Unsplash F1 News visual placeholders (no lamborghinis, pure high-quality Formula 1 images)
-          const fallbackF1Images = [
-            "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80&w=400",
-            "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=400",
-            "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&q=80&w=400",
-            "https://images.unsplash.com/photo-1627448831828-4f81014e76d9?auto=format&fit=crop&q=80&w=400"
-          ];
-          let hash = 0;
-          for (let i = 0; i < title.length; i++) {
-            hash = title.charCodeAt(i) + ((hash << 5) - hash);
+      const feedPromises = feedUrls.map(feed => 
+        fetchWithTimeout(feed.url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) F1-Cebric-Reports"
           }
-          const imageUrl = item.imageUrl || item.image || item.img || item.thumbnail || item.pic || fallbackF1Images[Math.abs(hash) % fallbackF1Images.length];
-
-          return {
-            title,
-            url: item.url || item.link || item.source_url || item.href || "https://www.formula1.com",
-            description: item.description || item.desc || item.summary || item.text || item.short_desc || "Learn the latest updates directly from major F1 paddocks.",
-            date: item.date || item.published || item.time || item.pubDate || new Date().toLocaleDateString(),
-            imageUrl,
-            source: item.source || item.publisher || item.author || "F1 Feed"
-          };
-        });
-
-        // Filter out duplicate headlines to keep it pristine and unique
-        const existingTitles = new Set(finalArticles.map(a => a.title.toLowerCase().trim()));
-        for (const rArt of standardRapidArticles) {
-          if (!existingTitles.has(rArt.title.toLowerCase().trim())) {
-            finalArticles.push(rArt);
+        }, 2000).then(async r => {
+          if (r.ok) {
+            const xmlText = await r.text();
+            return parseRSSFeed(xmlText, feed.source, feed.fallbackUrl);
           }
-        }
-      } else {
-        if (response.status === 429) {
-          rapidNewsCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 min cooloff
+          console.warn(`${feed.source} response failed with status:`, r.status);
+          return [];
+        }).catch(err => {
+          console.warn(`${feed.source} fetch exception occurred:`, err.message);
+          return [];
+        })
+      );
+
+      const feedsResults = await Promise.all(feedPromises);
+      const tempArticles: any[] = [];
+      for (const articlesList of feedsResults) {
+        tempArticles.push(...articlesList);
+      }
+
+      // Sort by timestamp descending
+      tempArticles.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      // Keep unique elements by normalized title to prevent duplicates across feeds!
+      const seenTitles = new Set<string>();
+      for (const art of tempArticles) {
+        const normalizedTitle = art.title.toLowerCase().trim();
+        if (!seenTitles.has(normalizedTitle)) {
+          seenTitles.add(normalizedTitle);
+          finalArticles.push(art);
         }
       }
-    } catch (apiErr: any) {
-      console.warn("RapidAPI supplementation erred:", apiErr.message);
-      rapidNewsCooldownUntil = Date.now() + 60 * 1000; // short 1 min cooldown
+    } catch (err: any) {
+      console.warn("Main RSS fetch operation failed:", err.message);
     }
-  }
 
-  // 3. Fallbacks if both feeds returned nothing
-  if (finalArticles.length === 0) {
-    console.log("No live articles fetched. Returning highest quality paddock fallbacks.");
+    // 2. Combine or supplement with RapidAPI F1 News source (if not on cooldown)
+    if (now >= rapidNewsCooldownUntil && finalArticles.length < 10) {
+      try {
+        console.log("Supplementing with F1-Motorsport-Data via RapidAPI...");
+        const response = await fetchWithTimeout("https://f1-motorsport-data.p.rapidapi.com/news", {
+          method: "GET",
+          headers: {
+            "x-rapidapi-key": "64d2b1172cmsh862fc39e54b0220p1c551djsneb7dbe8ad351",
+            "x-rapidapi-host": "f1-motorsport-data.p.rapidapi.com",
+            "Content-Type": "application/json"
+          }
+        }, 2000);
+
+        if (response.ok) {
+          const data = await response.json();
+          const rawList = Array.isArray(data) ? data : (data && typeof data === 'object' && Array.isArray((data as any).articles) ? (data as any).articles : []);
+          
+          const standardRapidArticles = rawList.map((item: any) => {
+            const title = item.title || item.heading || item.headline || item.name || "Formula 1 News Update";
+            // Unsplash F1 News visual placeholders (no lamborghinis, pure high-quality Formula 1 images)
+            const fallbackF1Images = [
+              "https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&q=80&w=400",
+              "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&q=80&w=400",
+              "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&q=80&w=400",
+              "https://images.unsplash.com/photo-1627448831828-4f81014e76d9?auto=format&fit=crop&q=80&w=400"
+            ];
+            let hash = 0;
+            for (let i = 0; i < title.length; i++) {
+              hash = title.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const imageUrl = item.imageUrl || item.image || item.img || item.thumbnail || item.pic || fallbackF1Images[Math.abs(hash) % fallbackF1Images.length];
+
+            return {
+              title,
+              url: item.url || item.link || item.source_url || item.href || "https://www.formula1.com",
+              description: item.description || item.desc || item.summary || item.text || item.short_desc || "Learn the latest updates directly from major F1 paddocks.",
+              date: item.date || item.published || item.time || item.pubDate || new Date().toLocaleDateString(),
+              imageUrl,
+              source: item.source || item.publisher || item.author || "F1 Feed"
+            };
+          });
+
+          // Filter out duplicate headlines to keep it pristine and unique
+          const existingTitles = new Set(finalArticles.map(a => a.title.toLowerCase().trim()));
+          for (const rArt of standardRapidArticles) {
+            if (!existingTitles.has(rArt.title.toLowerCase().trim())) {
+              finalArticles.push(rArt);
+            }
+          }
+        } else {
+          if (response.status === 429) {
+            rapidNewsCooldownUntil = Date.now() + 5 * 60 * 1000; // 5 min cooloff
+          }
+        }
+      } catch (apiErr: any) {
+        console.warn("RapidAPI supplementation erred:", apiErr.message);
+        rapidNewsCooldownUntil = Date.now() + 60 * 1000; // short 1 min cooldown
+      }
+    }
+
+    // 3. Fallbacks if both feeds returned nothing
+    if (finalArticles.length === 0) {
+      console.log("No live articles fetched. Returning highest quality paddock fallbacks.");
+      if (rapidNewsCache) {
+        return res.json(rapidNewsCache.data);
+      }
+      return res.json(getFallbackRapidAPINews());
+    }
+
+    // Save successful fetch results into cache
+    rapidNewsCache = {
+      data: finalArticles,
+      timestamp: Date.now()
+    };
+
+    return res.json(finalArticles);
+  } catch (globalErr: any) {
+    console.error("Global F1 News fetch exception caught cleanly:", globalErr);
     if (rapidNewsCache) {
       return res.json(rapidNewsCache.data);
     }
     return res.json(getFallbackRapidAPINews());
   }
-
-  // Save successful fetch results into cache
-  rapidNewsCache = {
-    data: finalArticles,
-    timestamp: Date.now()
-  };
-
-  return res.json(finalArticles);
 });
 
 // Search Grounding F1 news endpoint
@@ -2650,7 +2700,7 @@ app.delete("/api/admin/delete-telemetry/:id", (req, res) => {
     const { id } = req.params;
     let list = readUploadedTelemetries();
     const originalLength = list.length;
-    list = list.filter((item: any) => item.id !== id);
+    list = list.filter((item: any) => String(item.id).trim() !== String(id).trim());
     if (list.length === originalLength) {
       return res.status(404).json({ error: "Telemetry record not found" });
     }

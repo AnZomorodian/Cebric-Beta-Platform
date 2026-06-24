@@ -1,18 +1,12 @@
+@ -1,82 +1,20 @@
 # CEBRIC F1 PADDOCK PLATFORM
-### High-Fidelity Formula 1 Telemetry & Fan Sentiment Command Center (V1.4)
-
-Welcome to the **Cebric F1 Paddock** platform—an immutable, responsive, full-stack live-updating terminal designed for racing analysts, paddock personnel, and motorsport enthusiasts. Securely tracking real-time telemetry parameters, active session schedules, interactive simulation modules, and paddock affairs.
-
----
-
-## 🏎️ Core Architecture & Features
-
-The platform utilizes a robust full-stack integration of **React/Vite** for responsive single-page client design and a unified **Node/Express** server backend ensuring secure handling of external telemetry feeds and real-time state synchronization.
+## Run Locally
 
 ### 1. ⚙️ Advanced 1v1 Duel Sandbox Simulation
 *   **Deep Driver Profiles**: Incorporates dynamic intelligence profiles including React Speed, Racecraft, Absolute Pace, and Paddock Awareness.
 *   **Deterministic Simulation Engine**: Configures specific combinations of **slick/wet compounds**, **aerodynamic offsets (High Downforce vs. Low Drag)**, and **combat strategy trims (Attack, Defend, Balanced)**.
 *   **Reactive Environmental Telemetry**: Wet weather circuits trigger severe slick tyre slide simulations, with detailed live commentary.
+**Prerequisites:**  Node.js
 
 ### 2. 🏁 Real-Time Formula 1 Live Feeds & Telemetry
 *   **Championship Standings**: Visually traces current driver and constructor championship standings using real-time progress ratios.
@@ -77,6 +71,3 @@ In addition to telemetry captures, this edition activates:
 *   **HLS `.m3u8` Stream Feed**: Integrates high-speed live HLS stream rendering for paddock races.
 
 ---
-
-## ⚙️ License
-Private platform developed for the Cebric Racing Community. All rights reserved.

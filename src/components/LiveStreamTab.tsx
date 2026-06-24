@@ -654,6 +654,8 @@ export default function LiveStreamTab() {
                       {m.isVerified && (
                         m.verifyStyle === 'admin' ? (
                           <BadgeCheck size={12} className="text-purple-500 fill-purple-500/10 shrink-0 inline" title="Admin Verified" />
+                        ) : m.verifyStyle === 'premium' ? (
+                          <BadgeCheck size={12} className="text-red-500 fill-red-500/10 shrink-0 inline" title="Premium Verified Player" />
                         ) : (
                           <BadgeCheck size={12} className="text-blue-550 fill-blue-500/10 shrink-0 inline" title="Verified Player" />
                         )

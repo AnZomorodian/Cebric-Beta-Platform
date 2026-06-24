@@ -26,6 +26,46 @@ const fromLocalDateTimeLocal = (localString: string) => {
   return d.toISOString();
 };
 
+const FALLBACK_2026_RACES = [
+  { round: "1", raceName: "Bahrain Grand Prix", circuitName: "Bahrain International Circuit", locality: "Sakhir", date: "2026-03-07", time: "15:00:00Z" },
+  { round: "2", raceName: "Saudi Arabian Grand Prix", circuitName: "Jeddah Corniche Circuit", locality: "Jeddah", date: "2026-03-21", time: "17:00:00Z" },
+  { round: "3", raceName: "Australian Grand Prix", circuitName: "Albert Park Circuit", locality: "Melbourne", date: "2026-04-12", time: "05:00:00Z" },
+  { round: "4", raceName: "Chinese Grand Prix", circuitName: "Shanghai International Circuit", locality: "Shanghai", date: "2026-04-19", time: "07:00:00Z" },
+  { round: "5", raceName: "Miami Grand Prix", circuitName: "Miami International Autodrome", locality: "Miami", date: "2026-05-03", time: "19:30:00Z" },
+  { round: "6", raceName: "Emilia Romagna Grand Prix", circuitName: "Autodromo Enzo e Dino Ferrari", locality: "Imola", date: "2026-05-17", time: "13:00:00Z" },
+  { round: "7", raceName: "Monaco Grand Prix", circuitName: "Circuit de Monaco", locality: "Monte Carlo", date: "2026-05-24", time: "13:00:00Z" },
+  { round: "8", raceName: "Spanish Grand Prix", circuitName: "Circuit de Barcelona-Catalunya", locality: "Montmeló", date: "2026-06-07", time: "13:00:00Z" },
+  { round: "9", raceName: "Canadian Grand Prix", circuitName: "Circuit Gilles Villeneuve", locality: "Montreal", date: "2026-06-21", time: "18:00:00Z" },
+  { round: "10", raceName: "Austrian Grand Prix", circuitName: "Red Bull Ring", locality: "Spielberg", date: "2026-06-28", time: "13:00:00Z" },
+  { round: "11", raceName: "British Grand Prix", circuitName: "Silverstone Circuit", locality: "Silverstone", date: "2026-07-05", time: "14:00:00Z" },
+  { round: "12", raceName: "Hungarian Grand Prix", circuitName: "Hungaroring", locality: "Budapest", date: "2026-07-19", time: "13:00:00Z" },
+  { round: "13", raceName: "Belgian Grand Prix", circuitName: "Circuit de Spa-Francorchamps", locality: "Stavelot", date: "2026-07-26", time: "13:00:00Z" },
+  { round: "14", raceName: "Dutch Grand Prix", circuitName: "Circuit Zandvoort", locality: "Zandvoort", date: "2026-08-30", time: "13:00:00Z" },
+  { round: "15", raceName: "Italian Grand Prix", circuitName: "Autodromo Nazionale Monza", locality: "Monza", date: "2026-09-06", time: "13:00:00Z" },
+  { round: "16", raceName: "Azerbaijan Grand Prix", circuitName: "Baku City Circuit", locality: "Baku", date: "2026-09-20", time: "11:00:00Z" },
+  { round: "17", raceName: "Singapore Grand Prix", circuitName: "Marina Bay Street Circuit", locality: "Singapore", date: "2026-10-04", time: "12:00:00Z" },
+  { round: "18", raceName: "United States Grand Prix", circuitName: "Circuit of the Americas", locality: "Austin", date: "2026-10-25", time: "19:00:00Z" },
+  { round: "19", raceName: "Mexico City Grand Prix", circuitName: "Autódromo Hermanos Rodríguez", locality: "Mexico City", date: "2026-11-01", time: "20:00:00Z" },
+  { round: "20", raceName: "São Paulo Grand Prix", circuitName: "Autódromo José Carlos Pace", locality: "São Paulo", date: "2026-11-15", time: "17:00:00Z" },
+  { round: "21", raceName: "Las Vegas Grand Prix", circuitName: "Las Vegas Strip Circuit", locality: "Las Vegas", date: "2026-11-22", time: "06:00:00Z" },
+  { round: "22", raceName: "Qatar Grand Prix", circuitName: "Lusail International Circuit", locality: "Lusail", date: "2026-11-29", time: "15:00:00Z" },
+  { round: "23", raceName: "Abu Dhabi Grand Prix", circuitName: "Yas Marina Circuit", locality: "Abu Dhabi", date: "2026-12-06", time: "13:00:00Z" }
+];
+
+const getAvailableRaces = (seasonData: any) => {
+  if (seasonData?.races && seasonData.races.length > 0) {
+    return seasonData.races.map((r: any) => ({
+      round: r.round,
+      raceName: r.raceName,
+      circuitName: r.Circuit?.circuitName || "Unknown Circuit",
+      locality: r.Circuit?.Location?.locality || "Unknown Locality",
+      date: r.date,
+      time: r.time || "14:00:00Z"
+    }));
+  }
+  return FALLBACK_2026_RACES;
+};
+
 const REAL_DRIVERS_LIST = [
   "Arvid Lindblad",
   "Alexander Albon",
@@ -125,6 +165,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
     name: "",
     location: "",
     date: "",
+    qualifyingDeadline: "",
+    raceDeadline: "",
     lockTime: ""
   });
   
@@ -195,6 +237,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
   const [submitted, setSubmitted] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [countdownText, setCountdownText] = useState<string>("Calculating clock...");
+  const [qCountdown, setQCountdown] = useState<string>("Calculating...");
+  const [rCountdown, setRCountdown] = useState<string>("Calculating...");
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState<boolean>(false);
   const [adminSavingSettings, setAdminSavingSettings] = useState<boolean>(false);
   const [adminNotify, setAdminNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
@@ -308,41 +352,50 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
   // Live countdown timer execution
   useEffect(() => {
     const interval = setInterval(() => {
-      let targetTime = new Date(settings.nextGpDate).getTime();
-      
-      if (seasonData && seasonData.nextRace) {
-        const nextRace = seasonData.nextRace;
-        let fullTime = nextRace.time || '13:00:00Z';
-        if (!fullTime.endsWith('Z') && !fullTime.includes('+') && !fullTime.includes('-')) {
-          fullTime += 'Z';
-        }
-        const targetDateStr = `${nextRace.date}T${fullTime}`;
-        targetTime = new Date(targetDateStr).getTime();
-      }
-
       const now = Date.now();
-      // If the event completed in the past, provide an active countdown 
-      // of 3 days, 14 hours, 42 minutes for rich interactive preview testing, exactly like the dashboard.
-      if (targetTime < now) {
-        targetTime = now + (3 * 24 * 60 * 60 * 1000) + (14 * 60 * 60 * 1000) + (42 * 60 * 1000);
+
+      // 1. Qualifying Deadline
+      const qTargetStr = (settings as any).qualifyingDeadline || (settings as any).lockTime || settings.nextGpDate;
+      let qTarget = new Date(qTargetStr).getTime();
+      if (isNaN(qTarget) || qTarget < now - 3 * 24 * 60 * 60 * 1000) {
+        // Fallback: 2 days from now for preview testing if past or undefined
+        qTarget = now + (2 * 24 * 60 * 60 * 1000) + (11 * 60 * 60 * 1000) + (15 * 60 * 1000);
+      }
+      
+      let qGap = qTarget - now;
+      if (qGap <= 0) {
+        setQCountdown("LOCKED (QUALIFYING REQUISITES IN PROGRESS)");
+      } else {
+        const d = Math.floor(qGap / (1000 * 60 * 60 * 24));
+        const h = Math.floor((qGap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((qGap % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((qGap % (1000 * 60)) / 1000);
+        setQCountdown(`${d}d ${h}h ${m}m ${s}s remaining`);
       }
 
-      const gap = targetTime - now;
+      // 2. Race Deadline
+      const rTargetStr = (settings as any).raceDeadline || settings.nextGpDate;
+      let rTarget = new Date(rTargetStr).getTime();
+      if (isNaN(rTarget) || rTarget < now - 3 * 24 * 60 * 60 * 1000) {
+        // Fallback: 3 days from now for preview testing if past or undefined
+        rTarget = now + (3 * 24 * 60 * 60 * 1000) + (14 * 60 * 60 * 1000) + (42 * 60 * 1000);
+      }
 
-      if (gap <= 0) {
-        setCountdownText("SESSION LOCKED (QUALIFYING HAS STARTED)");
+      let rGap = rTarget - now;
+      if (rGap <= 0) {
+        setRCountdown("LOCKED (MAIN RACE IN PROGRESS)");
       } else {
-        const days = Math.floor(gap / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((gap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((gap % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((gap % (1000 * 60)) / 1000);
-
-        setCountdownText(`${days}d ${hours}h ${minutes}m ${seconds}s remaining`);
+        const d = Math.floor(rGap / (1000 * 60 * 60 * 24));
+        const h = Math.floor((rGap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((rGap % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((rGap % (1000 * 60)) / 1000);
+        setRCountdown(`${d}d ${h}h ${m}m ${s}s remaining`);
+        setCountdownText(`${d}d ${h}h ${m}m ${s}s remaining`);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [settings.nextGpDate, seasonData]);
+  }, [settings, seasonData]);
 
   // Handle standard user prediction submission
   const handleSavePrediction = async (e: React.FormEvent) => {
@@ -477,13 +530,15 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
           nextGpName: spawnNewGPData.name,
           nextGpLocation: spawnNewGPData.location,
           nextGpDate: spawnNewGPData.date,
+          qualifyingDeadline: spawnNewGPData.qualifyingDeadline || null,
+          raceDeadline: spawnNewGPData.raceDeadline || null,
           lockTime: spawnNewGPData.lockTime || null
         })
       });
 
       if (res.ok) {
         alert("Completed and archived! The fresh Grand Prix matchup is now open and ready for customer predictions!");
-        setSpawnNewGPData({ name: "", location: "", date: "", lockTime: "" });
+        setSpawnNewGPData({ name: "", location: "", date: "", qualifyingDeadline: "", raceDeadline: "", lockTime: "" });
         await loadPaddockData();
       } else {
         const err = await res.json();
@@ -562,7 +617,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
               <div>
                 <span className="text-[10px] font-mono font-black text-[#EF1A2D] block uppercase tracking-wider">Prediction Gate Warning</span>
                 <p className="text-xs font-bold text-neutral-100">
-                  The submissions lock for {seasonData?.nextRace ? `${seasonData.nextRace.raceName}` : settings.nextGpName} begins in <span className="text-red-400 font-mono font-black">{countdownText}</span>!
+                  The submissions lock for {settings.nextGpName} begins in <span className="text-red-400 font-mono font-black">{countdownText}</span>!
                 </p>
               </div>
             </div>
@@ -595,27 +650,41 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
               )}
             </div>
             <h2 className="text-2xl sm:text-3xl font-black font-sans tracking-tight text-white uppercase leading-none">
-              {seasonData?.nextRace ? `${seasonData.nextRace.raceName} 2026` : settings.nextGpName}
+              {settings.nextGpName}
             </h2>
             <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-400 font-semibold font-mono">
               <span className="flex items-center gap-1">
                 <MapPin size={13} className="text-[#EF1A2D]" />
-                {seasonData?.nextRace ? `${seasonData.nextRace.Circuit.circuitName}, ${seasonData.nextRace.Circuit.Location.locality}` : settings.nextGpLocation}
+                {settings.nextGpLocation}
               </span>
               <span className="flex items-center gap-1">
                 <Calendar size={13} className="text-[#EF1A2D]" />
-                {new Date(seasonData?.nextRace ? `${seasonData.nextRace.date}T${seasonData.nextRace.time || '13:00:00'}` : settings.nextGpDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                {new Date(settings.nextGpDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </span>
             </div>
           </div>
 
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 md:p-5 text-center min-w-[200px] shrink-0">
-            <span className="text-[9px] text-neutral-400 font-black font-mono tracking-widest uppercase block mb-1">
-              Qualified Gate Deadline
-            </span>
-            <div className="flex items-center justify-center gap-1.5 text-white">
-              <Watch size={14} className="text-[#EF1A2D] animate-pulse" />
-              <strong className="text-sm font-black font-mono tracking-tight">{countdownText}</strong>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
+            {/* Qualifying Gate */}
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 text-center min-w-[170px]">
+              <span className="text-[9px] text-neutral-400 font-black font-mono tracking-widest uppercase block mb-1">
+                Qualifying Prediction lock
+              </span>
+              <div className="flex items-center justify-center gap-1.5 text-white">
+                <Watch size={14} className="text-[#EF1A2D] animate-pulse" />
+                <strong className="text-xs font-black font-mono tracking-tight text-red-500">{qCountdown}</strong>
+              </div>
+            </div>
+
+            {/* Main Race Gate */}
+            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 text-center min-w-[170px]">
+              <span className="text-[9px] text-neutral-400 font-black font-mono tracking-widest uppercase block mb-1">
+                Main Race Prediction lock
+              </span>
+              <div className="flex items-center justify-center gap-1.5 text-white">
+                <Watch size={14} className="text-[#EF1A2D] animate-pulse" />
+                <strong className="text-xs font-black font-mono tracking-tight text-red-500">{rCountdown}</strong>
+              </div>
             </div>
           </div>
         </div>
@@ -664,6 +733,49 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   <div className="bg-neutral-900 border border-neutral-850 p-4 rounded-2xl space-y-3">
                     <span className="text-[10px] text-red-400 font-mono font-black block uppercase tracking-wider">1. Next GP Info Board</span>
                     <div className="space-y-2">
+                      <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 mb-2 space-y-1">
+                        <label className="block text-[9px] text-[#EF1A2D] font-black uppercase tracking-wider">⚡ Import F1 2026 Race</label>
+                        <select
+                          className="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none cursor-pointer font-mono"
+                          onChange={(e) => {
+                            const round = e.target.value;
+                            if (!round) return;
+                            const races = getAvailableRaces(seasonData);
+                            const race = races.find((r: any) => r.round === round);
+                            if (race) {
+                              const year = "2026";
+                              const name = `${race.raceName} ${year}`;
+                              const location = `${race.circuitName}, ${race.locality}`;
+                              
+                              // Create dates
+                              const combinedDateStr = `${race.date}T${race.time.replace("Z", "")}Z`;
+                              const raceStartISO = new Date(combinedDateStr).toISOString();
+                              
+                              // Qualifying deadline is Saturday before Sunday (or 24 hours earlier)
+                              const raceStartDateObj = new Date(raceStartISO);
+                              const qualDateObj = new Date(raceStartDateObj.getTime() - 24 * 60 * 60 * 1000);
+                              qualDateObj.setUTCHours(13, 0, 0, 0);
+                              
+                              setSettings({
+                                ...settings,
+                                nextGpName: name,
+                                nextGpLocation: location,
+                                nextGpDate: raceStartISO,
+                                qualifyingDeadline: qualDateObj.toISOString(),
+                                raceDeadline: raceStartISO
+                              });
+                            }
+                          }}
+                        >
+                          <option value="">-- Choose from Calendar --</option>
+                          {getAvailableRaces(seasonData).map((r: any) => (
+                            <option key={r.round} value={r.round}>
+                              Rnd {r.round}: {r.raceName} ({r.date})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       <label className="text-[9px] text-neutral-400 block font-mono">GP Name</label>
                       <input 
                         type="text" 
@@ -678,11 +790,25 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                         onChange={(e) => setSettings({ ...settings, nextGpLocation: e.target.value })}
                         className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white"
                       />
-                      <label className="text-[9px] text-neutral-400 block font-mono">Start Time Date</label>
+                      <label className="text-[9px] text-neutral-400 block font-mono">Race Start Date Time</label>
                       <input 
                         type="datetime-local" 
                         value={toLocalDateTimeLocal(settings.nextGpDate)} 
                         onChange={(e) => setSettings({ ...settings, nextGpDate: fromLocalDateTimeLocal(e.target.value) })}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white cursor-pointer"
+                      />
+                      <label className="text-[9px] text-neutral-400 block font-mono">Qualifying Deadline</label>
+                      <input 
+                        type="datetime-local" 
+                        value={toLocalDateTimeLocal((settings as any).qualifyingDeadline || "")} 
+                        onChange={(e) => setSettings({ ...settings, qualifyingDeadline: fromLocalDateTimeLocal(e.target.value) } as any)}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white cursor-pointer"
+                      />
+                      <label className="text-[9px] text-neutral-400 block font-mono">Main Race Deadline</label>
+                      <input 
+                        type="datetime-local" 
+                        value={toLocalDateTimeLocal((settings as any).raceDeadline || "")} 
+                        onChange={(e) => setSettings({ ...settings, raceDeadline: fromLocalDateTimeLocal(e.target.value) } as any)}
                         className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white cursor-pointer"
                       />
                     </div>
@@ -774,6 +900,69 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                           type="number" 
                           value={settings.scoringRules.qualifyingP3} 
                           onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, qualifyingP3: Number(e.target.value) } })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-neutral-400">DOTD:</label>
+                        <input 
+                          type="number" 
+                          value={settings.scoringRules.dotd || 0} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, dotd: Number(e.target.value) } })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-neutral-400">First DNF:</label>
+                        <input 
+                          type="number" 
+                          value={settings.scoringRules.firstDnf || 0} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, firstDnf: Number(e.target.value) } })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-neutral-400">DNF Count:</label>
+                        <input 
+                          type="number" 
+                          value={settings.scoringRules.numDnfs || 0} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, numDnfs: Number(e.target.value) } })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-neutral-400">Safety Car:</label>
+                        <input 
+                          type="number" 
+                          value={settings.scoringRules.safetyCar || 0} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, safetyCar: Number(e.target.value) } })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-neutral-400">VSC:</label>
+                        <input 
+                          type="number" 
+                          value={settings.scoringRules.vsc || 0} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, vsc: Number(e.target.value) } })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-neutral-400">Red Flag:</label>
+                        <input 
+                          type="number" 
+                          value={settings.scoringRules.redFlag || 0} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, redFlag: Number(e.target.value) } })}
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-neutral-400">Pos Gained:</label>
+                        <input 
+                          type="number" 
+                          value={settings.scoringRules.gains || 0} 
+                          onChange={(e) => setSettings({ ...settings, scoringRules: { ...settings.scoringRules, gains: Number(e.target.value) } })}
                           className="w-full bg-neutral-950 border border-neutral-800 rounded p-1 text-white text-center"
                         />
                       </div>
@@ -1003,6 +1192,50 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                     {/* Fresh Matchup Form */}
                     <div className="space-y-3 bg-neutral-950 p-4 rounded-xl border border-neutral-850">
                       <span className="text-[10px] text-white font-black block uppercase tracking-wider">Spawn New Matchup</span>
+                      
+                      <div className="bg-neutral-900 border border-neutral-800 rounded p-2.5 space-y-1">
+                        <label className="block text-[9px] text-[#EF1A2D] font-black uppercase tracking-wider">⚡ Import F1 2026 Race</label>
+                        <select
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none cursor-pointer font-mono"
+                          onChange={(e) => {
+                            const round = e.target.value;
+                            if (!round) return;
+                            const races = getAvailableRaces(seasonData);
+                            const race = races.find((r: any) => r.round === round);
+                            if (race) {
+                              const year = "2026";
+                              const name = `${race.raceName} ${year}`;
+                              const location = `${race.circuitName}, ${race.locality}`;
+                              
+                              // Create dates
+                              const combinedDateStr = `${race.date}T${race.time.replace("Z", "")}Z`;
+                              const raceStartISO = new Date(combinedDateStr).toISOString();
+                              
+                              // Qualifying deadline is Saturday before Sunday (or 24 hours earlier)
+                              const raceStartDateObj = new Date(raceStartISO);
+                              const qualDateObj = new Date(raceStartDateObj.getTime() - 24 * 60 * 60 * 1000);
+                              qualDateObj.setUTCHours(13, 0, 0, 0);
+                              
+                              setSpawnNewGPData({
+                                name,
+                                location,
+                                date: raceStartISO,
+                                qualifyingDeadline: qualDateObj.toISOString(),
+                                raceDeadline: raceStartISO,
+                                lockTime: qualDateObj.toISOString()
+                              });
+                            }
+                          }}
+                        >
+                          <option value="">-- Choose from Calendar --</option>
+                          {getAvailableRaces(seasonData).map((r: any) => (
+                            <option key={r.round} value={r.round}>
+                              Rnd {r.round}: {r.raceName} ({r.date})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
                       <div className="space-y-2 text-xs font-mono text-neutral-300">
                         <div>
                           <label className="block mb-1 text-[10px] text-neutral-400">Matchup GP Name</label>
@@ -1030,6 +1263,24 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                             type="datetime-local"
                             value={toLocalDateTimeLocal(spawnNewGPData.date)}
                             onChange={(e) => setSpawnNewGPData({ ...spawnNewGPData, date: fromLocalDateTimeLocal(e.target.value) })}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 text-white cursor-pointer"
+                          />
+                        </div>
+                        <div>
+                          <label className="block mb-1 text-[10px] text-neutral-400">Qualifying Deadline Date</label>
+                          <input 
+                            type="datetime-local"
+                            value={toLocalDateTimeLocal(spawnNewGPData.qualifyingDeadline)}
+                            onChange={(e) => setSpawnNewGPData({ ...spawnNewGPData, qualifyingDeadline: fromLocalDateTimeLocal(e.target.value) })}
+                            className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 text-white cursor-pointer"
+                          />
+                        </div>
+                        <div>
+                          <label className="block mb-1 text-[10px] text-neutral-400">Main Race Deadline Date</label>
+                          <input 
+                            type="datetime-local"
+                            value={toLocalDateTimeLocal(spawnNewGPData.raceDeadline)}
+                            onChange={(e) => setSpawnNewGPData({ ...spawnNewGPData, raceDeadline: fromLocalDateTimeLocal(e.target.value) })}
                             className="w-full bg-neutral-900 border border-neutral-800 rounded px-2.5 py-1.5 text-white cursor-pointer"
                           />
                         </div>
@@ -1105,6 +1356,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                                 {usr.isVerified && (
                                   usr.verifyStyle === 'admin' ? (
                                     <BadgeCheck size={14} className="text-purple-500 fill-purple-500/10 shrink-0" title="Admin Verified" />
+                                  ) : usr.verifyStyle === 'premium' ? (
+                                    <BadgeCheck size={14} className="text-red-500 fill-red-500/10 shrink-0 animate-pulse" title="Premium Verified Player" />
                                   ) : (
                                     <BadgeCheck size={14} className="text-blue-500 fill-blue-500/10 shrink-0 animate-pulse" title="Verified Player" />
                                   )
@@ -1117,12 +1370,23 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                                 type="button"
                                 onClick={() => handleToggleVerify(usr.username, 'regular')}
                                 className={`px-2 py-0.5 rounded text-[8px] font-mono uppercase font-bold transition-all cursor-pointer ${
-                                  usr.isVerified && usr.verifyStyle !== 'admin'
+                                  usr.isVerified && usr.verifyStyle !== 'admin' && usr.verifyStyle !== 'premium'
                                     ? 'bg-blue-950 text-blue-400 border border-blue-800 hover:bg-blue-900/30' 
                                     : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:bg-neutral-850'
                                 }`}
                               >
-                                {usr.isVerified && usr.verifyStyle !== 'admin' ? '✓ Blue' : 'Verify Blue'}
+                                {usr.isVerified && usr.verifyStyle !== 'admin' && usr.verifyStyle !== 'premium' ? '✓ Blue' : 'Verify Blue'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleVerify(usr.username, 'premium')}
+                                className={`px-2 py-0.5 rounded text-[8px] font-mono uppercase font-bold transition-all cursor-pointer ${
+                                  usr.isVerified && usr.verifyStyle === 'premium'
+                                    ? 'bg-red-950 text-red-500 border border-red-850 hover:bg-red-900/30' 
+                                    : 'bg-neutral-900 text-neutral-400 border border-neutral-800 hover:bg-neutral-850'
+                                }`}
+                              >
+                                {usr.isVerified && usr.verifyStyle === 'premium' ? '✓ Red' : 'Verify Red'}
                               </button>
                               <button
                                 type="button"
@@ -1753,6 +2017,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                             {comp.isVerified && (
                               comp.verifyStyle === 'admin' ? (
                                 <BadgeCheck size={13} className="text-purple-500 fill-purple-500/10 shrink-0 inline" title="Admin Verified Paddock Expert" />
+                              ) : comp.verifyStyle === 'premium' ? (
+                                <BadgeCheck size={13} className="text-red-500 fill-red-500/10 shrink-0 inline" title="Premium Verified Player" />
                               ) : (
                                 <BadgeCheck size={13} className="text-blue-500 fill-blue-500/10 shrink-0 inline" title="Verified Paddock Player" />
                               )
@@ -1775,104 +2041,170 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
           </div>
 
           {/* Global Aggregate Stats Card */}
-          {aggregateStats && (
-            <div className="bg-white border border-gray-150 rounded-2xl p-5 space-y-4 shadow-xs">
-              <div className="border-b border-gray-100 pb-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Trophy size={15} className="text-[#EF1A2D]" />
-                  <div>
-                    <span className="block text-[8px] font-black font-mono text-gray-400 uppercase tracking-widest leading-none mb-0.5">
-                      Paddock Sentiments
-                    </span>
-                    <h3 className="text-xs font-black text-black uppercase font-sans">Global Aggregate Statistics</h3>
+          {aggregateStats && (() => {
+            const nowTime = Date.now();
+            const qTargetStr = (settings as any).qualifyingDeadline || (settings as any).lockTime || settings.nextGpDate;
+            const rTargetStr = (settings as any).raceDeadline || settings.nextGpDate;
+            const qTarget = new Date(qTargetStr).getTime();
+            const rTarget = new Date(rTargetStr).getTime();
+
+            const isQualiLocked = settings.globalLock || (!isNaN(qTarget) && qTarget <= nowTime);
+            const isRaceLocked = settings.globalLock || (!isNaN(rTarget) && rTarget <= nowTime);
+
+            return (
+              <div className="bg-white border border-gray-150 rounded-2xl p-5 space-y-4 shadow-xs">
+                <div className="border-b border-gray-100 pb-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Trophy size={15} className="text-[#EF1A2D]" />
+                    <div>
+                      <span className="block text-[8px] font-black font-mono text-gray-400 uppercase tracking-widest leading-none mb-0.5">
+                        Paddock Sentiments
+                      </span>
+                      <h3 className="text-xs font-black text-black uppercase font-sans">Global Aggregate Statistics</h3>
+                    </div>
                   </div>
+                  <span className="text-[10px] bg-red-50 text-red-600 font-mono font-black py-0.5 px-2 rounded-full">
+                    {aggregateStats.totalCount || 0} active cards
+                  </span>
                 </div>
-                <span className="text-[10px] bg-red-50 text-red-600 font-mono font-black py-0.5 px-2 rounded-full">
-                  {aggregateStats.totalCount || 0} active cards
-                </span>
+                
+                <p className="text-[11px] text-gray-500 leading-normal">
+                  Aggregating consensus choices submitted by all active predictors across our fantasy championship roster.
+                </p>
+
+                {aggregateStats.totalCount === 0 ? (
+                  <div className="text-center py-4 text-[10px] text-gray-400 font-mono">
+                    No predictions submitted yet for this Grand Prix.
+                  </div>
+                ) : !isQualiLocked && !isRaceLocked ? (
+                  <div className="bg-neutral-50 rounded-xl p-4 border border-dashed border-gray-200 text-center space-y-2">
+                    <Lock size={18} className="mx-auto text-neutral-400 animate-bounce" />
+                    <strong className="text-xs text-neutral-800 font-bold block">Consensus Results Locked</strong>
+                    <p className="text-[10px] text-neutral-500 leading-normal">
+                      Paddock sentiments and voting ratios are hidden during the open prediction period to safeguard competitiveness. They will unlock once Qualifying or Race deadlines expire!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 pt-1">
+                    {/* Pole Position Pick - Unlocks when Qualifying is locked */}
+                    {isQualiLocked ? (
+                      <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
+                        <div>
+                          <span className="text-[9px] font-mono text-gray-400 block uppercase font-bold leading-none mb-0.5">⏱️ Top Pole Position Pick</span>
+                          <strong className="text-neutral-900 font-black">{aggregateStats.mostCommonPole?.driver || "N/A"}</strong>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-mono font-black text-red-600 block bg-red-50/50 py-0.5 px-1.5 rounded-md">
+                            {aggregateStats.mostCommonPole?.pct}%
+                          </span>
+                          <span className="text-[8px] text-gray-450 block mt-0.5 font-mono">({aggregateStats.mostCommonPole?.count} votes)</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2 opacity-60">
+                        <div>
+                          <span className="text-[9px] font-mono text-gray-450 block uppercase font-bold leading-none mb-0.5">⏱️ Top Pole Position Pick</span>
+                          <span className="text-neutral-400 italic">Locked until Qualifying lock</span>
+                        </div>
+                        <Lock size={12} className="text-neutral-400" />
+                      </div>
+                    )}
+
+                    {/* Winner (P1) Pick - Unlocks when Main Race is locked */}
+                    {isRaceLocked ? (
+                      <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
+                        <div>
+                          <span className="text-[9px] font-mono text-gray-400 block uppercase font-bold leading-none mb-0.5">🏆 Top P1 Winner Pick</span>
+                          <strong className="text-neutral-900 font-black">{aggregateStats.mostCommonWinner?.driver || "N/A"}</strong>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-mono font-black text-red-600 block bg-red-50/50 py-0.5 px-1.5 rounded-md">
+                            {aggregateStats.mostCommonWinner?.pct}%
+                          </span>
+                          <span className="text-[8px] text-gray-450 block mt-0.5 font-mono">({aggregateStats.mostCommonWinner?.count} votes)</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2 opacity-60">
+                        <div>
+                          <span className="text-[9px] font-mono text-gray-450 block uppercase font-bold leading-none mb-0.5">🏆 Top P1 Winner Pick</span>
+                          <span className="text-neutral-400 italic">Locked until Main Race lock</span>
+                        </div>
+                        <Lock size={12} className="text-neutral-400" />
+                      </div>
+                    )}
+
+                    {/* Driver of the Day - Unlocks when Main Race is locked */}
+                    {isRaceLocked ? (
+                      <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
+                        <div>
+                          <span className="text-[9px] font-mono text-gray-400 block uppercase font-bold leading-none mb-0.5">🌟 Top Driver of Day Pick</span>
+                          <strong className="text-neutral-900 font-black">{aggregateStats.mostCommonDotd?.driver || "N/A"}</strong>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-mono font-black text-red-600 block bg-red-50/50 py-0.5 px-1.5 rounded-md">
+                            {aggregateStats.mostCommonDotd?.pct}%
+                          </span>
+                          <span className="text-[8px] text-gray-450 block mt-0.5 font-mono">({aggregateStats.mostCommonDotd?.count} votes)</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2 opacity-60">
+                        <div>
+                          <span className="text-[9px] font-mono text-gray-450 block uppercase font-bold leading-none mb-0.5">🌟 Top Driver of Day Pick</span>
+                          <span className="text-neutral-400 italic">Locked until Main Race lock</span>
+                        </div>
+                        <Lock size={12} className="text-neutral-400" />
+                      </div>
+                    )}
+
+                    {/* Fastest Lap - Unlocks when Main Race is locked */}
+                    {isRaceLocked ? (
+                      <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
+                        <div>
+                          <span className="text-[9px] font-mono text-gray-400 block uppercase font-bold leading-none mb-0.5">⚡ Top Fastest Lap Pick</span>
+                          <strong className="text-neutral-900 font-black">{aggregateStats.mostCommonFastestLap?.driver || "N/A"}</strong>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-mono font-black text-red-600 block bg-red-50/50 py-0.5 px-1.5 rounded-md">
+                            {aggregateStats.mostCommonFastestLap?.pct}%
+                          </span>
+                          <span className="text-[8px] text-gray-450 block mt-0.5 font-mono">({aggregateStats.mostCommonFastestLap?.count} votes)</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2 opacity-60">
+                        <div>
+                          <span className="text-[9px] font-mono text-gray-450 block uppercase font-bold leading-none mb-0.5">⚡ Top Fastest Lap Pick</span>
+                          <span className="text-neutral-400 italic">Locked until Main Race lock</span>
+                        </div>
+                        <Lock size={12} className="text-neutral-400" />
+                      </div>
+                    )}
+
+                    {/* Safety Car split - Unlocks when Main Race is locked */}
+                    {isRaceLocked ? (
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between text-[9px] font-mono text-gray-400 uppercase font-black">
+                          <span>Safety Car Expectation: Yes ({aggregateStats.safetyCarSpread?.yes}%)</span>
+                          <span>No ({aggregateStats.safetyCarSpread?.no}%)</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden flex">
+                          <div className="bg-[#EF1A2D] h-full" style={{ width: `${aggregateStats.safetyCarSpread?.yes}%` }} />
+                          <div className="bg-gray-300 h-full" style={{ width: `${aggregateStats.safetyCarSpread?.no}%` }} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 text-xs opacity-60">
+                        <span className="text-[9px] font-mono text-gray-450 block uppercase font-bold leading-none mb-0.5">🛡️ Safety Car Expectation</span>
+                        <span className="text-neutral-400 italic text-[11px] block">Locked until Main Race lock</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              
-              <p className="text-[11px] text-gray-500 leading-normal">
-                Aggregating consensus choices submitted by all active predictors across our fantasy championship roster.
-              </p>
-
-              {aggregateStats.totalCount === 0 ? (
-                <div className="text-center py-4 text-[10px] text-gray-400 font-mono">
-                  No predictions submitted yet for this Grand Prix.
-                </div>
-              ) : (
-                <div className="space-y-3 pt-1">
-                  {/* 1. Winner */}
-                  <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
-                    <div>
-                      <span className="text-[9px] font-mono text-gray-400 block uppercase font-bold leading-none mb-0.5">🏆 Top P1 Winner Pick</span>
-                      <strong className="text-neutral-900 font-black">{aggregateStats.mostCommonWinner?.driver || "N/A"}</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-mono font-black text-red-600 block bg-red-50/50 py-0.5 px-1.5 rounded-md">
-                        {aggregateStats.mostCommonWinner?.pct}%
-                      </span>
-                      <span className="text-[8px] text-gray-450 block mt-0.5 font-mono">({aggregateStats.mostCommonWinner?.count} votes)</span>
-                    </div>
-                  </div>
-
-                  {/* 2. Pole */}
-                  <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
-                    <div>
-                      <span className="text-[9px] font-mono text-gray-400 block uppercase font-bold leading-none mb-0.5">⏱️ Top Pole Position Pick</span>
-                      <strong className="text-neutral-900 font-black">{aggregateStats.mostCommonPole?.driver || "N/A"}</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-mono font-black text-red-600 block bg-red-50/50 py-0.5 px-1.5 rounded-md">
-                        {aggregateStats.mostCommonPole?.pct}%
-                      </span>
-                      <span className="text-[8px] text-gray-450 block mt-0.5 font-mono">({aggregateStats.mostCommonPole?.count} votes)</span>
-                    </div>
-                  </div>
-
-                  {/* 3. Driver of the Day */}
-                  <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
-                    <div>
-                      <span className="text-[9px] font-mono text-gray-400 block uppercase font-bold leading-none mb-0.5">🌟 Top Driver of Day Pick</span>
-                      <strong className="text-neutral-900 font-black">{aggregateStats.mostCommonDotd?.driver || "N/A"}</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-mono font-black text-red-600 block bg-red-50/50 py-0.5 px-1.5 rounded-md">
-                        {aggregateStats.mostCommonDotd?.pct}%
-                      </span>
-                      <span className="text-[8px] text-gray-450 block mt-0.5 font-mono">({aggregateStats.mostCommonDotd?.count} votes)</span>
-                    </div>
-                  </div>
-
-                  {/* 4. Fastest Lap */}
-                  <div className="flex justify-between items-center text-xs border-b border-gray-50 pb-2">
-                    <div>
-                      <span className="text-[9px] font-mono text-gray-400 block uppercase font-bold leading-none mb-0.5">⚡ Top Fastest Lap Pick</span>
-                      <strong className="text-neutral-900 font-black">{aggregateStats.mostCommonFastestLap?.driver || "N/A"}</strong>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-mono font-black text-red-600 block bg-red-50/50 py-0.5 px-1.5 rounded-md">
-                        {aggregateStats.mostCommonFastestLap?.pct}%
-                      </span>
-                      <span className="text-[8px] text-gray-450 block mt-0.5 font-mono">({aggregateStats.mostCommonFastestLap?.count} votes)</span>
-                    </div>
-                  </div>
-
-                  {/* 5. Safety Car split */}
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between text-[9px] font-mono text-gray-400 uppercase font-black">
-                      <span>Safety Car Expectation: Yes ({aggregateStats.safetyCarSpread?.yes}%)</span>
-                      <span>No ({aggregateStats.safetyCarSpread?.no}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden flex">
-                      <div className="bg-[#EF1A2D] h-full" style={{ width: `${aggregateStats.safetyCarSpread?.yes}%` }} />
-                      <div className="bg-gray-300 h-full" style={{ width: `${aggregateStats.safetyCarSpread?.no}%` }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           {/* Quick FAQ info block */}
           <div className="bg-neutral-50 border border-gray-150 p-5 rounded-2xl space-y-2 text-[11px] leading-relaxed select-none">
@@ -1891,7 +2223,13 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
               <li><strong>P2 / P3 podium:</strong> +{settings.scoringRules.podium} points each</li>
               <li><strong>Fastest Lap:</strong> +{settings.scoringRules.fastestLap} points</li>
               <li><strong>Top 10 correct:</strong> +{settings.scoringRules.top10Multiplier} pts per driver</li>
-              <li><strong>Track deployment metrics:</strong> +5 points each</li>
+              <li><strong>Driver of the Day (DOTD):</strong> +{settings.scoringRules.dotd} points</li>
+              <li><strong>First DNF prediction:</strong> +{settings.scoringRules.firstDnf} points</li>
+              <li><strong>Total DNFs count correct:</strong> +{settings.scoringRules.numDnfs} points</li>
+              <li><strong>Safety Car deployment:</strong> +{settings.scoringRules.safetyCar} points</li>
+              <li><strong>Virtual Safety Car (VSC):</strong> +{settings.scoringRules.vsc} points</li>
+              <li><strong>Red Flag occurrence:</strong> +{settings.scoringRules.redFlag} points</li>
+              <li><strong>Most Positions Gained:</strong> +{settings.scoringRules.gains} points</li>
             </ul>
           </div>
         </div>

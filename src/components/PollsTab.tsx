@@ -24,8 +24,7 @@ export default function PollsTab() {
   // Current user from localStorage
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Admin Simulation Override State (disabled by default to respect standard non-admin boundaries)
-  const [simulateAdmin, setSimulateAdmin] = useState<boolean>(false);
+
 
   // Announcement States
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -249,9 +248,7 @@ export default function PollsTab() {
     setErrorMsg(null);
     setSuccessMsg(null);
     let voteIdentity = currentUser ? currentUser.username : null;
-    if (!voteIdentity && simulateAdmin) {
-      voteIdentity = 'AdminSimulation_' + getGuestUuid().substring(6);
-    } else if (!voteIdentity) {
+    if (!voteIdentity) {
       voteIdentity = getGuestUuid();
     }
 
@@ -332,13 +329,11 @@ export default function PollsTab() {
     }
   };
 
-  const isAdmin = currentUser?.isAdmin || currentUser?.username === 'Admin' || simulateAdmin;
+  const isAdmin = currentUser?.isAdmin || currentUser?.username === 'Admin';
 
   const hasVotedPoll = (poll: Poll) => {
     let voteIdentity = currentUser ? currentUser.username.toLowerCase() : '';
-    if (!voteIdentity && simulateAdmin) {
-      voteIdentity = ('AdminSimulation_' + getGuestUuid().substring(6)).toLowerCase();
-    } else if (!voteIdentity) {
+    if (!voteIdentity) {
       voteIdentity = getGuestUuid().toLowerCase();
     }
 
@@ -404,28 +399,7 @@ export default function PollsTab() {
         </div>
       )}
 
-      {/* Admin Quick Switch Console */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2">
-          <ShieldAlert size={15} className="text-red-650" />
-          <span className="font-mono text-gray-700 font-medium">
-            Authorized Simulation Area
-          </span>
-        </div>
-        <div className="flex items-center gap-2 font-mono">
-          <label className="font-bold text-gray-500 text-[10px] uppercase">Simulation Console:</label>
-          <button
-            onClick={() => setSimulateAdmin(!simulateAdmin)}
-            className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all ${
-              simulateAdmin 
-                ? 'bg-red-650 text-white' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-          >
-            {simulateAdmin ? 'ADMIN MODE ACTIVE' : 'GUEST MODE'}
-          </button>
-        </div>
-      </div>
+
 
       {/* Grid: Admin section + Poll Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

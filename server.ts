@@ -342,6 +342,14 @@ function readPredictionSettings(): any {
           qualifyingP3: 5,
           gains: 10
         },
+        visibleTabs: {
+          predictions: true,
+          compare: true,
+          laps: true,
+          liveStream: true,
+          clubManager: true,
+          polls: true
+        },
         certifiedResults: {
           poleDriver: "",
           qualifyingP2: "",
@@ -371,6 +379,16 @@ function readPredictionSettings(): any {
       }
       if (!parsed.raceDeadline) {
         parsed.raceDeadline = parsed.nextGpDate || "2026-07-05T14:00:00Z";
+      }
+      if (!parsed.visibleTabs) {
+        parsed.visibleTabs = {
+          predictions: true,
+          compare: true,
+          laps: true,
+          liveStream: true,
+          clubManager: true,
+          polls: true
+        };
       }
       return parsed;
     }

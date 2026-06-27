@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle, Database, Clock, Check, Shield, Bell, BadgeCheck } from 'lucide-react';
+import { User, LogIn, UserPlus, LogOut, CheckCircle2, ShieldAlert, Award, Hash, Timer, Zap, Sparkles, Cpu, Gauge, Trophy, RefreshCw, Trash2, Users, Settings, ShieldCheck, Lock, Unlock, Ban, KeyRound, Fingerprint, ShieldEllipsis, AlertTriangle, Database, Clock, Check, Shield, Bell, BadgeCheck, Compass, Gamepad2, Tv, Calendar, MapPin, Newspaper, Flag } from 'lucide-react';
 
 interface UserSession {
   username: string;
@@ -211,6 +211,19 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
   const [pointsToAward, setPointsToAward] = useState<string>('25');
   const [adminActionSuccess, setAdminActionSuccess] = useState<string | null>(null);
   const [adminActionError, setAdminActionError] = useState<string | null>(null);
+  const [globalVisibleTabs, setGlobalVisibleTabs] = useState<Record<string, boolean>>({
+    predictions: true,
+    schedule: true,
+    standings: true,
+    circuits: true,
+    drivers: true,
+    news: true,
+    compare: true,
+    laps: true,
+    liveStream: true,
+    clubManager: true,
+    polls: true
+  });
 
   // New States for Telemetry CSV Uploads
   const [uploadYear, setUploadYear] = useState<string>('2026');
@@ -365,6 +378,7 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
     setLoadingBulletins(true);
     try {
       const res = await fetch('/api/announcements');
+      if (!res.ok) throw new Error("Server returned an error");
       const data = await res.json();
       if (data.success && data.announcements) {
         setBulletins(data.announcements);
@@ -656,15 +670,63 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
     populateDriversAndTeams();
   }, []);
 
+  const fetchAdminSettings = async () => {
+    try {
+      const res = await fetch('/api/prediction-settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.visibleTabs) setGlobalVisibleTabs(data.visibleTabs);
+      }
+    } catch (err) {
+      console.error("Failed to load global admin settings", err);
+    }
+  };
+
   useEffect(() => {
     if (currentUser?.username === 'Admin') {
       fetchAdminUsers();
       fetchUploadedDatasets();
       fetchBulletins();
+      fetchAdminSettings();
       const cachedLock = localStorage.getItem('f1_predictions_globallock');
       setPredLockSetting(cachedLock === 'true');
     }
   }, [currentUser]);
+
+  const handleToggleTabVisibility = async (tabKey: string, currentValue: boolean) => {
+    try {
+      // First get current full settings
+      const resSettings = await fetch('/api/prediction-settings');
+      let currentSettings = {};
+      if (resSettings.ok) {
+        currentSettings = await resSettings.json();
+      }
+      
+      const updatedTabs = { ...globalVisibleTabs, [tabKey]: !currentValue };
+      
+      const payload = {
+        ...currentSettings,
+        visibleTabs: updatedTabs
+      };
+      
+      const res = await fetch('/api/admin/prediction-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        throw new Error("Failed to update global tab visibility.");
+      }
+      
+      setGlobalVisibleTabs(updatedTabs);
+      setAdminActionSuccess(`Successfully ${!currentValue ? 'ENABLED' : 'DISABLED'} ${tabKey} tab for all users.`);
+      setTimeout(() => setAdminActionSuccess(null), 3000);
+    } catch (err: any) {
+      setAdminActionError(err.message || 'Error updating settings.');
+      setTimeout(() => setAdminActionError(null), 3000);
+    }
+  };
 
   const savePreferences = (team: string, driver: string) => {
     setFavouriteTeam(team);
@@ -1484,6 +1546,44 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                     <span>{adminActionError}</span>
                   </div>
                 )}
+
+                {/* Module Visibility Engine */}
+                <div className="bg-neutral-900 border border-neutral-850 p-5 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <Shield size={14} className="text-[#27F4D2]" />
+                      <span className="text-[10px] text-[#27F4D2] font-mono font-black uppercase tracking-wider">Module Visibility Engine</span>
+                    </div>
+                    <span className="text-[9px] font-mono text-neutral-500 uppercase">Global Override</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono">
+                    {[
+                      { key: 'predictions', label: 'Matchup', icon: Compass },
+                      { key: 'schedule', label: 'Schedule', icon: Calendar },
+                      { key: 'standings', label: 'Standings', icon: Trophy },
+                      { key: 'circuits', label: 'Circuits', icon: MapPin },
+                      { key: 'drivers', label: 'Drivers', icon: User },
+                      { key: 'news', label: 'News', icon: Newspaper },
+                      { key: 'compare', label: 'Compare', icon: Users },
+                      { key: 'laps', label: 'Telemetry', icon: Gamepad2 },
+                      { key: 'liveStream', label: 'Live Stream', icon: Tv },
+                      { key: 'clubManager', label: 'Manager', icon: Settings },
+                      { key: 'polls', label: 'Polls', icon: CheckCircle2 }
+                    ].map(({ key, label, icon: Icon }) => {
+                      const isVisible = globalVisibleTabs?.[key as keyof typeof globalVisibleTabs] ?? true;
+                      return (
+                        <div 
+                          key={key} 
+                          className={`flex items-center justify-center gap-1.5 p-2.5 rounded-xl border transition-colors cursor-pointer select-none ${isVisible ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-red-500/10 border-red-500/20'}`}
+                          onClick={() => handleToggleTabVisibility(key, isVisible)}
+                        >
+                          <Icon size={14} className={isVisible ? 'text-emerald-500' : 'text-red-500'} />
+                          <span className={`font-bold uppercase tracking-wider ${isVisible ? 'text-emerald-500' : 'text-red-500'}`}>{label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 {/* Users list roster manager */}
                 <div className="bg-neutral-900 border border-neutral-850 rounded-2xl p-4 md:p-5 space-y-3.5">

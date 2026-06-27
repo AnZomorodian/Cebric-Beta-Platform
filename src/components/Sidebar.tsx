@@ -20,6 +20,28 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isOpenMo
     return {};
   });
 
+  const [globalVisibility, setGlobalVisibility] = useState<Record<string, boolean> | null>(null);
+
+  useEffect(() => {
+    const fetchGlobalVisibility = async () => {
+      try {
+        const res = await fetch("/api/prediction-settings");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.visibleTabs) {
+            setGlobalVisibility(data.visibleTabs);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch global visibility settings", e);
+      }
+    };
+    fetchGlobalVisibility();
+    // Poll every 10 seconds to keep sidebar synced without refreshing
+    const interval = setInterval(fetchGlobalVisibility, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     const handleUpdate = () => {
       if (currentUser) {
@@ -61,6 +83,22 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isOpenMo
     if (item.id === 'dashboard' || item.id === 'auth') {
       return true;
     }
+    // Global visibility check (Admin override)
+    if (globalVisibility) {
+      if (item.id === 'predictions' && globalVisibility.predictions === false) return false;
+      if (item.id === 'schedule' && globalVisibility.schedule === false) return false;
+      if (item.id === 'standings' && globalVisibility.standings === false) return false;
+      if (item.id === 'circuits' && globalVisibility.circuits === false) return false;
+      if (item.id === 'drivers' && globalVisibility.drivers === false) return false;
+      if (item.id === 'news' && globalVisibility.news === false) return false;
+      if (item.id === 'compare' && globalVisibility.compare === false) return false;
+      if (item.id === 'laps' && globalVisibility.laps === false) return false;
+      if (item.id === 'live-stream' && globalVisibility.liveStream === false) return false;
+      if (item.id === 'club-manager' && globalVisibility.clubManager === false) return false;
+      if (item.id === 'polls' && globalVisibility.polls === false) return false;
+    }
+    
+    // User personal visibility check
     if (currentUser && visibilityConfig && visibilityConfig[item.id] === false) {
       return false;
     }

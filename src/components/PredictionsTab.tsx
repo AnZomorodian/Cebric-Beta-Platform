@@ -4,7 +4,7 @@ import {
   Trophy, ShieldCheck, Lock, Unlock, Sparkles, Send, RefreshCw, 
   AlertTriangle, Compass, HelpCircle, Check, Calendar, MapPin, 
   Watch, Settings, Shield, Sliders, ChevronDown, ChevronUp, Star, TrendingUp,
-  X, ShieldAlert, Clock, BadgeCheck
+  X, ShieldAlert, Clock, BadgeCheck, Users, Gamepad2, Tv, CheckCircle2
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -67,8 +67,8 @@ const getAvailableRaces = (seasonData: any) => {
 };
 
 const REAL_DRIVERS_LIST = [
-  "Arvid Lindblad",
   "Alexander Albon",
+  "Arvid Lindblad",
   "Carlos Sainz",
   "Charles Leclerc",
   "Esteban Ocon",
@@ -90,6 +90,86 @@ const REAL_DRIVERS_LIST = [
   "Sergio Pérez",
   "Valtteri Bottas"
 ];
+
+const DRIVER_COLORS: Record<string, string> = {
+  "Lando Norris": "#FF8000",
+  "Oscar Piastri": "#FF8000",
+  "Charles Leclerc": "#E8002D",
+  "Lewis Hamilton": "#E8002D",
+  "George Russell": "#27F4D2",
+  "Kimi Antonelli": "#27F4D2",
+  "Max Verstappen": "#3671C6",
+  "Isack Hadjar": "#3671C6",
+  "Fernando Alonso": "#229971",
+  "Lance Stroll": "#229971",
+  "Pierre Gasly": "#00A1E8",
+  "Franco Colapinto": "#00A1E8",
+  "Carlos Sainz": "#1868DB",
+  "Alexander Albon": "#1868DB",
+  "Esteban Ocon": "#DEE1E2",
+  "Oliver Bearman": "#DEE1E2",
+  "Liam Lawson": "#6692FF",
+  "Arvid Lindblad": "#6692FF",
+  "Nico Hülkenberg": "#FF2D00",
+  "Gabriel Bortoleto": "#FF2D00",
+  "Sergio Pérez": "#AAAAAD",
+  "Valtteri Bottas": "#AAAAAD"
+};
+
+const DriverTag = ({ name }: { name: string }) => {
+  if (!name || name === "empty" || name === "-") return <strong className="text-xs text-neutral-900 font-extrabold block">{name}</strong>;
+  const color = DRIVER_COLORS[name];
+  if (!color) return <strong className="text-xs text-neutral-900 font-extrabold block">{name}</strong>;
+
+  return (
+    <strong className="text-xs text-neutral-900 font-extrabold flex items-center gap-1.5">
+      <span className="w-1.5 h-1.5 rounded-full inline-block shadow-sm" style={{ backgroundColor: color }}></span>
+      {name}
+    </strong>
+  );
+};
+
+const DriverSelect = ({ 
+  value, 
+  onChange, 
+  disabled, 
+  defaultOption, 
+  options = REAL_DRIVERS_LIST,
+  hasNoneOption = false,
+  className = "w-full bg-white hover:bg-neutral-50 border text-black text-xs font-mono rounded-xl p-2.5 outline-none transition-colors"
+}: { 
+  value: string; 
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; 
+  disabled: boolean; 
+  defaultOption: string;
+  options?: string[];
+  hasNoneOption?: boolean;
+  className?: string;
+}) => {
+  const driverColor = DRIVER_COLORS[value];
+  
+  return (
+    <div className="relative">
+      {driverColor && (
+        <span 
+          className="w-2 h-2 rounded-full absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none shadow-sm"
+          style={{ backgroundColor: driverColor }}
+        ></span>
+      )}
+      <select
+        disabled={disabled}
+        value={value}
+        onChange={onChange}
+        className={`${className} ${driverColor ? 'pl-7 border-[1.5px]' : 'border-gray-150 focus:border-[#EF1A2D]'}`}
+        style={driverColor ? { borderColor: driverColor } : {}}
+      >
+        <option value="">{defaultOption}</option>
+        {hasNoneOption && <option value="None">None (No DNFs this Race)</option>}
+        {options.map(d => <option key={d} value={d}>{d}</option>)}
+      </select>
+    </div>
+  );
+};
 
 interface PredictionData {
   poleDriver: string;
@@ -129,6 +209,14 @@ interface PredictionSettings {
     vsc: number;
     redFlag: number;
     gains: number;
+  };
+  visibleTabs?: {
+    predictions: boolean;
+    compare: boolean;
+    laps: boolean;
+    liveStream: boolean;
+    clubManager: boolean;
+    polls: boolean;
   };
   certifiedResults: {
     poleDriver: string;
@@ -239,6 +327,8 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
   const [countdownText, setCountdownText] = useState<string>("Calculating clock...");
   const [qCountdown, setQCountdown] = useState<string>("Calculating...");
   const [rCountdown, setRCountdown] = useState<string>("Calculating...");
+  const [isQualiPredictionLocked, setIsQualiPredictionLocked] = useState<boolean>(false);
+  const [isRacePredictionLocked, setIsRacePredictionLocked] = useState<boolean>(false);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState<boolean>(false);
   const [adminSavingSettings, setAdminSavingSettings] = useState<boolean>(false);
   const [adminNotify, setAdminNotify] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
@@ -365,12 +455,14 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
       let qGap = qTarget - now;
       if (qGap <= 0) {
         setQCountdown("LOCKED (QUALIFYING REQUISITES IN PROGRESS)");
+        setIsQualiPredictionLocked(true);
       } else {
         const d = Math.floor(qGap / (1000 * 60 * 60 * 24));
         const h = Math.floor((qGap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const m = Math.floor((qGap % (1000 * 60 * 60)) / (1000 * 60));
         const s = Math.floor((qGap % (1000 * 60)) / 1000);
         setQCountdown(`${d}d ${h}h ${m}m ${s}s remaining`);
+        setIsQualiPredictionLocked(false);
       }
 
       // 2. Race Deadline
@@ -384,6 +476,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
       let rGap = rTarget - now;
       if (rGap <= 0) {
         setRCountdown("LOCKED (MAIN RACE IN PROGRESS)");
+        setIsRacePredictionLocked(true);
       } else {
         const d = Math.floor(rGap / (1000 * 60 * 60 * 24));
         const h = Math.floor((rGap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -391,6 +484,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
         const s = Math.floor((rGap % (1000 * 60)) / 1000);
         setRCountdown(`${d}d ${h}h ${m}m ${s}s remaining`);
         setCountdownText(`${d}d ${h}h ${m}m ${s}s remaining`);
+        setIsRacePredictionLocked(false);
       }
     }, 1000);
 
@@ -1538,37 +1632,37 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Pole Position</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.poleDriver || "empty"}</strong>
+                    <DriverTag name={prediction.poleDriver || "empty"} />
                   </div>
 
                   <div className="bg-red-50/30 border border-red-100/40 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-[#EF1A2D] font-black uppercase font-mono block">Race Winner (P1)</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.p1Winner || "empty"}</strong>
+                    <DriverTag name={prediction.p1Winner || "empty"} />
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Podium Second (P2)</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.p2Winner || "empty"}</strong>
+                    <DriverTag name={prediction.p2Winner || "empty"} />
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Podium Third (P3)</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.p3Winner || "empty"}</strong>
+                    <DriverTag name={prediction.p3Winner || "empty"} />
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Fastest Lap Driver</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.fastestLap || "empty"}</strong>
+                    <DriverTag name={prediction.fastestLap || "empty"} />
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Driver of Day</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.driverOfTheDay || "empty"}</strong>
+                    <DriverTag name={prediction.driverOfTheDay || "empty"} />
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">First DNF</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.firstDNF || "empty"}</strong>
+                    <DriverTag name={prediction.firstDNF || "empty"} />
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
@@ -1593,17 +1687,17 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Qualifying P2</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.qualifyingP2 || "empty"}</strong>
+                    <DriverTag name={prediction.qualifyingP2 || "empty"} />
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Qualifying P3</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.qualifyingP3 || "empty"}</strong>
+                    <DriverTag name={prediction.qualifyingP3 || "empty"} />
                   </div>
 
                   <div className="bg-neutral-50/50 border border-gray-100 rounded-xl p-3.5 space-y-1 md:col-span-2">
                     <span className="text-[9px] text-gray-400 font-black uppercase font-mono block">Gains Most Positions</span>
-                    <strong className="text-xs text-neutral-900 font-extrabold block">{prediction.mostPositionsGained || "empty"}</strong>
+                    <DriverTag name={prediction.mostPositionsGained || "empty"} />
                   </div>
 
                   {/* Top 10 Finishers summary list item */}
@@ -1615,9 +1709,10 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                       {prediction.top10Finishers.map((driver, idx) => (
                         <span 
                           key={`sub-top10-${idx}`}
-                          className="text-[10px] bg-white border border-gray-150 font-mono px-2.5 py-1 rounded-md text-neutral-800"
+                          className="text-[10px] bg-white border border-gray-150 font-mono px-2.5 py-1 rounded-md text-neutral-800 flex items-center gap-1"
                         >
-                          P{idx + 1}: {driver || "empty"}
+                          <span className="text-gray-400 font-bold">P{idx + 1}:</span>
+                          <DriverTag name={driver || "empty"} />
                         </span>
                       ))}
                     </div>
@@ -1639,161 +1734,138 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   {/* Pole position */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Pole Position Driver</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isQualiPredictionLocked}
                       value={prediction.poleDriver}
                       onChange={(e) => setPrediction({ ...prediction, poleDriver: e.target.value })}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Select Driver --</option>
-                      {getAvailableQualiDrivers(prediction.poleDriver).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Select Driver --"
+                      options={getAvailableQualiDrivers(prediction.poleDriver)}
+                    />
                   </div>
 
                   {/* Qualifying P2 */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Qualifying P2 Driver</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isQualiPredictionLocked}
                       value={prediction.qualifyingP2}
                       onChange={(e) => setPrediction({ ...prediction, qualifyingP2: e.target.value })}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Select Qualifying P2 --</option>
-                      {getAvailableQualiDrivers(prediction.qualifyingP2).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Select Qualifying P2 --"
+                      options={getAvailableQualiDrivers(prediction.qualifyingP2)}
+                    />
                   </div>
 
                   {/* Qualifying P3 */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Qualifying P3 Driver</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isQualiPredictionLocked}
                       value={prediction.qualifyingP3}
                       onChange={(e) => setPrediction({ ...prediction, qualifyingP3: e.target.value })}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Select Qualifying P3 --</option>
-                      {getAvailableQualiDrivers(prediction.qualifyingP3).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Select Qualifying P3 --"
+                      options={getAvailableQualiDrivers(prediction.qualifyingP3)}
+                    />
                   </div>
 
                   {/* Race Winner P1 */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-[#EF1A2D] font-black font-mono uppercase tracking-wider block">Predicted Race Winner</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.p1Winner}
                       onChange={(e) => {
                         const newTop10 = [...prediction.top10Finishers];
                         newTop10[0] = e.target.value;
                         setPrediction({ ...prediction, p1Winner: e.target.value, top10Finishers: newTop10 });
                       }}
-                      className="w-full bg-red-50/10 border border-[#EF1A2D]/20 text-black text-xs font-mono font-bold rounded-xl p-2.5 outline-none focus:border-[#EF1A2D] cursor-pointer"
-                    >
-                      <option value="">-- Choose P1 Winner --</option>
-                      {getAvailableRaceDrivers(prediction.p1Winner).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      className="w-full bg-red-50/10 hover:bg-neutral-50 border text-black text-xs font-mono rounded-xl p-2.5 outline-none transition-colors"
+                      defaultOption="-- Choose P1 Winner --"
+                      options={getAvailableRaceDrivers(prediction.p1Winner)}
+                    />
                   </div>
 
                   {/* Podium P2 */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Second Place Finisher (P2)</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.p2Winner}
                       onChange={(e) => {
                         const newTop10 = [...prediction.top10Finishers];
                         newTop10[1] = e.target.value;
                         setPrediction({ ...prediction, p2Winner: e.target.value, top10Finishers: newTop10 });
                       }}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Choose P2 Finisher --</option>
-                      {getAvailableRaceDrivers(prediction.p2Winner).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Choose P2 Finisher --"
+                      options={getAvailableRaceDrivers(prediction.p2Winner)}
+                    />
                   </div>
 
                   {/* Podium P3 */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Third Place Finisher (P3)</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.p3Winner}
                       onChange={(e) => {
                         const newTop10 = [...prediction.top10Finishers];
                         newTop10[2] = e.target.value;
                         setPrediction({ ...prediction, p3Winner: e.target.value, top10Finishers: newTop10 });
                       }}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Choose P3 Finisher --</option>
-                      {getAvailableRaceDrivers(prediction.p3Winner).map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Choose P3 Finisher --"
+                      options={getAvailableRaceDrivers(prediction.p3Winner)}
+                    />
                   </div>
 
                   {/* Fastest Lap */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Predict Fastest Lap</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.fastestLap}
                       onChange={(e) => setPrediction({ ...prediction, fastestLap: e.target.value })}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Select Fastest Lap --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Select Fastest Lap --"
+                    />
                   </div>
 
                   {/* Driver of the Day */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Driver of the Day</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.driverOfTheDay}
                       onChange={(e) => setPrediction({ ...prediction, driverOfTheDay: e.target.value })}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Choose Driver --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Choose Driver --"
+                    />
                   </div>
 
                   {/* First DNF */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Predict First DNF</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.firstDNF}
                       onChange={(e) => setPrediction({ ...prediction, firstDNF: e.target.value })}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Choose DNF Option --</option>
-                      <option value="None">None (No DNFs this Race)</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Choose DNF Option --"
+                      hasNoneOption={true}
+                    />
                   </div>
 
                   {/* Most Positions Gained */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Driver Who Gains Most Positions</label>
-                    <select
-                      disabled={settings.globalLock}
+                    <DriverSelect
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.mostPositionsGained}
                       onChange={(e) => setPrediction({ ...prediction, mostPositionsGained: e.target.value })}
-                      className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
-                    >
-                      <option value="">-- Choose Driver --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
+                      defaultOption="-- Choose Driver --"
+                    />
                   </div>
 
                   {/* Slider parameters deployment */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Predict Safety Car Deployment</label>
                     <select
-                      disabled={settings.globalLock}
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.safetyCar}
                       onChange={(e) => setPrediction({ ...prediction, safetyCar: e.target.value })}
                       className="w-full bg-neutral-50 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none cursor-pointer"
@@ -1806,7 +1878,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Predict Virtual Safety Car (VSC)</label>
                     <select
-                      disabled={settings.globalLock}
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.virtualSafetyCar}
                       onChange={(e) => setPrediction({ ...prediction, virtualSafetyCar: e.target.value })}
                       className="w-full bg-neutral-50 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none cursor-pointer"
@@ -1819,7 +1891,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   <div className="space-y-1.5">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Predict Red Flag Occurrence</label>
                     <select
-                      disabled={settings.globalLock}
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.redFlag}
                       onChange={(e) => setPrediction({ ...prediction, redFlag: e.target.value })}
                       className="w-full bg-neutral-50 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none cursor-pointer"
@@ -1833,7 +1905,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   <div className="space-y-1.5 sm:col-span-2">
                     <label className="text-[10px] text-gray-500 font-black font-mono uppercase tracking-wider block">Predict Number of DNFs</label>
                     <select
-                      disabled={settings.globalLock}
+                      disabled={settings.globalLock || isRacePredictionLocked}
                       value={prediction.numberOfDNFs}
                       onChange={(e) => setPrediction({ ...prediction, numberOfDNFs: Number(e.target.value) })}
                       className="w-full bg-neutral-50 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none cursor-pointer"
@@ -1863,19 +1935,18 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                       return (
                         <div key={`form-top10-${idx}`} className="space-y-1">
                           <label className="text-[8px] text-gray-400 font-black block font-mono">FINISHER #{idx + 1}</label>
-                          <select
-                            disabled={settings.globalLock}
+                          <DriverSelect
+                            disabled={settings.globalLock || isRacePredictionLocked}
                             value={prediction.top10Finishers[idx] || ''}
                             onChange={(e) => {
                               const newTop10 = [...prediction.top10Finishers];
                               newTop10[idx] = e.target.value;
                               setPrediction({ ...prediction, top10Finishers: newTop10 });
                             }}
-                            className="w-full bg-white border border-gray-150 rounded-lg p-1.5 text-[10px] font-mono outline-none focus:border-[#EF1A2D]"
-                          >
-                            <option value="">P{idx + 1}</option>
-                            {getAvailableRaceDrivers(prediction.top10Finishers[idx]).map(d => <option key={d} value={d}>{d}</option>)}
-                          </select>
+                            className="w-full bg-white hover:bg-neutral-50 border text-black text-[10px] font-mono rounded-lg p-1.5 outline-none transition-colors"
+                            defaultOption={`P${idx + 1}`}
+                            options={getAvailableRaceDrivers(prediction.top10Finishers[idx])}
+                          />
                         </div>
                       );
                     })}

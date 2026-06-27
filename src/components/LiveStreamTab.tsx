@@ -7,14 +7,14 @@ interface LiveStream {
   id: string;
   title: string;
   url: string;
-  platform: 'youtube' | 'twitch' | 'custom' | 'ok_ru';
+  platform: 'youtube' | 'twitch' | 'custom' | 'ok_ru' | 'pushembdz';
   status: 'live' | 'upcoming' | 'offline';
   category: string;
   description: string;
 }
 
 // Utility to auto-detect platform from stream URL
-const detectPlatformFromUrl = (url: string): 'youtube' | 'twitch' | 'custom' | 'ok_ru' => {
+const detectPlatformFromUrl = (url: string): 'youtube' | 'twitch' | 'custom' | 'ok_ru' | 'pushembdz' => {
   const cleanUrl = url.toLowerCase();
   if (cleanUrl.includes('ok.ru')) {
     return 'ok_ru';
@@ -24,6 +24,9 @@ const detectPlatformFromUrl = (url: string): 'youtube' | 'twitch' | 'custom' | '
   }
   if (cleanUrl.includes('twitch.tv')) {
     return 'twitch';
+  }
+  if (cleanUrl.includes('pushembdz.store')) {
+    return 'pushembdz';
   }
   return 'custom';
 };
@@ -268,6 +271,16 @@ export default function LiveStreamTab() {
           <p className="text-sm font-black tracking-widest uppercase mb-1">INVALID OK.RU STREAM SOURCE</p>
           <p className="text-xs text-neutral-450 mb-4 max-w-sm">Unable to parse OK.ru video or stream ID from the provided URL. Please verify the link.</p>
         </div>
+      );
+    } else if (s.platform === 'pushembdz' || s.url.toLowerCase().includes('pushembdz.store')) {
+      return (
+        <iframe
+          className="w-full h-full border-none shadow-xl"
+          src={s.url}
+          title={s.title}
+          allow="autoplay; encrypted-media; fullscreen"
+          allowFullScreen
+        />
       );
     } else {
       if (s.url.toLowerCase().includes('.m3u8')) {

@@ -53,6 +53,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isOpenMo
     { id: 'laps', label: 'Lap Telemetry', icon: Timer },
     { id: 'polls', label: 'Paddock Polls', icon: Vote },
     { id: 'predictions', label: 'F1 Prediction', icon: Sparkles },
+    { id: 'club-manager', label: 'Club Manager Team', icon: Users },
     { id: 'auth', label: 'User Hub', icon: User },
   ];
 
@@ -64,7 +65,7 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isOpenMo
       return false;
     }
     if (!currentUser) {
-      if (item.id === 'predictions' || item.id === 'compare' || item.id === 'laps' || item.id === 'live-stream') {
+      if (item.id === 'predictions' || item.id === 'compare' || item.id === 'laps' || item.id === 'live-stream' || item.id === 'club-manager') {
         return false;
       }
     }

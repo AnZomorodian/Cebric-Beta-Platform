@@ -1,0 +1,10 @@
+{
+  "seasonStart": "2026-03-01",
+  "currentGpRound": "1",
+  "currentGpName": "",
+  "raceLaps": 0,
+  "weatherConditions": "Unknown",
+  "pointMultiplier": 1,
+  "status": "Awaiting Schedule",
+  "customCircuits": []
+}

@@ -154,6 +154,7 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
       laps: true,
       polls: true,
       predictions: true,
+      'club-manager': true,
       auth: true,
     };
   });
@@ -191,6 +192,7 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
       laps: true,
       polls: true,
       predictions: true,
+      'club-manager': true,
       auth: true,
     });
   }, [currentUser]);
@@ -1416,6 +1418,7 @@ export default function AuthTab({ onSessionUpdate }: AuthTabProps = {}) {
                       { id: 'laps', label: 'Lap Telemetry' },
                       { id: 'polls', label: 'Paddock Polls' },
                       { id: 'predictions', label: 'F1 Prediction' },
+                      { id: 'club-manager', label: 'Club Manager Team' },
                       { id: 'auth', label: 'User Hub 🔒' },
                     ].map((item) => {
                       const isLocked = item.id === 'dashboard' || item.id === 'auth';

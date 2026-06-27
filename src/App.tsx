@@ -16,6 +16,7 @@ import LiveStreamTab from './components/LiveStreamTab';
 import CompareTab from './components/CompareTab';
 import LapTimesTab from './components/LapTimesTab';
 import PredictionsTab from './components/PredictionsTab';
+import { ClubManagerTab } from './components/ClubManagerTab';
 import AuthTab from './components/AuthTab';
 import PollsTab from './components/PollsTab';
 import GlobalSearch from './components/GlobalSearch';
@@ -210,7 +211,7 @@ export default function App() {
   // Synchronous route guard for locked tabs on session expiration/logout
   useEffect(() => {
     if (!currentUser) {
-      if (activeTab === 'predictions' || activeTab === 'compare' || activeTab === 'laps') {
+      if (activeTab === 'predictions' || activeTab === 'compare' || activeTab === 'laps' || activeTab === 'club-manager') {
         setActiveTab('dashboard');
       }
     }
@@ -357,6 +358,10 @@ export default function App() {
 
           {activeTab === 'predictions' && (
             <PredictionsTab seasonData={seasonData} />
+          )}
+
+          {activeTab === 'club-manager' && (
+            <ClubManagerTab currentUser={currentUser} seasonData={seasonData} />
           )}
 
           {activeTab === 'auth' && (

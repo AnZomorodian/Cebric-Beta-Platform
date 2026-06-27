@@ -397,6 +397,27 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
     return () => clearInterval(interval);
   }, [settings, seasonData]);
 
+  const getAvailableRaceDrivers = (currentDriver: string) => {
+    const selectedRaceDrivers = [
+      prediction.p1Winner,
+      prediction.p2Winner,
+      prediction.p3Winner,
+      ...(prediction.top10Finishers || []).slice(3, 10)
+    ].filter(Boolean);
+    
+    return REAL_DRIVERS_LIST.filter(d => d === currentDriver || !selectedRaceDrivers.includes(d));
+  };
+
+  const getAvailableQualiDrivers = (currentDriver: string) => {
+    const selectedQualiDrivers = [
+      prediction.poleDriver,
+      prediction.qualifyingP2,
+      prediction.qualifyingP3
+    ].filter(Boolean);
+    
+    return REAL_DRIVERS_LIST.filter(d => d === currentDriver || !selectedQualiDrivers.includes(d));
+  };
+
   // Handle standard user prediction submission
   const handleSavePrediction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1625,7 +1646,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                       className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
                     >
                       <option value="">-- Select Driver --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                      {getAvailableQualiDrivers(prediction.poleDriver).map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
 
@@ -1639,7 +1660,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                       className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
                     >
                       <option value="">-- Select Qualifying P2 --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                      {getAvailableQualiDrivers(prediction.qualifyingP2).map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
 
@@ -1653,7 +1674,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                       className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
                     >
                       <option value="">-- Select Qualifying P3 --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                      {getAvailableQualiDrivers(prediction.qualifyingP3).map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
 
@@ -1663,11 +1684,15 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                     <select
                       disabled={settings.globalLock}
                       value={prediction.p1Winner}
-                      onChange={(e) => setPrediction({ ...prediction, p1Winner: e.target.value })}
+                      onChange={(e) => {
+                        const newTop10 = [...prediction.top10Finishers];
+                        newTop10[0] = e.target.value;
+                        setPrediction({ ...prediction, p1Winner: e.target.value, top10Finishers: newTop10 });
+                      }}
                       className="w-full bg-red-50/10 border border-[#EF1A2D]/20 text-black text-xs font-mono font-bold rounded-xl p-2.5 outline-none focus:border-[#EF1A2D] cursor-pointer"
                     >
                       <option value="">-- Choose P1 Winner --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                      {getAvailableRaceDrivers(prediction.p1Winner).map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
 
@@ -1677,11 +1702,15 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                     <select
                       disabled={settings.globalLock}
                       value={prediction.p2Winner}
-                      onChange={(e) => setPrediction({ ...prediction, p2Winner: e.target.value })}
+                      onChange={(e) => {
+                        const newTop10 = [...prediction.top10Finishers];
+                        newTop10[1] = e.target.value;
+                        setPrediction({ ...prediction, p2Winner: e.target.value, top10Finishers: newTop10 });
+                      }}
                       className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
                     >
                       <option value="">-- Choose P2 Finisher --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                      {getAvailableRaceDrivers(prediction.p2Winner).map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
 
@@ -1691,11 +1720,15 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                     <select
                       disabled={settings.globalLock}
                       value={prediction.p3Winner}
-                      onChange={(e) => setPrediction({ ...prediction, p3Winner: e.target.value })}
+                      onChange={(e) => {
+                        const newTop10 = [...prediction.top10Finishers];
+                        newTop10[2] = e.target.value;
+                        setPrediction({ ...prediction, p3Winner: e.target.value, top10Finishers: newTop10 });
+                      }}
                       className="w-full bg-neutral-50 hover:bg-neutral-100 border border-gray-150 text-black text-xs font-mono rounded-xl p-2.5 outline-none focus:border-[#EF1A2D]"
                     >
                       <option value="">-- Choose P3 Finisher --</option>
-                      {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                      {getAvailableRaceDrivers(prediction.p3Winner).map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </div>
 
@@ -1841,7 +1874,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                             className="w-full bg-white border border-gray-150 rounded-lg p-1.5 text-[10px] font-mono outline-none focus:border-[#EF1A2D]"
                           >
                             <option value="">P{idx + 1}</option>
-                            {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
+                            {getAvailableRaceDrivers(prediction.top10Finishers[idx]).map(d => <option key={d} value={d}>{d}</option>)}
                           </select>
                         </div>
                       );

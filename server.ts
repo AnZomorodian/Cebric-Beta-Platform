@@ -3141,6 +3141,896 @@ app.delete("/api/announcements/:id", (req, res) => {
   }
 });
 
+// ==========================================
+// CLUB MANAGER TEAM API & PERSISTENCE
+// ==========================================
+const CLUB_SETTINGS_PATH = path.join(process.cwd(), "ClubManagerSettings.json");
+const CLUBS_DATABASE_PATH = path.join(process.cwd(), "Clubs.json");
+const RACE_RESULTS_PATH = path.join(process.cwd(), "RaceResults.json");
+
+const firstNames = ["Jaxson", "Kaito", "Elena", "Matteo", "Marcus", "Sophia", "Lucas", "Jin", "Carlos", "Oliver", "Damon", "Niko", "Zane", "Liam", "Maxime", "Yuki", "Nina", "Sami", "Kimi", "Oscar", "Andrea", "Gabriel", "Théo", "Arthur", "Isack", "Franco", "Dino", "Jack", "Paul", "Arvid"];
+const lastNames = ["Vance", "Tanaka", "Rostova", "Silva", "Thorne", "Klein", "Dupont", "Park", "Mendoza", "Hansen", "Cole", "Lindqvist", "Al-Mansoor", "O'Connor", "Fournier", "Ito", "Petrov", "Khedira", "Räikkönen", "Piastri", "Kimi", "Bortoleto", "Pourchaire", "Leclerc", "Hadjar", "Colapinto", "Beganovic", "Doohan", "Aron", "Lindblad"];
+const nations = ["🇬🇧 British", "🇯🇵 Japanese", "🇮🇹 Italian", "🇧🇷 Brazilian", "🇺🇸 American", "🇩🇪 German", "🇫🇷 French", "🇰🇷 South Korean", "🇲🇽 Mexican", "🇩🇰 Danish", "🇦🇺 Australian", "🇫🇮 Finnish", "🇦🇪 UAE", "🇮🇪 Irish", "🇨🇭 Swiss", "🇧🇬 Bulgarian", "🇲🇦 Moroccan"];
+const staffRoles = ["Chief Engineer", "Strategy Director", "Race Engineer", "Head of Mechanics"];
+const staffBonuses = ["Aero+2", "Engine+1", "Chassis+1", "Race Pace+1", "Tire Wear-5%", "Pit Time-0.2s", "Driver Focus+5", "Morale+5", "Driver Skill+1", "Pit Stop Time-0.5s", "Reliability+10%", "Setup Speed+20%"];
+
+function generateMarketDrivers(count: number = 18) {
+  return Array.from({ length: count }).map((_, i) => {
+    const skill = Math.floor(Math.random() * 20) + 60; // 60-80
+    const age = Math.floor(Math.random() * 12) + 18; // 18-30
+    const fName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    return {
+      id: `drv_m_${Date.now()}_${i}_${Math.floor(Math.random()*1000)}`,
+      name: `${fName} ${lName}`,
+      skill,
+      price: skill * 5000,
+      salary: skill * 500,
+      age,
+      nationality: nations[Math.floor(Math.random() * nations.length)],
+      morale: 80,
+      focus: 80,
+      loyalty: 80
+    };
+  });
+}
+
+function generateMarketStaff(count: number = 12) {
+  return Array.from({ length: count }).map((_, i) => {
+    const skill = Math.floor(Math.random() * 15) + 70; // 70-85
+    const role = staffRoles[i % staffRoles.length];
+    const fName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    return {
+      id: `stf_m_${Date.now()}_${i}_${Math.floor(Math.random()*1000)}`,
+      name: `${fName} ${lName}`,
+      role,
+      skill,
+      price: skill * 4000,
+      salary: skill * 400,
+      bonus: staffBonuses[Math.floor(Math.random() * staffBonuses.length)]
+    };
+  });
+}
+
+let FICTITIOUS_MARKET_DRIVERS = generateMarketDrivers(18);
+let FICTITIOUS_MARKET_STAFF = generateMarketStaff(12);
+
+const FICTITIOUS_SPONSORS = [
+  { id: "sp_1", name: "Veloce Energy Drink", tier: "Title Partner", upfrontBonus: 300000, perRacePayout: 120000, perPodiumBonus: 50000, desc: "+$300k upfront, +$120k/race" },
+  { id: "sp_2", name: "Apex AI Cloud Systems", tier: "Tech Partner", upfrontBonus: 150000, perRacePayout: 80000, perPodiumBonus: 250000, desc: "+$150k upfront, +$250k/podium" },
+  { id: "sp_3", name: "CryptoGrid Paddock", tier: "Official Sponsor", upfrontBonus: 600000, perRacePayout: 60000, perPodiumBonus: 0, desc: "+$600k instant bonus, +$60k/race" },
+  { id: "sp_4", name: "Hyperion Aero Dynamics", tier: "Performance Sponsor", upfrontBonus: 0, perRacePayout: 180000, perPodiumBonus: 100000, desc: "+$180k/race, +$100k/podium" },
+  { id: "sp_5", name: "Titanium Wheels Co.", tier: "Official Sponsor", upfrontBonus: 200000, perRacePayout: 90000, perPodiumBonus: 20000, desc: "+$200k upfront, +$90k/race" },
+  { id: "sp_6", name: "Quantum Data Comms", tier: "Tech Partner", upfrontBonus: 50000, perRacePayout: 150000, perPodiumBonus: 150000, desc: "+$50k upfront, +$150k/race, +$150k/podium" },
+  { id: "sp_7", name: "Horizon Oil & Gas", tier: "Title Partner", upfrontBonus: 500000, perRacePayout: 100000, perPodiumBonus: 50000, desc: "+$500k upfront, +$100k/race" },
+  { id: "sp_8", name: "AeroSwift Logistics", tier: "Logistics Partner", upfrontBonus: 100000, perRacePayout: 70000, perPodiumBonus: 10000, desc: "+$100k upfront, +$70k/race" },
+  { id: "sp_9", name: "Starlight Hospitality", tier: "Lifestyle Sponsor", upfrontBonus: 250000, perRacePayout: 50000, perPodiumBonus: 80000, desc: "+$250k upfront, +$50k/race, +$80k/podium" },
+  { id: "sp_10", name: "NeoBank International", tier: "Financial Partner", upfrontBonus: 400000, perRacePayout: 80000, perPodiumBonus: 30000, desc: "+$400k upfront, +$80k/race" },
+];
+
+function readClubSettings(): any {
+  try {
+    if (!fs.existsSync(CLUB_SETTINGS_PATH)) {
+      const defaultSettings = {
+        seasonStart: "2026-03-01",
+        currentGpRound: "1",
+        currentGpName: "",
+        raceLaps: 0,
+        weatherConditions: "Unknown",
+        pointMultiplier: 1.0,
+        status: "Awaiting Schedule",
+        customCircuits: []
+      };
+      fs.writeFileSync(CLUB_SETTINGS_PATH, JSON.stringify(defaultSettings, null, 2), "utf8");
+      return defaultSettings;
+    }
+    return JSON.parse(fs.readFileSync(CLUB_SETTINGS_PATH, "utf8"));
+  } catch (err) {
+    return {
+      seasonStart: "2026-03-01",
+      currentGpRound: "1",
+      currentGpName: "",
+      raceLaps: 0,
+      weatherConditions: "Unknown",
+      pointMultiplier: 1.0,
+      status: "Awaiting Schedule",
+      customCircuits: []
+    };
+  }
+}
+
+function writeClubSettings(settings: any) {
+  try {
+    fs.writeFileSync(CLUB_SETTINGS_PATH, JSON.stringify(settings, null, 2), "utf8");
+  } catch (err) {
+    console.error("Failed to save club settings:", err);
+  }
+}
+
+function readClubs(): any[] {
+  try {
+    if (!fs.existsSync(CLUBS_DATABASE_PATH)) {
+      fs.writeFileSync(CLUBS_DATABASE_PATH, "[]", "utf8");
+      return [];
+    }
+    const clubs = JSON.parse(fs.readFileSync(CLUBS_DATABASE_PATH, "utf8"));
+    // Remove sample teams if present from previous version
+    if (clubs.some((c: any) => c.id === "club_1" || ["apexmaster", "paddockking"].includes(c.username?.toLowerCase()))) {
+      fs.writeFileSync(CLUBS_DATABASE_PATH, "[]", "utf8");
+      return [];
+    }
+    return clubs;
+  } catch (err) {
+    return [];
+  }
+}
+
+function writeClubs(clubs: any[]) {
+  try {
+    fs.writeFileSync(CLUBS_DATABASE_PATH, JSON.stringify(clubs, null, 2), "utf8");
+  } catch (err) {
+    console.error("Failed to save clubs:", err);
+  }
+}
+
+function readRaceResults(): any[] {
+  try {
+    if (!fs.existsSync(RACE_RESULTS_PATH)) return [];
+    return JSON.parse(fs.readFileSync(RACE_RESULTS_PATH, "utf8"));
+  } catch (err) {
+    return [];
+  }
+}
+
+function writeRaceResults(results: any[]) {
+  try {
+    fs.writeFileSync(RACE_RESULTS_PATH, JSON.stringify(results, null, 2), "utf8");
+  } catch (err) {
+    console.error("Failed to save results:", err);
+  }
+}
+
+app.get("/api/club-manager/settings", (req, res) => {
+  const username = req.query.username as string;
+  let drivers = FICTITIOUS_MARKET_DRIVERS;
+  let staff = FICTITIOUS_MARKET_STAFF;
+  
+  if (username) {
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (club) {
+      let updated = false;
+      if (!club.marketDrivers) {
+         club.marketDrivers = generateMarketDrivers(18);
+         updated = true;
+      }
+      if (!club.marketStaff) {
+         club.marketStaff = generateMarketStaff(12);
+         updated = true;
+      }
+      if (updated) {
+         writeClubs(clubs);
+      }
+      drivers = club.marketDrivers;
+      staff = club.marketStaff;
+    }
+  }
+
+  res.json({
+    settings: readClubSettings(),
+    marketDrivers: drivers,
+    marketStaff: staff,
+    sponsors: FICTITIOUS_SPONSORS
+  });
+});
+
+app.get("/api/club-manager/results", (req, res) => {
+  res.json(readRaceResults());
+});
+
+app.post("/api/admin/club-manager/settings", (req, res) => {
+  try {
+    const updated = req.body;
+    writeClubSettings(updated);
+    res.json({ success: true, settings: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update club settings" });
+  }
+});
+
+app.post("/api/admin/club-manager/add-circuit", (req, res) => {
+  try {
+    const { name, laps, locality, practiceTime, qualifyingTime, raceTime } = req.body;
+    if (!name) return res.status(400).json({ error: "Circuit name required" });
+    const settings = readClubSettings();
+    settings.customCircuits = settings.customCircuits || [];
+    const newCircuit = { 
+      name, 
+      laps: Number(laps) || 60, 
+      locality: locality || "Custom Venue",
+      practiceTime: practiceTime || "Friday 14:00 UTC",
+      qualifyingTime: qualifyingTime || "Saturday 15:00 UTC",
+      raceTime: raceTime || "Sunday 14:00 UTC"
+    };
+    settings.customCircuits.push(newCircuit);
+    settings.currentGpName = name;
+    settings.raceLaps = Number(laps) || 60;
+    settings.practiceTime = newCircuit.practiceTime;
+    settings.qualifyingTime = newCircuit.qualifyingTime;
+    settings.raceTime = newCircuit.raceTime;
+    writeClubSettings(settings);
+    res.json({ success: true, settings });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/club-manager/clubs", (req, res) => {
+  const clubs = readClubs();
+  clubs.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
+  res.json(clubs);
+});
+
+app.post("/api/club-manager/update-club", (req, res) => {
+  try {
+    const { username, clubName, teamColor, badgeIcon, teamPhilosophy } = req.body;
+    if (!username) return res.status(400).json({ error: "Username missing" });
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    if (clubName) club.clubName = clubName;
+    if (teamColor) club.teamColor = teamColor;
+    if (badgeIcon) club.badgeIcon = badgeIcon;
+
+    writeClubs(clubs);
+    return res.json({ success: true, message: "Club settings updated successfully!" });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/delete-club", (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: "Username missing" });
+    const clubs = readClubs();
+    const updatedClubs = clubs.filter(c => c.username.toLowerCase() !== username.toLowerCase());
+    writeClubs(updatedClubs);
+    return res.json({ success: true, message: "Club deleted successfully. You can now register a new one." });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/clubs", (req, res) => {
+  try {
+    const { username, clubName, teamColor, badgeIcon } = req.body;
+    if (!username || !clubName) {
+      return res.status(400).json({ error: "Required club parameters missing" });
+    }
+    const clubs = readClubs();
+    const existingIdx = clubs.findIndex(c => c.username.toLowerCase() === username.toLowerCase());
+    
+    if (existingIdx >= 0) {
+      clubs[existingIdx] = {
+        ...clubs[existingIdx],
+        clubName,
+        teamColor: teamColor || clubs[existingIdx].teamColor,
+        badgeIcon: badgeIcon || clubs[existingIdx].badgeIcon,
+      };
+      writeClubs(clubs);
+      return res.json({ success: true, club: clubs[existingIdx] });
+    } else {
+      const firstNames = ["Kimi", "Oscar", "Andrea", "Liam", "Gabriel", "Théo", "Arthur", "Isack", "Franco", "Oliver", "Dino", "Jack", "Paul", "Arvid"];
+      const lastNames = ["Antonn", "Piastel", "Kimi", "Lawson", "Bortol", "Pourch", "Lecler", "Hadjar", "Colapi", "Bearma", "Began", "Dooh", "Aron", "Lindb"];
+      
+      const getRandomName = () => {
+        const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
+        return `${fn} ${ln}`;
+      };
+
+      const newClub = {
+        id: `club_${Date.now()}`,
+        username,
+        clubName,
+        teamColor: teamColor || "#EF1A2D",
+        badgeIcon: badgeIcon || "Shield",
+        budget: 3000000, // Starts with $3,000,000
+        salaryCap: 2500000, // $2.5m combined salary cap per race
+        driver1: { id: `drv_rk1_${Date.now()}`, name: getRandomName(), skill: Math.floor(Math.random() * 11) + 65, price: 50000, salary: 6500 },
+        driver2: { id: `drv_rk2_${Date.now()}`, name: getRandomName(), skill: Math.floor(Math.random() * 11) + 65, price: 40000, salary: 5500 },
+        testDriver: null,
+        staff: [],
+        upgrades: { aero: 1, engine: 1, crew: 1, tires: 1, chassis: 1, brakes: 1, electronics: 1, simulator: 1 },
+        sponsors: [],
+        totalPoints: 0,
+        wins: 0,
+        podiums: 0,
+        marketDrivers: generateMarketDrivers(18),
+        marketStaff: generateMarketStaff(12),
+      };
+      clubs.push(newClub);
+      writeClubs(clubs);
+      return res.json({ success: true, club: newClub });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to save club" });
+  }
+});
+
+app.post("/api/club-manager/buy-driver", (req, res) => {
+  try {
+    const { username, driverId, slot } = req.body;
+    if (!username || !driverId || !slot) return res.status(400).json({ error: "Missing parameters" });
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    const marketDrivers = club.marketDrivers || FICTITIOUS_MARKET_DRIVERS;
+    const driverIdx = marketDrivers.findIndex((d: any) => d.id === driverId);
+    if (driverIdx === -1) return res.status(404).json({ error: "Driver not found on transfer market" });
+    const driver = marketDrivers[driverIdx];
+
+    // Check if driver already in slot 1 or 2 or 3
+    if (club.driver1?.id === driver.id || club.driver2?.id === driver.id || club.testDriver?.id === driver.id) {
+      return res.status(400).json({ error: "Driver is already signed to your club roster!" });
+    }
+
+    if (slot === 3 && driver.salary > 1000) {
+      return res.status(400).json({ error: "Test drivers can only be signed if their salary is $1,000 or less!" });
+    }
+
+    // Check salary cap
+    let combinedSalary = 0;
+    if (slot === 1) combinedSalary = driver.salary + (club.driver2?.salary || 0) + (club.testDriver?.salary || 0);
+    else if (slot === 2) combinedSalary = (club.driver1?.salary || 0) + driver.salary + (club.testDriver?.salary || 0);
+    else if (slot === 3) combinedSalary = (club.driver1?.salary || 0) + (club.driver2?.salary || 0) + driver.salary;
+
+    const staffSalary = (club.staff || []).reduce((acc: number, s: any) => acc + s.salary, 0);
+    combinedSalary += staffSalary;
+
+    const limit = club.salaryCap || 2500000;
+    if (combinedSalary > limit) {
+      return res.status(400).json({ error: `Salary Cap Exceeded! Combined salaries ($${combinedSalary.toLocaleString()}) exceed your $${limit.toLocaleString()}/race cap.` });
+    }
+
+    // Refund 80% of current driver in that slot
+    let currentSlotDriver = null;
+    if (slot === 1) currentSlotDriver = club.driver1;
+    else if (slot === 2) currentSlotDriver = club.driver2;
+    else if (slot === 3) currentSlotDriver = club.testDriver;
+
+    const refund = currentSlotDriver ? Math.round(currentSlotDriver.price * 0.8) : 0;
+    const netCost = driver.price - refund;
+
+    if (club.budget < netCost) {
+      return res.status(400).json({ error: `Insufficient Club Budget! Need $${netCost.toLocaleString()} net after refund.` });
+    }
+
+    club.budget -= netCost;
+    if (slot === 1) club.driver1 = driver;
+    else if (slot === 2) club.driver2 = driver;
+    else if (slot === 3) club.testDriver = driver;
+
+    if (club.marketDrivers) {
+      club.marketDrivers.splice(driverIdx, 1);
+    }
+    // optionally put the old driver back on market
+    if (currentSlotDriver && club.marketDrivers) {
+      club.marketDrivers.push(currentSlotDriver);
+    }
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, message: `Signed ${driver.name} to Seat ${slot}!` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/buy-staff", (req, res) => {
+  try {
+    const { username, staffId } = req.body;
+    if (!username || !staffId) return res.status(400).json({ error: "Missing parameters" });
+
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    const marketStaff = club.marketStaff || FICTITIOUS_MARKET_STAFF;
+    const staffIdx = marketStaff.findIndex((s: any) => s.id === staffId);
+    if (staffIdx === -1) return res.status(404).json({ error: "Staff not found on transfer market" });
+    const staffMember = marketStaff[staffIdx];
+
+    club.staff = club.staff || [];
+    if (club.staff.find((s: any) => s.id === staffId)) {
+      return res.status(400).json({ error: "Staff already hired by your club" });
+    }
+
+    // Check salary cap
+    let combinedSalary = (club.driver1?.salary || 0) + (club.driver2?.salary || 0) + (club.testDriver?.salary || 0);
+    const staffSalary = club.staff.reduce((acc: number, s: any) => acc + s.salary, 0);
+    combinedSalary += staffSalary + staffMember.salary;
+
+    const limit = club.salaryCap || 2500000;
+    if (combinedSalary > limit) {
+      return res.status(400).json({ error: `Salary Cap Exceeded! Combined salaries ($${combinedSalary.toLocaleString()}) exceed your $${limit.toLocaleString()}/race cap.` });
+    }
+
+    if (club.budget < staffMember.price) {
+      return res.status(400).json({ error: `Insufficient budget ($${club.budget.toLocaleString()}). Required: $${staffMember.price.toLocaleString()}` });
+    }
+
+    club.budget -= staffMember.price;
+    club.staff.push(staffMember);
+
+    if (club.marketStaff) {
+      club.marketStaff.splice(staffIdx, 1);
+    }
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, message: `Successfully hired ${staffMember.name} as ${staffMember.role}!` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/sell-driver", (req, res) => {
+  try {
+    const { username, slot } = req.body;
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    let currentDriver = null;
+    if (slot === 1) currentDriver = club.driver1;
+    else if (slot === 2) currentDriver = club.driver2;
+    else if (slot === 3) currentDriver = club.testDriver;
+
+    if (!currentDriver) return res.status(400).json({ error: "No driver in that seat" });
+
+    const refund = Math.round(currentDriver.price * 0.8);
+    club.budget += refund;
+
+    if (slot === 3) {
+      club.testDriver = null;
+    } else {
+      // Replace with free academy rookie
+      const rookie = { id: `drv_rk_${Date.now()}`, name: `Academy Rookie ${slot}`, skill: 65, price: 50000, salary: 5000 };
+      if (slot === 1) club.driver1 = rookie;
+      else club.driver2 = rookie;
+    }
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, message: `Sold driver for $${refund.toLocaleString()} refund.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/train-driver", (req, res) => {
+  try {
+    const { username, slot } = req.body;
+    if (!username || !slot) return res.status(400).json({ error: "Missing parameters" });
+
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    const trainCost = 50000;
+    if (club.budget < trainCost) {
+      return res.status(400).json({ error: `Insufficient budget for training ($${trainCost.toLocaleString()}).` });
+    }
+
+    let driver = null;
+    if (slot === 1) driver = club.driver1;
+    else if (slot === 2) driver = club.driver2;
+    else if (slot === 3) driver = club.testDriver;
+    if (!driver) return res.status(400).json({ error: "No driver in this slot" });
+
+    if (driver.skill >= 99) {
+      return res.status(400).json({ error: "Driver has reached maximum potential (99 OVR)!" });
+    }
+
+    club.budget -= trainCost;
+    driver.skill += 1;
+    driver.salary += 5000;
+    driver.price += 25000;
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, message: `${driver.name} trained successfully! Skill is now ${driver.skill} OVR.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Failed to train driver" });
+  }
+});
+
+app.post("/api/club-manager/driver-interact", (req, res) => {
+  try {
+    const { username, slot, type } = req.body; // type: 'praise' | 'criticize' | 'bonus'
+    if (!username || !slot || !type) return res.status(400).json({ error: "Missing parameters" });
+
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    let driver = null;
+    if (slot === 1) driver = club.driver1;
+    else if (slot === 2) driver = club.driver2;
+    else if (slot === 3) driver = club.testDriver;
+    if (!driver) return res.status(400).json({ error: "No driver in this slot" });
+
+    // Initialize stats if missing
+    driver.morale = driver.morale || 80;
+    driver.focus = driver.focus || 80;
+    driver.loyalty = driver.loyalty || 80;
+
+    let msg = "";
+
+    if (type === 'praise') {
+      driver.morale = Math.min(100, driver.morale + 10);
+      driver.focus = Math.max(0, driver.focus - 5);
+      msg = `Praised ${driver.name}: Morale +10, Focus -5.`;
+    } else if (type === 'criticize') {
+      driver.focus = Math.min(100, driver.focus + 10);
+      driver.morale = Math.max(0, driver.morale - 10);
+      msg = `Criticized ${driver.name}: Focus +10, Morale -10.`;
+    } else if (type === 'bonus') {
+      if (club.budget < 50000) return res.status(400).json({ error: "Insufficient budget for bonus ($50k)" });
+      club.budget -= 50000;
+      driver.loyalty = Math.min(100, driver.loyalty + 15);
+      msg = `Offered $50k bonus to ${driver.name}: Loyalty +15.`;
+    }
+
+    // Dynamic release clause based on loyalty and morale
+    const factor = (driver.loyalty + driver.morale) / 160; // 1.0 = average
+    driver.price = Math.round((driver.skill * 10000) * factor); 
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, message: msg });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/update-driver-style", (req, res) => {
+  try {
+    const { username, slot, drivingStyle } = req.body; // drivingStyle: 'Aggressive' | 'Balanced' | 'Conservative'
+    if (!username || !slot || !drivingStyle) return res.status(400).json({ error: "Missing parameters" });
+
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    let driver = null;
+    if (slot === 1) driver = club.driver1;
+    else if (slot === 2) driver = club.driver2;
+    else if (slot === 3) driver = club.testDriver;
+    if (!driver) return res.status(400).json({ error: "No driver in this slot" });
+
+    driver.drivingStyle = drivingStyle;
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, message: `${driver.name} is now using a ${drivingStyle} driving style!` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/upgrade-rd", (req, res) => {
+  try {
+    const { username, category } = req.body; // 'aero' | 'engine' | 'crew' | 'tires'
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    club.upgrades = club.upgrades || { aero: 1, engine: 1, crew: 1, tires: 1, chassis: 1, brakes: 1, electronics: 1, simulator: 1 };
+    const currLvl = club.upgrades[category as keyof typeof club.upgrades] || 1;
+    if (currLvl >= 10) return res.status(400).json({ error: "Maximum R&D Level (10) Reached!" });
+
+    // Exponential or incremental scaling for up to level 10
+    const costsMap: Record<number, number> = { 1: 200000, 2: 350000, 3: 550000, 4: 800000, 5: 1100000, 6: 1500000, 7: 2000000, 8: 2600000, 9: 3300000 };
+    const cost = costsMap[currLvl] || 500000;
+
+    if (club.budget < cost) {
+      return res.status(400).json({ error: `Insufficient Budget ($${club.budget.toLocaleString()}). Upgrade costs $${cost.toLocaleString()}.` });
+    }
+
+    club.budget -= cost;
+    club.upgrades[category as keyof typeof club.upgrades] = currLvl + 1;
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, message: `Upgraded ${category.toUpperCase()} to Level ${currLvl + 1}!` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/toggle-sponsor", (req, res) => {
+  try {
+    const { username, sponsorId } = req.body;
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    club.sponsors = club.sponsors || [];
+    const idx = club.sponsors.indexOf(sponsorId);
+    const sponsorObj = FICTITIOUS_SPONSORS.find(s => s.id === sponsorId);
+
+    if (idx >= 0) {
+      club.sponsors.splice(idx, 1);
+      writeClubs(clubs);
+      return res.json({ success: true, club, message: "Sponsorship contract terminated." });
+    } else {
+      if (club.sponsors.length >= 2) {
+        return res.status(400).json({ error: "Maximum 2 active sponsors allowed! Terminate one first." });
+      }
+      club.sponsors.push(sponsorId);
+      if (sponsorObj && sponsorObj.upfrontBonus > 0) {
+        club.budget += sponsorObj.upfrontBonus;
+      }
+      writeClubs(clubs);
+      return res.json({ success: true, club, message: `Signed ${sponsorObj?.name}! Upfront bonus added.` });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/club-manager/refresh-market", (req, res) => {
+  try {
+    const clubs = readClubs();
+    
+    // Refresh global just in case
+    FICTITIOUS_MARKET_DRIVERS = generateMarketDrivers(18);
+    FICTITIOUS_MARKET_STAFF = generateMarketStaff(12);
+
+    // Refresh for each club
+    clubs.forEach(club => {
+      club.marketDrivers = generateMarketDrivers(18);
+      club.marketStaff = generateMarketStaff(12);
+    });
+
+    writeClubs(clubs);
+    res.json({ success: true, message: "Transfer market has been refreshed for all teams!" });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to refresh market" });
+  }
+});
+
+app.post("/api/admin/club-manager/simulate-race", (req, res) => {
+  try {
+    const settings = readClubSettings();
+    const clubs = readClubs();
+    if (clubs.length === 0) {
+      return res.status(400).json({ error: "No clubs registered to simulate race" });
+    }
+
+    interface SimDriver {
+      clubId: string;
+      driverName: string;
+      skill: number;
+      score: number;
+      drivingStyle: string;
+    }
+    const drivers: SimDriver[] = [];
+    clubs.forEach(c => {
+      const upg = c.upgrades || {};
+      const upgValues = Object.values(upg) as number[];
+      const sumUpg = upgValues.length > 0 ? upgValues.reduce((a, b) => a + b, 0) : 4;
+      const baseKeysCount = Object.keys(upg).length || 4;
+      const rdBoost = (sumUpg - baseKeysCount) * 0.8;
+      
+      const applyStylePace = (style: string) => {
+        if (style === 'Aggressive') return 2;
+        if (style === 'Conservative') return -1;
+        return 0; // Balanced or undefined
+      };
+      
+      drivers.push({ 
+        clubId: c.id, 
+        driverName: c.driver1?.name || "Driver 1", 
+        skill: (c.driver1?.skill || 70) + rdBoost + applyStylePace(c.driver1?.drivingStyle || 'Balanced'), 
+        score: 0,
+        drivingStyle: c.driver1?.drivingStyle || 'Balanced'
+      });
+      drivers.push({ 
+        clubId: c.id, 
+        driverName: c.driver2?.name || "Driver 2", 
+        skill: (c.driver2?.skill || 68) + rdBoost + applyStylePace(c.driver2?.drivingStyle || 'Balanced'), 
+        score: 0,
+        drivingStyle: c.driver2?.drivingStyle || 'Balanced'
+      });
+    });
+
+    drivers.forEach(d => {
+      let luck = Math.random() * 25;
+      
+      // Apply reliability/wear effects
+      if (d.drivingStyle === 'Aggressive') luck -= 3; // Higher chance of mistakes or DNF
+      else if (d.drivingStyle === 'Conservative') luck += 2; // Safer, more reliable finish
+      
+      d.score = d.skill + luck;
+    });
+
+    drivers.sort((a, b) => b.score - a.score);
+
+    const pointsMap = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+    const multiplier = Number(settings.pointMultiplier) || 1.0;
+
+    // Award points and financials
+    clubs.forEach(club => {
+      let clubRacePts = 0;
+      let podiumFinish = false;
+      let winFinish = false;
+
+      drivers.forEach((d, pos) => {
+        if (d.clubId === club.id) {
+          const pts = Math.round((pointsMap[pos] || 0) * multiplier);
+          clubRacePts += pts;
+          if (pos === 0) winFinish = true;
+          if (pos < 3) podiumFinish = true;
+        }
+      });
+
+      club.totalPoints = (club.totalPoints || 0) + clubRacePts;
+      if (winFinish) club.wins = (club.wins || 0) + 1;
+      if (podiumFinish) club.podiums = (club.podiums || 0) + 1;
+
+      // Prize money: $50k per point scored
+      const prizeMoney = clubRacePts * 50000;
+      club.budget = (club.budget || 0) + prizeMoney;
+
+      // Deduct driver salaries
+      const salaries = (club.driver1?.salary || 10000) + (club.driver2?.salary || 10000);
+      club.budget -= salaries;
+
+      // Sponsor payouts
+      (club.sponsors || []).forEach((spId: string) => {
+        const sp = FICTITIOUS_SPONSORS.find(s => s.id === spId);
+        if (sp) {
+          club.budget += sp.perRacePayout;
+          if (podiumFinish && sp.perPodiumBonus > 0) {
+            club.budget += sp.perPodiumBonus;
+          }
+        }
+      });
+    });
+
+    // Create race result record
+    const resultsData = readRaceResults();
+    const newRaceResult = {
+      id: "race_" + Date.now(),
+      gpName: settings.currentGpName || "Unknown GP",
+      round: settings.currentGpRound || resultsData.length + 1,
+      standings: drivers.map((d, pos) => {
+        const clubObj = clubs.find((c: any) => c.id === d.clubId);
+        return {
+          name: d.driverName,
+          teamName: clubObj?.clubName || "Unknown",
+          teamColor: clubObj?.teamColor || "#666",
+          pointsEarned: Math.round((pointsMap[pos] || 0) * multiplier),
+          timeGap: pos === 0 ? "Interval" : "+" + (Math.random() * 10 + pos * 2).toFixed(3) + "s"
+        };
+      })
+    };
+    resultsData.unshift(newRaceResult);
+    writeRaceResults(resultsData);
+
+    writeClubs(clubs);
+    return res.json({ success: true, message: `Simulated race round at ${settings.currentGpName}! Payouts & standings updated.`, clubs });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Simulation failed" });
+  }
+});
+
+app.post("/api/club-manager/swap-drivers", (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: "Missing parameters" });
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    const temp = club.driver1;
+    club.driver1 = club.driver2;
+    club.driver2 = temp;
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, message: "Successfully swapped Seat 1 and Seat 2 drivers!" });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/club-manager/scout-driver", (req, res) => {
+  try {
+    const { username, slot, type } = req.body; // type: 'local' | 'global' | 'poach'
+    if (!username || !slot) return res.status(400).json({ error: "Missing parameters" });
+    const clubs = readClubs();
+    const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
+    if (!club) return res.status(404).json({ error: "Club not found" });
+
+    let scoutFee = 50000;
+    let minSkill = 70;
+    let maxSkill = 88;
+    let minAge = 16;
+    let maxAge = 19;
+    
+    if (type === 'local') {
+      scoutFee = 15000;
+      minSkill = 62;
+      maxSkill = 72;
+      minAge = 16;
+      maxAge = 21;
+    } else if (type === 'poach') {
+      scoutFee = 150000;
+      minSkill = 78;
+      maxSkill = 92;
+      minAge = 17;
+      maxAge = 20;
+    }
+
+    if (club.budget < scoutFee) {
+      return res.status(400).json({ error: `Insufficient funds! This scouting option requires $${scoutFee.toLocaleString()} fee. You have $${club.budget.toLocaleString()}.` });
+    }
+
+    // Generate wonderkid
+    const firstNames = ["Kimi", "Oscar", "Andrea", "Liam", "Gabriel", "Théo", "Arthur", "Isack", "Franco", "Oliver", "Dino", "Jack", "Paul", "Arvid"];
+    const lastNames = ["Antonn", "Piastel", "Kimi", "Lawson", "Bortol", "Pourch", "Lecler", "Hadjar", "Colapi", "Bearma", "Began", "Dooh", "Aron", "Lindb"];
+    const nats = ["🇮🇹 Italian", "🇦🇺 Australian", "🇫🇷 French", "🇬🇧 British", "🇧🇷 Brazilian", "🇳🇱 Dutch", "🇪🇸 Spanish", "🇩🇪 German", "🇦🇷 Argentine", "🇸🇪 Swedish"];
+    
+    const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const age = Math.floor(Math.random() * (maxAge - minAge + 1)) + minAge;
+    const nat = nats[Math.floor(Math.random() * nats.length)];
+    const skill = Math.floor(Math.random() * (maxSkill - minSkill + 1)) + minSkill;
+    const salary = Math.round(skill * 1200);
+    const price = Math.round(skill * 15000);
+
+    const wonderkid = {
+      id: `drv_scout_${Date.now()}`,
+      name: `${fn} ${ln}`,
+      skill,
+      price,
+      salary,
+      age,
+      nationality: nat,
+      isWonderkid: true
+    };
+
+    // Check salary cap
+    let combinedSalary = 0;
+    if (slot === 1) combinedSalary = wonderkid.salary + (club.driver2?.salary || 0) + (club.testDriver?.salary || 0);
+    else if (slot === 2) combinedSalary = (club.driver1?.salary || 0) + wonderkid.salary + (club.testDriver?.salary || 0);
+    else if (slot === 3) combinedSalary = (club.driver1?.salary || 0) + (club.driver2?.salary || 0) + wonderkid.salary;
+    
+    const staffSalary = (club.staff || []).reduce((acc: number, s: any) => acc + s.salary, 0);
+    combinedSalary += staffSalary;
+
+    const limit = club.salaryCap || 2500000;
+    if (combinedSalary > limit) {
+      return res.status(400).json({ error: `Salary Cap Exceeded! Signing this driver would push combined salaries ($${combinedSalary.toLocaleString()}) over your $${limit.toLocaleString()}/race cap.` });
+    }
+
+    const oldDriver = slot === 1 ? club.driver1 : (slot === 2 ? club.driver2 : club.testDriver);
+    const refund = oldDriver ? Math.round(oldDriver.price * 0.8) : 0;
+    
+    club.budget -= scoutFee;
+    club.budget += refund;
+
+    if (slot === 1) club.driver1 = wonderkid;
+    else if (slot === 2) club.driver2 = wonderkid;
+    else if (slot === 3) club.testDriver = wonderkid;
+
+    writeClubs(clubs);
+    return res.json({ success: true, club, wonderkid, message: `Scouted & signed 🌟 Wonderkid ${wonderkid.name} (${age}yo, ${skill} OVR) to Seat ${slot}!` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Configure Vite integration for development / production serving
 async function setupVite() {
   if (process.env.NODE_ENV !== "production") {

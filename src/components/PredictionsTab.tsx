@@ -843,83 +843,45 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   <div className="bg-neutral-900 border border-neutral-850 p-4 rounded-2xl space-y-3">
                     <span className="text-[10px] text-red-400 font-mono font-black block uppercase tracking-wider">1. Next GP Info Board</span>
                     <div className="space-y-2">
-                      <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-2.5 mb-2 space-y-1">
-                        <label className="block text-[9px] text-[#EF1A2D] font-black uppercase tracking-wider">⚡ Import F1 2026 Race</label>
-                        <select
-                          className="w-full bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-[11px] text-white outline-none cursor-pointer font-mono"
-                          onChange={(e) => {
-                            const round = e.target.value;
-                            if (!round) return;
-                            const races = getAvailableRaces(seasonData);
-                            const race = races.find((r: any) => r.round === round);
-                            if (race) {
-                              const year = "2026";
-                              const name = `${race.raceName} ${year}`;
-                              const location = `${race.circuitName}, ${race.locality}`;
-                              
-                              // Create dates
-                              const combinedDateStr = `${race.date}T${race.time.replace("Z", "")}Z`;
-                              const raceStartISO = new Date(combinedDateStr).toISOString();
-                              
-                              // Qualifying deadline is Saturday before Sunday (or 24 hours earlier)
-                              const raceStartDateObj = new Date(raceStartISO);
-                              const qualDateObj = new Date(raceStartDateObj.getTime() - 24 * 60 * 60 * 1000);
-                              qualDateObj.setUTCHours(13, 0, 0, 0);
-                              
-                              setSettings({
-                                ...settings,
-                                nextGpName: name,
-                                nextGpLocation: location,
-                                nextGpDate: raceStartISO,
-                                qualifyingDeadline: qualDateObj.toISOString(),
-                                raceDeadline: raceStartISO
-                              });
-                            }
-                          }}
-                        >
-                          <option value="">-- Choose from Calendar --</option>
-                          {getAvailableRaces(seasonData).map((r: any) => (
-                            <option key={r.round} value={r.round}>
-                              Rnd {r.round}: {r.raceName} ({r.date})
-                            </option>
-                          ))}
-                        </select>
+                      <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-xs font-mono mb-4">
+                        <strong className="block mb-1 text-red-500 uppercase tracking-wider">⚠️ ACTIVE GRAND PRIX METADATA</strong>
+                        These fields are read-only to prevent accidental disruption of the active GP. To import a new GP or progress the season, scroll down to the "Lifecycle" section and use the "ARCHIVE & SPAWN NEW GP" feature.
                       </div>
 
                       <label className="text-[9px] text-neutral-400 block font-mono">GP Name</label>
                       <input 
                         type="text" 
+                        readOnly
                         value={settings.nextGpName} 
-                        onChange={(e) => setSettings({ ...settings, nextGpName: e.target.value })}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white"
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-neutral-500 cursor-not-allowed"
                       />
                       <label className="text-[9px] text-neutral-400 block font-mono">Location / Track</label>
                       <input 
                         type="text" 
+                        readOnly
                         value={settings.nextGpLocation} 
-                        onChange={(e) => setSettings({ ...settings, nextGpLocation: e.target.value })}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white"
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-neutral-500 cursor-not-allowed"
                       />
                       <label className="text-[9px] text-neutral-400 block font-mono">Race Start Date Time</label>
                       <input 
                         type="datetime-local" 
+                        readOnly
                         value={toLocalDateTimeLocal(settings.nextGpDate)} 
-                        onChange={(e) => setSettings({ ...settings, nextGpDate: fromLocalDateTimeLocal(e.target.value) })}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white cursor-pointer"
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-neutral-500 cursor-not-allowed"
                       />
                       <label className="text-[9px] text-neutral-400 block font-mono">Qualifying Deadline</label>
                       <input 
                         type="datetime-local" 
+                        readOnly
                         value={toLocalDateTimeLocal((settings as any).qualifyingDeadline || "")} 
-                        onChange={(e) => setSettings({ ...settings, qualifyingDeadline: fromLocalDateTimeLocal(e.target.value) } as any)}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white cursor-pointer"
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-neutral-500 cursor-not-allowed"
                       />
                       <label className="text-[9px] text-neutral-400 block font-mono">Main Race Deadline</label>
                       <input 
                         type="datetime-local" 
+                        readOnly
                         value={toLocalDateTimeLocal((settings as any).raceDeadline || "")} 
-                        onChange={(e) => setSettings({ ...settings, raceDeadline: fromLocalDateTimeLocal(e.target.value) } as any)}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white cursor-pointer"
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-neutral-500 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -1212,10 +1174,11 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                     <div className="space-y-1">
                       <label className="text-neutral-400 block">Safety Car?</label>
                       <select 
-                        value={settings.certifiedResults.safetyCar}
+                        value={settings.certifiedResults.safetyCar || "not_yet"}
                         onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, safetyCar: e.target.value } })}
                         className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white"
                       >
+                        <option value="not_yet">-- Not Yet --</option>
                         <option value="yes">YES</option>
                         <option value="no">NO</option>
                       </select>
@@ -1224,10 +1187,11 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                     <div className="space-y-1">
                       <label className="text-neutral-400 block">VSC?</label>
                       <select 
-                        value={settings.certifiedResults.virtualSafetyCar}
+                        value={settings.certifiedResults.virtualSafetyCar || "not_yet"}
                         onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, virtualSafetyCar: e.target.value } })}
                         className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white"
                       >
+                        <option value="not_yet">-- Not Yet --</option>
                         <option value="yes">YES</option>
                         <option value="no">NO</option>
                       </select>
@@ -1236,10 +1200,11 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                     <div className="space-y-1">
                       <label className="text-neutral-400 block">Red Flag?</label>
                       <select 
-                        value={settings.certifiedResults.redFlag}
+                        value={settings.certifiedResults.redFlag || "not_yet"}
                         onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, redFlag: e.target.value } })}
                         className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white"
                       >
+                        <option value="not_yet">-- Not Yet --</option>
                         <option value="yes">YES</option>
                         <option value="no">NO</option>
                       </select>
@@ -1247,12 +1212,16 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
 
                     <div className="space-y-1">
                       <label className="text-neutral-400 block">DNFs Count</label>
-                      <input 
-                        type="number"
-                        value={settings.certifiedResults.numberOfDNFs}
-                        onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, numberOfDNFs: Number(e.target.value) } })}
-                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white text-center"
-                      />
+                      <select 
+                        value={settings.certifiedResults.numberOfDNFs !== undefined ? String(settings.certifiedResults.numberOfDNFs) : "not_yet"}
+                        onChange={(e) => setSettings({ ...settings, certifiedResults: { ...settings.certifiedResults, numberOfDNFs: e.target.value === "not_yet" ? "not_yet" : Number(e.target.value) } })}
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-white"
+                      >
+                        <option value="not_yet">-- Not Yet --</option>
+                        {[...Array(21)].map((_, i) => (
+                          <option key={i} value={i}>{i}</option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Top 10 Finishers selection list */}
@@ -1642,7 +1611,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                   <div>
                     <h4 className="text-xs font-black text-emerald-950 uppercase">Submission Fully Synced</h4>
                     <p className="text-[10.5px] text-emerald-800 mt-1 leading-normal font-medium">
-                      Your instinct variables have been safely locked for the {settings.nextGpName}. Once the admin certifies results, your score will match instantly.
+                      Your instinct variables have been safely locked for the {settings.nextGpName}.
                     </p>
                   </div>
                 </div>

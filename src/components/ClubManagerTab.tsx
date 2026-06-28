@@ -788,13 +788,13 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Livery Team Color</label>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="grid grid-cols-6 sm:grid-cols-12 gap-3">
                     {COLOR_PRESETS.map((col) => (
                       <button
                         key={col.hex}
                         type="button"
                         onClick={() => setNewClubForm({ ...newClubForm, teamColor: col.hex })}
-                        className={`h-10 w-10 rounded-xl flex items-center justify-center text-white transition-transform ${
+                        className={`h-10 w-full sm:w-10 rounded-xl flex items-center justify-center text-white transition-transform ${
                           newClubForm.teamColor === col.hex ? 'ring-4 ring-red-500/30 scale-110' : 'hover:scale-105 opacity-80 hover:opacity-100'
                         }`}
                         style={{ backgroundColor: col.hex }}
@@ -807,7 +807,7 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Team Crest Icon</label>
-                  <div className="flex flex-wrap gap-4">
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                     {Object.keys(BADGE_ICONS).map((bKey) => {
                       const BIcon = BADGE_ICONS[bKey];
                       return (
@@ -815,12 +815,12 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                           key={bKey}
                           type="button"
                           onClick={() => setNewClubForm({ ...newClubForm, badgeIcon: bKey })}
-                          className={`w-24 py-3 px-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                          className={`w-full py-3 px-2 rounded-xl border flex flex-col items-center gap-2 transition-all ${
                             newClubForm.badgeIcon === bKey ? 'border-red-600 bg-red-50/60 text-red-700 font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
                           }`}
                         >
                           <BIcon size={24} />
-                          <span className="text-xs">{bKey}</span>
+                          <span className="text-[10px] sm:text-xs">{bKey}</span>
                         </button>
                       );
                     })}
@@ -1068,13 +1068,13 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Livery Team Color</label>
-                    <div className="flex gap-3">
+                    <div className="grid grid-cols-6 sm:grid-cols-12 gap-3">
                       {COLOR_PRESETS.map(color => (
                         <button
                           key={color.hex}
                           type="button"
                           onClick={() => setUpdateClubForm({ ...updateClubForm, teamColor: color.hex })}
-                          className={`w-10 h-10 rounded-xl transition-all flex items-center justify-center ${
+                          className={`w-full sm:w-10 h-10 rounded-xl transition-all flex items-center justify-center ${
                             updateClubForm.teamColor === color.hex ? 'ring-4 ring-offset-2 ring-red-500 shadow-lg scale-110' : 'hover:scale-105'
                           }`}
                           style={{ backgroundColor: color.hex }}
@@ -1088,7 +1088,7 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
 
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Team Crest Icon</label>
-                    <div className="flex flex-wrap gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                       {Object.keys(BADGE_ICONS).map((bKey) => {
                         const BIcon = BADGE_ICONS[bKey];
                         return (
@@ -1096,12 +1096,12 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                             key={bKey}
                             type="button"
                             onClick={() => setUpdateClubForm({ ...updateClubForm, badgeIcon: bKey })}
-                            className={`w-24 py-3 px-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                            className={`w-full py-3 px-2 rounded-xl border flex flex-col items-center gap-2 transition-all ${
                               updateClubForm.badgeIcon === bKey ? 'border-gray-900 bg-gray-900 text-white font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
                             }`}
                           >
                             <BIcon size={24} />
-                            <span className="text-xs">{bKey}</span>
+                            <span className="text-[10px] sm:text-xs">{bKey}</span>
                           </button>
                         );
                       })}

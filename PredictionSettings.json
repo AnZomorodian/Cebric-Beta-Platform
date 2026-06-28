@@ -1,0 +1,60 @@
+{
+  "nextGpName": "Austrian Grand Prix 2026",
+  "nextGpLocation": "Red Bull Ring, Spielberg",
+  "nextGpDate": "2026-06-28T13:00:00.000Z",
+  "qualifyingDeadline": "2026-06-27T12:55:00.000Z",
+  "raceDeadline": "2026-06-28T12:55:00.000Z",
+  "globalLock": false,
+  "scoringRules": {
+    "pole": 10,
+    "winner": 25,
+    "podium": 10,
+    "top10Multiplier": 5,
+    "fastestLap": 5,
+    "dotd": 5,
+    "firstDnf": 10,
+    "numDnfs": 5,
+    "safetyCar": 5,
+    "vsc": 5,
+    "redFlag": 5,
+    "qualifyingP2": 5,
+    "qualifyingP3": 5,
+    "gains": 10
+  },
+  "visibleTabs": {
+    "predictions": true,
+    "compare": true,
+    "laps": true,
+    "liveStream": true,
+    "clubManager": false,
+    "polls": true
+  },
+  "certifiedResults": {
+    "poleDriver": "George Russell",
+    "qualifyingP2": "Charles Leclerc",
+    "qualifyingP3": "Lewis Hamilton",
+    "p1Winner": "",
+    "p2Winner": "",
+    "p3Winner": "",
+    "top10Finishers": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "fastestLap": "",
+    "driverOfTheDay": "",
+    "firstDNF": "",
+    "numberOfDNFs": 0,
+    "safetyCar": "no",
+    "virtualSafetyCar": "no",
+    "redFlag": "no",
+    "mostPositionsGained": ""
+  }
+}

@@ -272,6 +272,39 @@ app.post("/api/admin/users/delete", (req, res) => {
   }
 });
 
+// Admin REST Endpoint: Manually override user score
+app.post("/api/admin/users/manual-score", (req, res) => {
+  try {
+    const { targetUsername, manualScore } = req.body;
+    if (!targetUsername) {
+      return res.status(400).json({ error: "Target username is required" });
+    }
+    const users = readUsers();
+    const userIndex = users.findIndex(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+    if (userIndex === -1) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    if (manualScore === null || manualScore === undefined || manualScore === "") {
+      delete users[userIndex].manualScore;
+    } else {
+      users[userIndex].manualScore = Number(manualScore);
+      users[userIndex].score = Number(manualScore);
+    }
+    
+    writeUsers(users);
+    
+    // Recalculate in case we removed the override
+    if (manualScore === null || manualScore === undefined || manualScore === "") {
+      recalculateUserScores(readPredictionSettings());
+    }
+    
+    return res.json({ success: true, message: `Score for ${targetUsername} updated.` });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Admin REST Endpoint: Clear all users
 app.post("/api/admin/users/clear", (req, res) => {
   try {
@@ -415,11 +448,13 @@ function recalculateUserScores(settings: any) {
     const cert = settings.certifiedResults || {};
     const rules = settings.scoringRules || {};
 
-    const isCertified = !!cert.p1Winner;
-
     users.forEach((u) => {
-      if (!isCertified) {
-        u.score = 0;
+      // Allow manual override! If we have an explicit override or something? 
+      // Actually, wait, the user asked for "admin should be able to manually enter points for any user".
+      // If we recalculate here, we might overwrite a manual score!
+      // Let's add a manualScore property. Or if u.manualScore !== undefined, use it.
+      if (u.manualScore !== undefined) {
+        u.score = u.manualScore;
         return;
       }
 
@@ -533,6 +568,13 @@ app.post("/api/admin/prediction-settings", (req, res) => {
       scoringRules: { ...current.scoringRules, ...newSettings.scoringRules },
       certifiedResults: { ...current.certifiedResults, ...newSettings.certifiedResults }
     };
+
+    if (updated.certifiedResults) {
+      if (!updated.certifiedResults.top10Finishers) updated.certifiedResults.top10Finishers = Array(10).fill("");
+      updated.certifiedResults.top10Finishers[0] = updated.certifiedResults.p1Winner || updated.certifiedResults.top10Finishers[0];
+      updated.certifiedResults.top10Finishers[1] = updated.certifiedResults.p2Winner || updated.certifiedResults.top10Finishers[1];
+      updated.certifiedResults.top10Finishers[2] = updated.certifiedResults.p3Winner || updated.certifiedResults.top10Finishers[2];
+    }
 
     const saved = writePredictionSettings(updated);
     if (!saved) {

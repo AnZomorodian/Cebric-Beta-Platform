@@ -447,44 +447,46 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
       // 1. Qualifying Deadline
       const qTargetStr = (settings as any).qualifyingDeadline || (settings as any).lockTime || settings.nextGpDate;
       let qTarget = new Date(qTargetStr).getTime();
-      if (isNaN(qTarget) || qTarget < now - 3 * 24 * 60 * 60 * 1000) {
-        // Fallback: 2 days from now for preview testing if past or undefined
-        qTarget = now + (2 * 24 * 60 * 60 * 1000) + (11 * 60 * 60 * 1000) + (15 * 60 * 1000);
-      }
       
-      let qGap = qTarget - now;
-      if (qGap <= 0) {
-        setQCountdown("LOCKED (QUALIFYING REQUISITES IN PROGRESS)");
-        setIsQualiPredictionLocked(true);
-      } else {
-        const d = Math.floor(qGap / (1000 * 60 * 60 * 24));
-        const h = Math.floor((qGap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const m = Math.floor((qGap % (1000 * 60 * 60)) / (1000 * 60));
-        const s = Math.floor((qGap % (1000 * 60)) / 1000);
-        setQCountdown(`${d}d ${h}h ${m}m ${s}s remaining`);
+      if (isNaN(qTarget)) {
+        setQCountdown("NO DEADLINE SET");
         setIsQualiPredictionLocked(false);
+      } else {
+        let qGap = qTarget - now;
+        if (qGap <= 0) {
+          setQCountdown("LOCKED (QUALIFYING REQUISITES IN PROGRESS)");
+          setIsQualiPredictionLocked(true);
+        } else {
+          const d = Math.floor(qGap / (1000 * 60 * 60 * 24));
+          const h = Math.floor((qGap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const m = Math.floor((qGap % (1000 * 60 * 60)) / (1000 * 60));
+          const s = Math.floor((qGap % (1000 * 60)) / 1000);
+          setQCountdown(`${d}d ${h}h ${m}m ${s}s remaining`);
+          setIsQualiPredictionLocked(false);
+        }
       }
 
       // 2. Race Deadline
       const rTargetStr = (settings as any).raceDeadline || settings.nextGpDate;
       let rTarget = new Date(rTargetStr).getTime();
-      if (isNaN(rTarget) || rTarget < now - 3 * 24 * 60 * 60 * 1000) {
-        // Fallback: 3 days from now for preview testing if past or undefined
-        rTarget = now + (3 * 24 * 60 * 60 * 1000) + (14 * 60 * 60 * 1000) + (42 * 60 * 1000);
-      }
 
-      let rGap = rTarget - now;
-      if (rGap <= 0) {
-        setRCountdown("LOCKED (MAIN RACE IN PROGRESS)");
-        setIsRacePredictionLocked(true);
-      } else {
-        const d = Math.floor(rGap / (1000 * 60 * 60 * 24));
-        const h = Math.floor((rGap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const m = Math.floor((rGap % (1000 * 60 * 60)) / (1000 * 60));
-        const s = Math.floor((rGap % (1000 * 60)) / 1000);
-        setRCountdown(`${d}d ${h}h ${m}m ${s}s remaining`);
-        setCountdownText(`${d}d ${h}h ${m}m ${s}s remaining`);
+      if (isNaN(rTarget)) {
+        setRCountdown("NO DEADLINE SET");
         setIsRacePredictionLocked(false);
+      } else {
+        let rGap = rTarget - now;
+        if (rGap <= 0) {
+          setRCountdown("LOCKED (MAIN RACE IN PROGRESS)");
+          setIsRacePredictionLocked(true);
+        } else {
+          const d = Math.floor(rGap / (1000 * 60 * 60 * 24));
+          const h = Math.floor((rGap % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const m = Math.floor((rGap % (1000 * 60 * 60)) / (1000 * 60));
+          const s = Math.floor((rGap % (1000 * 60)) / 1000);
+          setRCountdown(`${d}d ${h}h ${m}m ${s}s remaining`);
+          setCountdownText(`${d}d ${h}h ${m}m ${s}s remaining`);
+          setIsRacePredictionLocked(false);
+        }
       }
     }, 1000);
 
@@ -518,18 +520,11 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
     if (!sessionUser) return;
 
     // Strict validation
-    if (
-      !prediction.poleDriver || 
-      !prediction.qualifyingP2 || 
-      !prediction.qualifyingP3 || 
-      !prediction.p1Winner || 
-      !prediction.p2Winner || 
-      !prediction.p3Winner || 
-      !prediction.fastestLap ||
-      !prediction.driverOfTheDay ||
-      !prediction.mostPositionsGained
-    ) {
-      alert("Please ensure all critical driver prediction drop-downs (including qualifying and podium positions) are selected!");
+    const missingQuali = !isQualiPredictionLocked && (!prediction.poleDriver || !prediction.qualifyingP2 || !prediction.qualifyingP3);
+    const missingRace = !isRacePredictionLocked && (!prediction.p1Winner || !prediction.p2Winner || !prediction.p3Winner || !prediction.fastestLap || !prediction.driverOfTheDay || !prediction.mostPositionsGained);
+
+    if (missingQuali || missingRace) {
+      alert("Please ensure all critical driver prediction drop-downs are selected for the open sessions!");
       return;
     }
 
@@ -1262,9 +1257,11 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
 
                     {/* Top 10 Finishers selection list */}
                     <div className="space-y-1 md:col-span-3">
-                      <label className="text-neutral-400 block mb-1">Certified Top 10 Finishers (Order immaterial to Top 10 choice points)</label>
-                      <div className="grid grid-cols-5 gap-1.5">
-                        {Array(10).fill(null).map((_, topIdx) => (
+                      <label className="text-neutral-400 block mb-1">Certified Top 10 Finishers (P4 - P10) - P1/P2/P3 are set above</label>
+                      <div className="grid grid-cols-7 gap-1.5">
+                        {Array(7).fill(null).map((_, idxIndex) => {
+                          const topIdx = idxIndex + 3;
+                          return (
                           <select
                             key={`top-cert-${topIdx}`}
                             value={settings.certifiedResults.top10Finishers[topIdx] || ''}
@@ -1278,7 +1275,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                             <option value="">P{topIdx + 1}</option>
                             {REAL_DRIVERS_LIST.map(d => <option key={d} value={d}>{d}</option>)}
                           </select>
-                        ))}
+                        )})}
                       </div>
                     </div>
                   </div>
@@ -1514,9 +1511,31 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                               >
                                 {usr.isVerified && usr.verifyStyle === 'admin' ? '✓ Purple' : 'Verify Purple'}
                               </button>
-                              <span className="text-[9px] font-mono bg-neutral-900 text-neutral-400 px-2 py-0.5 rounded-full">
-                                Score: {usr.score} pts
-                              </span>
+                              
+                              <div className="flex items-center gap-1 bg-neutral-900 px-1 py-0.5 rounded-full border border-neutral-800">
+                                <span className="text-[9px] font-mono text-neutral-400 pl-1">Score:</span>
+                                <input 
+                                  type="number"
+                                  defaultValue={usr.manualScore !== undefined ? usr.manualScore : usr.score}
+                                  placeholder={usr.score.toString()}
+                                  className="w-10 bg-transparent text-[9px] font-mono text-white text-center outline-none border-none hide-arrows"
+                                  onBlur={async (e) => {
+                                    const val = e.target.value;
+                                    try {
+                                      await fetch('/api/admin/users/manual-score', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ targetUsername: usr.username, manualScore: val })
+                                      });
+                                      fetchAdminUsers();
+                                    } catch (err) {
+                                      console.error("Failed to update manual score", err);
+                                    }
+                                  }}
+                                />
+                                <span className="text-[9px] font-mono text-neutral-400 pr-1">pts</span>
+                              </div>
+
                               <span className={`text-[9px] font-mono font-black px-2 py-0.5 rounded-full ${
                                 usr.prediction ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-rose-400'
                               }`}>
@@ -2311,15 +2330,17 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
           })()}
 
           {/* Quick FAQ info block */}
-          <div className="bg-neutral-50 border border-gray-150 p-5 rounded-2xl space-y-2 text-[11px] leading-relaxed select-none">
-            <div className="flex items-center gap-1.5 text-black font-extrabold uppercase font-sans mb-1 text-xs">
-              <HelpCircle size={14} className="text-[#EF1A2D]" />
-              <span>Official Scoring Policy</span>
+          <div className="bg-[#f8f9fa] border border-gray-400 p-6 rounded-2xl text-[13px] leading-relaxed select-none max-w-lg shadow-sm font-sans mx-auto mb-8">
+            <div className="flex items-center gap-2 text-black font-extrabold uppercase mb-2 text-sm">
+              <div className="text-red-600 flex items-center justify-center shrink-0">
+                <HelpCircle size={16} strokeWidth={2.5} />
+              </div>
+              <span className="tracking-wide">OFFICIAL SCORING POLICY</span>
             </div>
-            <p className="text-gray-500">
+            <p className="text-gray-500 mb-5">
               Your instinct scores are dynamically matched to final race certificates:
             </p>
-            <ul className="list-disc pl-4 space-y-1 font-mono text-[9px] text-gray-550 pt-1">
+            <ul className="list-disc pl-5 space-y-3 font-mono text-xs text-gray-800 marker:text-black">
               <li><strong>Winner (P1):</strong> +{settings.scoringRules.winner} points</li>
               <li><strong>Pole position (Qualifying P1):</strong> +{settings.scoringRules.pole} points</li>
               <li><strong>Qualifying P2:</strong> +{settings.scoringRules.qualifyingP2} points</li>

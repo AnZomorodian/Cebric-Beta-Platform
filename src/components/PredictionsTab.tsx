@@ -1496,7 +1496,7 @@ export default function PredictionsTab({ seasonData }: PredictionsTabProps) {
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify({ targetUsername: usr.username, manualScore: val })
                                       });
-                                      fetchAdminUsers();
+                                      fetchUsersPredictions();
                                     } catch (err) {
                                       console.error("Failed to update manual score", err);
                                     }

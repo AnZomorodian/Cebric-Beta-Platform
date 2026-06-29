@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { ScoutingTab } from './ScoutingTab';
 import { 
   Trophy, 
@@ -115,7 +116,12 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
   const [updateClubForm, setUpdateClubForm] = useState({
     clubName: "",
     teamColor: "",
-    badgeIcon: ""
+    badgeIcon: "",
+    teamPhilosophy: "Balanced",
+    headquarters: "🇬🇧 United Kingdom",
+    seasonObjective: "Midfield Contenders",
+    teamPrincipal: "",
+    liveryPattern: "Solid"
   });
 
   // Admin circuit creator form
@@ -123,9 +129,11 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
     name: "",
     laps: 60,
     locality: "",
-    practiceTime: "Friday 14:00 UTC",
-    qualifyingTime: "Saturday 15:00 UTC",
-    raceTime: "Sunday 14:00 UTC"
+    practiceTime: "",
+    qualifyingTime: "",
+    raceTime: "",
+    difficulty: "Medium",
+    trackType: "Permanent Racing Facility"
   });
 
   const isAdmin = currentUser?.username?.toLowerCase() === 'admin' || currentUser?.isAdmin === true || currentUser?.role === 'admin';
@@ -172,7 +180,12 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
       setUpdateClubForm({
         clubName: myClubRecord.clubName || "",
         teamColor: myClubRecord.teamColor || "#EF1A2D",
-        badgeIcon: myClubRecord.badgeIcon || "Shield"
+        badgeIcon: myClubRecord.badgeIcon || "Shield",
+        teamPhilosophy: myClubRecord.teamPhilosophy || "Balanced",
+        headquarters: myClubRecord.headquarters || "🇬🇧 United Kingdom",
+        seasonObjective: myClubRecord.seasonObjective || "Midfield Contenders",
+        teamPrincipal: myClubRecord.teamPrincipal || currentUser?.username || "Unknown",
+        liveryPattern: myClubRecord.liveryPattern || "Solid"
       });
     }
   }, [myClubRecord]);
@@ -395,13 +408,13 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
     }
   };
 
-  const handleTrainDriver = async (slot: 1 | 2) => {
+  const handleTrainDriver = async (slot: 1 | 2 | 3, attribute?: string) => {
     if (!currentUser) return;
     try {
       const res = await fetch("/api/club-manager/train-driver", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: currentUser.username, slot })
+        body: JSON.stringify({ username: currentUser.username, slot, attribute })
       });
       const data = await res.json();
       if (data.error) {
@@ -449,6 +462,148 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
     } catch (e: any) {
       alert(e.message);
     }
+  };
+
+
+  const renderDriverCard = (driver: any, seatNumber: 1 | 2 | 3, seatTitle: string, badgeColor: string) => {
+    if (!driver) {
+      return (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-md relative overflow-hidden flex flex-col justify-between space-y-4">
+          <div className={`absolute top-0 right-0 ${badgeColor} text-white font-black font-mono text-xs px-3 py-1 rounded-bl-xl uppercase`}>
+            Seat #${seatNumber} (${seatTitle})
+          </div>
+          <div className="space-y-2 pt-2">
+            <h4 className="text-2xl font-black text-gray-900">Empty Seat</h4>
+            <p className="text-xs text-gray-500">Sign a driver from the market.</p>
+          </div>
+        </div>
+      );
+    }
+
+    const radarData = [
+      { subject: 'Pace', A: driver.pace || driver.skill || 70, fullMark: 100 },
+      { subject: 'Defending', A: driver.defending || driver.skill || 70, fullMark: 100 },
+      { subject: 'Experience', A: driver.experience || driver.skill || 50, fullMark: 100 },
+      { subject: 'Overtaking', A: driver.overtaking || driver.skill || 70, fullMark: 100 },
+      { subject: 'Consistency', A: driver.consistency || driver.skill || 70, fullMark: 100 },
+    ];
+
+    const isExhausted = driver.lastTrainedAt && (Date.now() - new Date(driver.lastTrainedAt).getTime() < 5 * 60 * 1000);
+    const remainingMins = isExhausted ? Math.ceil((5 * 60 * 1000 - (Date.now() - new Date(driver.lastTrainedAt).getTime())) / 60000) : 0;
+
+    return (
+      <div className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 shadow-xl relative overflow-hidden flex flex-col justify-between space-y-4 text-white">
+        <div className={`absolute top-0 right-0 ${badgeColor} text-white font-black font-mono text-[10px] px-3 py-1 rounded-bl-xl uppercase`}>
+          Seat #${seatNumber} (${seatTitle})
+        </div>
+        
+        <div className="flex justify-between items-start pt-2">
+          <div>
+            <h4 className="text-2xl font-black">{driver.name}</h4>
+            <div className="text-xs text-neutral-400 font-mono mt-1">
+              {driver.nationality} • Age {driver.age || 25}
+            </div>
+            {isExhausted && (
+              <div className="inline-flex items-center gap-1 mt-2 bg-red-900/40 text-red-400 text-[10px] px-2 py-1 rounded-full border border-red-900/50">
+                <Clock size={10} /> Exhausted - Rest for {remainingMins}m
+              </div>
+            )}
+          </div>
+          <div className="bg-transparent border border-cyan-400 text-cyan-400 px-3 py-2 rounded-lg font-black text-xl flex flex-col items-center">
+            {driver.skill}
+            <span className="text-[8px] uppercase tracking-wider text-cyan-500">Overall</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          {/* Attributes List */}
+          <div className="space-y-3">
+            {[
+              { label: 'Pace', key: 'pace', icon: '⚡' },
+              { label: 'Defending', key: 'defending', icon: '🛡️' },
+              { label: 'Consistency', key: 'consistency', icon: '🎯' },
+              { label: 'Overtaking', key: 'overtaking', icon: '📈' },
+              { label: 'Experience', key: 'experience', icon: '📖' },
+            ].map(attr => {
+              const val = driver[attr.key] || driver.skill || 70;
+              return (
+                <div key={attr.key} className="flex items-center justify-between text-xs font-mono group">
+                  <div className="flex items-center gap-2 text-neutral-400">
+                    <span className="w-4 text-center">{attr.icon}</span>
+                    <span className="w-20">{attr.label}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold w-6 text-right">{val}</span>
+                    <button 
+                      onClick={() => handleTrainDriver(seatNumber, attr.key)} 
+                      disabled={isExhausted}
+                      className={`px-2 py-0.5 rounded-md text-[9px] transition-all flex items-center gap-1 ${
+                        isExhausted 
+                          ? 'bg-neutral-800 text-neutral-600 border-neutral-800 cursor-not-allowed' 
+                          : 'bg-neutral-800 hover:bg-neutral-600 hover:text-white text-neutral-400 border border-neutral-700'
+                      }`} 
+                      title={isExhausted ? `Exhausted` : `Train ${attr.label} (-$50k)`}
+                    >
+                      <PlusCircle size={9} /> Train
+                    </button>
+                    <div className="w-16 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-white rounded-full" style={{ width: `${val}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Radar Chart */}
+          <div className="h-40 relative flex items-center justify-center bg-neutral-950/50 rounded-xl">
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
+                <PolarGrid stroke="#333" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#888', fontSize: 9 }} />
+                <Radar name={driver.name} dataKey="A" stroke="#00f2fe" fill="#4facfe" fillOpacity={0.3} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-neutral-800 flex flex-wrap items-center gap-2">
+          <button onClick={() => handleDriverInteract(seatNumber, 'praise')} title="Praise" className="p-1.5 bg-blue-900/30 hover:bg-blue-800/50 text-blue-400 rounded transition"><ThumbsUp size={16} /></button>
+          <button onClick={() => handleDriverInteract(seatNumber, 'criticize')} title="Criticize" className="p-1.5 bg-orange-900/30 hover:bg-orange-800/50 text-orange-400 rounded transition"><ThumbsDown size={16} /></button>
+          <button onClick={() => handleDriverInteract(seatNumber, 'bonus')} title="Bonus (-$50k)" className="p-1.5 bg-yellow-900/30 hover:bg-yellow-800/50 text-yellow-400 rounded transition"><Coins size={16} /></button>
+          <div className="w-px h-4 bg-neutral-700 mx-1"></div>
+          <button onClick={() => handleUpdateDriverStyle(seatNumber, 'Aggressive')} title="Aggressive" className={`p-1.5 rounded transition ${driver.drivingStyle === 'Aggressive' ? 'bg-red-500 text-white' : 'bg-red-900/30 hover:bg-red-800/50 text-red-400'}`}><Zap size={16} /></button>
+          <button onClick={() => handleUpdateDriverStyle(seatNumber, 'Balanced')} title="Balanced" className={`p-1.5 rounded transition ${driver.drivingStyle === 'Balanced' || !driver.drivingStyle ? 'bg-neutral-600 text-white' : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-400'}`}><Scale size={16} /></button>
+          <button onClick={() => handleUpdateDriverStyle(seatNumber, 'Conservative')} title="Conservative" className={`p-1.5 rounded transition ${driver.drivingStyle === 'Conservative' ? 'bg-blue-500 text-white' : 'bg-blue-900/30 hover:bg-blue-800/50 text-blue-400'}`}><Shield size={16} /></button>
+        </div>
+
+        <div className="pt-3 border-t border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          <div className="text-xs text-neutral-400 font-mono">
+            Salary: <strong className="text-white">${(driver.salary || 0).toLocaleString()}</strong><br/>
+            Release Clause: <strong className="text-white">${(driver.price || 0).toLocaleString()}</strong>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleTrainDriver(seatNumber, 'skill')}
+              disabled={isExhausted}
+              className={`px-3 py-2 rounded-xl border text-[10px] font-bold transition-colors uppercase tracking-wider ${
+                isExhausted 
+                  ? 'bg-neutral-800 text-neutral-600 border-neutral-800 cursor-not-allowed'
+                  : 'bg-cyan-900/30 hover:bg-cyan-800/50 text-cyan-400 border-cyan-900/50'
+              }`}
+            >
+              Train OVR (-$50k)
+            </button>
+            <button
+              onClick={() => handleSellDriver(seatNumber)}
+              className="px-3 py-2 rounded-xl bg-red-900/30 hover:bg-red-800/50 text-red-400 border border-red-900/50 text-[10px] font-bold transition-colors uppercase tracking-wider"
+            >
+              Sell Driver
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (isLoading) {
@@ -644,8 +799,24 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
 
               <div className="space-y-4 md:col-span-2">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Star className="text-cyan-500" size={20} />
+                  5. Driver Training & Exhaustion
+                </h3>
+                <div className="text-sm text-gray-600 leading-relaxed space-y-2">
+                  <p>Training drivers is a major part of building a winning team, but it is physically and mentally demanding!</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Each training session costs $50,000 from your budget.</li>
+                    <li><strong>Exhaustion Cooldown:</strong> After training a driver, they become <span className="font-bold text-red-500">Exhausted</span> and require a mandatory rest period (5 minutes of real time).</li>
+                    <li>You cannot train an exhausted driver. You must wait for their stamina to recover.</li>
+                  </ul>
+                  <p className="mt-2">Plan your training sessions carefully around your budget and cooldown timers!</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 md:col-span-2">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <Flag className="text-red-600" size={20} />
-                  5. Race Weekend Simulation
+                  6. Race Weekend Simulation
                 </h3>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   When the Admin simulates a race round, your drivers' base skill, plus your R&D bonuses and staff perks, are combined to calculate their race pace. Points are awarded to the top 10 finishers, contributing to the World Constructor Standings!
@@ -671,9 +842,9 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                       <>
                         <div className="text-xs text-gray-500 font-mono uppercase font-bold">Upcoming: {settings.currentGpName} ({settings.raceLaps || 0} Laps)</div>
                         <div className="flex gap-4 mt-1 text-xs font-mono text-gray-700">
-                          <span><span className="font-bold text-indigo-600">FP1:</span> {settings.practiceTime}</span>
-                          <span><span className="font-bold text-amber-600">Quali:</span> {settings.qualifyingTime}</span>
-                          <span><span className="font-bold text-red-600">Race:</span> {settings.raceTime}</span>
+                          <span><span className="font-bold text-indigo-600">FP1:</span> {settings.practiceTime?.includes('T') ? new Date(settings.practiceTime).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : settings.practiceTime}</span>
+                          <span><span className="font-bold text-amber-600">Quali:</span> {settings.qualifyingTime?.includes('T') ? new Date(settings.qualifyingTime).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : settings.qualifyingTime}</span>
+                          <span><span className="font-bold text-red-600">Race:</span> {settings.raceTime?.includes('T') ? new Date(settings.raceTime).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : settings.raceTime}</span>
                         </div>
                       </>
                     ) : (
@@ -853,27 +1024,65 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                     <div className="flex items-center gap-4">
                       <h2 className="text-3xl font-black text-gray-900">{myClubRecord.clubName}</h2>
                     </div>
-                    <p className="text-sm text-gray-500">Managed by @{myClubRecord.username}</p>
+                    <p className="text-sm text-gray-500 mb-1">
+                      Team Principal: <strong className="text-gray-900">{myClubRecord.teamPrincipal || myClubRecord.username}</strong> | Account: @{myClubRecord.username}
+                    </p>
+                    <div className="flex items-center gap-3 text-xs font-mono text-gray-600 mt-2">
+                      <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                        <img 
+                          src={`https://flagcdn.com/w20/${
+                            (myClubRecord.headquarters?.includes("🇬🇧") ? "gb" : 
+                             myClubRecord.headquarters?.includes("🇮🇹") ? "it" :
+                             myClubRecord.headquarters?.includes("🇨🇭") ? "ch" :
+                             myClubRecord.headquarters?.includes("🇫🇷") ? "fr" :
+                             myClubRecord.headquarters?.includes("🇺🇸") ? "us" :
+                             myClubRecord.headquarters?.includes("🇩🇪") ? "de" :
+                             myClubRecord.headquarters?.includes("🇯🇵") ? "jp" : "gb")
+                          }.png`} 
+                          alt="HQ" 
+                          className="w-3 rounded-sm opacity-90"
+                        />
+                        {myClubRecord.headquarters?.replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '').trim() || "United Kingdom"}
+                      </span>
+                      <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                        <Zap size={12} /> {myClubRecord.teamPhilosophy || "Balanced"}
+                      </span>
+                      <span className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        <Crown size={12} /> {myClubRecord.seasonObjective || "Midfield Contenders"}
+                      </span>
+                      <span className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                        <CheckCircle size={12} /> Livery: {myClubRecord.liveryPattern || "Solid"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Financial Stats */}
-                <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 min-w-[160px]">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full xl:w-auto mt-6 md:mt-0">
+                  <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 min-w-[140px]">
+                    <div className="text-xs uppercase font-mono text-purple-800 font-bold flex items-center gap-1">
+                      <Star size={14} /> Global Fan Base
+                    </div>
+                    <div className="text-xl font-black font-mono text-purple-700 mt-1">
+                      {(myClubRecord.fanBase || 500000).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 min-w-[140px]">
                     <div className="text-xs uppercase font-mono text-emerald-800 font-bold flex items-center gap-1">
                       <Coins size={14} /> Available Budget
                     </div>
-                    <div className="text-2xl font-black font-mono text-emerald-700 mt-1">
+                    <div className="text-xl font-black font-mono text-emerald-700 mt-1">
                       ${(myClubRecord.budget || 0).toLocaleString()}
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 min-w-[160px]">
+                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 min-w-[140px]">
                     <div className="text-xs uppercase font-mono text-blue-800 font-bold flex items-center gap-1">
                       <DollarSign size={14} /> Salary Cap Status
                     </div>
                     <div className="text-lg font-black font-mono text-blue-900 mt-1">
-                      ${((myClubRecord.driver1?.salary || 0) + (myClubRecord.driver2?.salary || 0) + (myClubRecord.testDriver?.salary || 0) + (myClubRecord.staff || []).reduce((acc: number, s: any) => acc + s.salary, 0)).toLocaleString()} <span className="text-xs text-blue-600 font-normal">/ ${(myClubRecord.salaryCap || 2500000).toLocaleString()}</span>
+                      ${((myClubRecord.driver1?.salary || 0) + (myClubRecord.driver2?.salary || 0) + (myClubRecord.testDriver?.salary || 0) + (myClubRecord.staff || []).reduce((acc: number, s: any) => acc + s.salary, 0)).toLocaleString()} <span className="text-xs text-blue-600 font-normal block sm:inline">/ ${(myClubRecord.salaryCap || 2500000).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -893,153 +1102,59 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Seat 1 */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-md relative overflow-hidden flex flex-col justify-between space-y-4">
-                    <div className="absolute top-0 right-0 bg-red-600 text-white font-black font-mono text-xs px-3 py-1 rounded-bl-xl uppercase">
-                      Seat #1 (Lead Driver)
-                    </div>
-                    <div className="space-y-2 pt-2">
-                      <h4 className="text-2xl font-black text-gray-900">{myClubRecord.driver1?.name || "Empty Seat"}</h4>
-                      <div className="flex flex-col gap-2 text-sm text-gray-600 font-mono">
-                        <div className="flex items-center gap-4">
-                          <span>Skill Rating: <strong className="text-red-600 text-base">{myClubRecord.driver1?.skill || 70} / 100</strong></span>
-                          <span>Salary: <strong>${(myClubRecord.driver1?.salary || 0).toLocaleString()} / race</strong></span>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs">
-                          <span>Morale: <strong>{myClubRecord.driver1?.morale || 80}</strong></span>
-                          <span>Focus: <strong>{myClubRecord.driver1?.focus || 80}</strong></span>
-                          <span>Loyalty: <strong>{myClubRecord.driver1?.loyalty || 80}</strong></span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <button onClick={() => handleDriverInteract(1, 'praise')} title="Praise" className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded transition"><ThumbsUp size={16} /></button>
-                          <button onClick={() => handleDriverInteract(1, 'criticize')} title="Criticize" className="p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded transition"><ThumbsDown size={16} /></button>
-                          <button onClick={() => handleDriverInteract(1, 'bonus')} title="Bonus (-$50k)" className="p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded transition"><Coins size={16} /></button>
-                          <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                          <button onClick={() => handleUpdateDriverStyle(1, 'Aggressive')} title="Aggressive: +2 Pace / -1 Tire / -1 Rel" className={`p-1.5 rounded transition ${myClubRecord.driver1?.drivingStyle === 'Aggressive' ? 'bg-red-500 text-white shadow-inner' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}><Zap size={16} /></button>
-                          <button onClick={() => handleUpdateDriverStyle(1, 'Balanced')} title="Balanced: Neutral" className={`p-1.5 rounded transition ${myClubRecord.driver1?.drivingStyle === 'Balanced' || !myClubRecord.driver1?.drivingStyle ? 'bg-gray-800 text-white shadow-inner' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}><Scale size={16} /></button>
-                          <button onClick={() => handleUpdateDriverStyle(1, 'Conservative')} title="Conservative: -1 Pace / +1 Tire / +1 Rel" className={`p-1.5 rounded transition ${myClubRecord.driver1?.drivingStyle === 'Conservative' ? 'bg-blue-500 text-white shadow-inner' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}><Shield size={16} /></button>
-                        </div>
-                      </div>
-                    </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {renderDriverCard(myClubRecord.driver1, 1, "Lead Driver", "bg-red-600")}
+                  {renderDriverCard(myClubRecord.driver2, 2, "Wingman", "bg-gray-800")}
+                  {renderDriverCard(myClubRecord.testDriver, 3, "Test Driver", "bg-blue-600")}
+                </div>
+              </div>
 
-                    <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <span className="text-xs text-gray-400">Release Clause: ${(myClubRecord.driver1?.price || 100000).toLocaleString()}</span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleTrainDriver(1)}
-                          className="px-3 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-200"
-                        >
-                          Train (+1 OVR) -$50k
-                        </button>
-                        <button
-                          onClick={() => handleSellDriver(1)}
-                          className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-600 text-xs font-bold transition-colors border border-gray-200"
-                        >
-                          Sell (80%)
-                        </button>
-                      </div>
+              {/* Fan Base & Recruitment Growth Dashboard */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-black text-gray-900">Membership Growth Dashboard</h3>
+                </div>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <div>
+                      <div className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-1">Total Global Fans</div>
+                      <div className="text-3xl font-black text-gray-900">{(myClubRecord.fanBase || 500000).toLocaleString()}</div>
+                    </div>
+                    <div className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      <TrendingUp size={14} /> Recruitment Success
                     </div>
                   </div>
-
-                  {/* Seat 2 */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-md relative overflow-hidden flex flex-col justify-between space-y-4">
-                    <div className="absolute top-0 right-0 bg-gray-800 text-white font-black font-mono text-xs px-3 py-1 rounded-bl-xl uppercase">
-                      Seat #2 (Wingman)
-                    </div>
-                    <div className="space-y-2 pt-2">
-                      <h4 className="text-2xl font-black text-gray-900">{myClubRecord.driver2?.name || "Empty Seat"}</h4>
-                      <div className="flex flex-col gap-2 text-sm text-gray-600 font-mono">
-                        <div className="flex items-center gap-4">
-                          <span>Skill Rating: <strong className="text-red-600 text-base">{myClubRecord.driver2?.skill || 68} / 100</strong></span>
-                          <span>Salary: <strong>${(myClubRecord.driver2?.salary || 0).toLocaleString()} / race</strong></span>
-                        </div>
-                        <div className="flex items-center gap-4 text-xs">
-                          <span>Morale: <strong>{myClubRecord.driver2?.morale || 80}</strong></span>
-                          <span>Focus: <strong>{myClubRecord.driver2?.focus || 80}</strong></span>
-                          <span>Loyalty: <strong>{myClubRecord.driver2?.loyalty || 80}</strong></span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                          <button onClick={() => handleDriverInteract(2, 'praise')} title="Praise" className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded transition"><ThumbsUp size={16} /></button>
-                          <button onClick={() => handleDriverInteract(2, 'criticize')} title="Criticize" className="p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded transition"><ThumbsDown size={16} /></button>
-                          <button onClick={() => handleDriverInteract(2, 'bonus')} title="Bonus (-$50k)" className="p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded transition"><Coins size={16} /></button>
-                          <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                          <button onClick={() => handleUpdateDriverStyle(2, 'Aggressive')} title="Aggressive: +2 Pace / -1 Tire / -1 Rel" className={`p-1.5 rounded transition ${myClubRecord.driver2?.drivingStyle === 'Aggressive' ? 'bg-red-500 text-white shadow-inner' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}><Zap size={16} /></button>
-                          <button onClick={() => handleUpdateDriverStyle(2, 'Balanced')} title="Balanced: Neutral" className={`p-1.5 rounded transition ${myClubRecord.driver2?.drivingStyle === 'Balanced' || !myClubRecord.driver2?.drivingStyle ? 'bg-gray-800 text-white shadow-inner' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}><Scale size={16} /></button>
-                          <button onClick={() => handleUpdateDriverStyle(2, 'Conservative')} title="Conservative: -1 Pace / +1 Tire / +1 Rel" className={`p-1.5 rounded transition ${myClubRecord.driver2?.drivingStyle === 'Conservative' ? 'bg-blue-500 text-white shadow-inner' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}><Shield size={16} /></button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <span className="text-xs text-gray-400">Release Clause: ${(myClubRecord.driver2?.price || 100000).toLocaleString()}</span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleTrainDriver(2)}
-                          className="px-3 py-2 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-200"
-                        >
-                          Train (+1 OVR) -$50k
-                        </button>
-                        <button
-                          onClick={() => handleSellDriver(2)}
-                          className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-600 text-xs font-bold transition-colors border border-gray-200"
-                        >
-                          Sell (80%)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Seat 3 (Test Driver) */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-md relative overflow-hidden flex flex-col justify-between space-y-4">
-                    <div className="absolute top-0 right-0 bg-blue-600 text-white font-black font-mono text-xs px-3 py-1 rounded-bl-xl uppercase">
-                      Seat #3 (Test Driver)
-                    </div>
-                    <div className="space-y-2 pt-2">
-                      <h4 className="text-xl font-black text-gray-900">{myClubRecord.testDriver?.name || "Empty Seat"}</h4>
-                      {myClubRecord.testDriver && (
-                        <div className="flex flex-col gap-2 text-sm text-gray-600 font-mono">
-                          <div className="flex items-center gap-4">
-                            <span>Skill Rating: <strong className="text-red-600 text-base">{myClubRecord.testDriver.skill} / 100</strong></span>
-                            <span>Salary: <strong>${myClubRecord.testDriver.salary.toLocaleString()} / race</strong></span>
-                          </div>
-                          <div className="flex items-center gap-4 text-xs">
-                            <span>Morale: <strong>{myClubRecord.testDriver.morale || 80}</strong></span>
-                            <span>Focus: <strong>{myClubRecord.testDriver.focus || 80}</strong></span>
-                            <span>Loyalty: <strong>{myClubRecord.testDriver.loyalty || 80}</strong></span>
-                          </div>
-                          <div className="flex items-center gap-2 mt-2">
-                            <button onClick={() => handleDriverInteract(3, 'praise')} title="Praise" className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded transition"><ThumbsUp size={16} /></button>
-                            <button onClick={() => handleDriverInteract(3, 'criticize')} title="Criticize" className="p-1.5 bg-orange-100 hover:bg-orange-200 text-orange-800 rounded transition"><ThumbsDown size={16} /></button>
-                            <button onClick={() => handleDriverInteract(3, 'bonus')} title="Bonus (-$50k)" className="p-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-800 rounded transition"><Coins size={16} /></button>
-                            <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                            <button onClick={() => handleUpdateDriverStyle(3, 'Aggressive')} title="Aggressive: +2 Pace / -1 Tire / -1 Rel" className={`p-1.5 rounded transition ${myClubRecord.testDriver?.drivingStyle === 'Aggressive' ? 'bg-red-500 text-white shadow-inner' : 'bg-red-50 hover:bg-red-100 text-red-600'}`}><Zap size={16} /></button>
-                            <button onClick={() => handleUpdateDriverStyle(3, 'Balanced')} title="Balanced: Neutral" className={`p-1.5 rounded transition ${myClubRecord.testDriver?.drivingStyle === 'Balanced' || !myClubRecord.testDriver?.drivingStyle ? 'bg-gray-800 text-white shadow-inner' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}><Scale size={16} /></button>
-                            <button onClick={() => handleUpdateDriverStyle(3, 'Conservative')} title="Conservative: -1 Pace / +1 Tire / +1 Rel" className={`p-1.5 rounded transition ${myClubRecord.testDriver?.drivingStyle === 'Conservative' ? 'bg-blue-500 text-white shadow-inner' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}><Shield size={16} /></button>
-                          </div>
-                        </div>
-                      )}
-                      {!myClubRecord.testDriver && (
-                        <p className="text-xs text-gray-500">Sign a test driver from the market (Max salary $1,000).</p>
-                      )}
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                      <span className="text-xs text-gray-400">Release Clause: ${(myClubRecord.testDriver?.price || 0).toLocaleString()}</span>
-                      <div className="flex gap-2">
-                        {myClubRecord.testDriver && (
-                          <button
-                            onClick={() => handleSellDriver(3)}
-                            className="px-3 py-2 rounded-xl bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-600 text-xs font-bold transition-colors border border-gray-200"
-                          >
-                            Sell (80%)
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                  <div className="h-64 p-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={[
+                        { month: 'Jan', fans: (myClubRecord.fanBase || 500000) * 0.8 },
+                        { month: 'Feb', fans: (myClubRecord.fanBase || 500000) * 0.85 },
+                        { month: 'Mar', fans: (myClubRecord.fanBase || 500000) * 0.92 },
+                        { month: 'Apr', fans: (myClubRecord.fanBase || 500000) * 0.96 },
+                        { month: 'May', fans: (myClubRecord.fanBase || 500000) * 0.99 },
+                        { month: 'Current', fans: (myClubRecord.fanBase || 500000) },
+                      ]}>
+                        <defs>
+                          <linearGradient id="colorFans" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dy={10} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#9ca3af', fontSize: 12}} dx={-10} tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`} />
+                        <Tooltip 
+                          contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)'}}
+                          itemStyle={{color: '#4c1d95', fontWeight: 'bold'}}
+                          formatter={(value: number) => [Math.round(value).toLocaleString(), 'Fans']}
+                        />
+                        <Area type="monotone" dataKey="fans" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorFans)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               </div>
+
             </div>
           )}
         </div>
@@ -1106,6 +1221,120 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                         );
                       })}
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Team Principal Name</label>
+                    <input
+                      type="text"
+                      maxLength={40}
+                      value={updateClubForm.teamPrincipal}
+                      onChange={(e) => setUpdateClubForm({ ...updateClubForm, teamPrincipal: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Livery Pattern</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {['Solid', 'Stripes', 'Gradient', 'Camo'].map(pattern => (
+                        <button
+                          key={pattern}
+                          type="button"
+                          onClick={() => setUpdateClubForm({ ...updateClubForm, liveryPattern: pattern })}
+                          className={`w-full py-2 px-2 rounded-xl border flex flex-col items-center gap-1 transition-all ${
+                            updateClubForm.liveryPattern === pattern ? 'border-gray-900 bg-gray-900 text-white font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                          }`}
+                        >
+                          <span className="text-xs">{pattern}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">Constructor Headquarters</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      {[
+                        { val: "🇬🇧 United Kingdom", flag: "gb", label: "Silverstone" },
+                        { val: "🇮🇹 Italy", flag: "it", label: "Maranello" },
+                        { val: "🇨🇭 Switzerland", flag: "ch", label: "Hinwil" },
+                        { val: "🇫🇷 France", flag: "fr", label: "Viry-Châtillon" },
+                        { val: "🇺🇸 United States", flag: "us", label: "Kannapolis" },
+                        { val: "🇩🇪 Germany", flag: "de", label: "Brackley" },
+                        { val: "🇯🇵 Japan", flag: "jp", label: "Sakura" }
+                      ].map(hq => (
+                        <button
+                          key={hq.val}
+                          type="button"
+                          onClick={() => setUpdateClubForm({ ...updateClubForm, headquarters: hq.val })}
+                          className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${
+                            updateClubForm.headquarters === hq.val 
+                            ? 'bg-blue-50 border-blue-500 shadow-sm ring-1 ring-blue-500' 
+                            : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-500'
+                          }`}
+                        >
+                          <img src={`https://flagcdn.com/w40/${hq.flag}.png`} alt={hq.label} className="h-4 object-cover rounded shadow-sm mb-1" />
+                          <span className={`text-[10px] font-bold ${updateClubForm.headquarters === hq.val ? 'text-blue-900' : ''}`}>{hq.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2 mt-4">Team Engineering Philosophy</label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      {[
+                        { val: "Balanced", label: "Balanced", desc: "Neutral" },
+                        { val: "Aero Focus", label: "Aero Focus", desc: "+Cornering / -Top Speed" },
+                        { val: "Power Focus", label: "Power Focus", desc: "+Top Speed / -Cornering" },
+                        { val: "Aggressive Strategy", label: "Aggressive", desc: "+Race Pace / +Tire Wear" },
+                        { val: "Tire Preservation", label: "Tire Preservation", desc: "-Race Pace / -Tire Wear" }
+                      ].map(phil => (
+                        <button
+                          key={phil.val}
+                          type="button"
+                          onClick={() => setUpdateClubForm({ ...updateClubForm, teamPhilosophy: phil.val })}
+                          className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                            updateClubForm.teamPhilosophy === phil.val 
+                            ? 'bg-blue-50 border-blue-500 shadow-sm ring-1 ring-blue-500' 
+                            : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-500'
+                          }`}
+                        >
+                          <span className={`text-xs font-bold ${updateClubForm.teamPhilosophy === phil.val ? 'text-blue-900' : 'text-gray-900'}`}>{phil.label}</span>
+                          <span className="text-[9px] mt-1 opacity-80">{phil.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2 mt-4">Season Target Objective</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {[
+                        { val: "Championship Contenders", label: "Championship", desc: "High Pressure, High Rewards" },
+                        { val: "Regular Podiums", label: "Podiums", desc: "Medium-High Pressure" },
+                        { val: "Midfield Contenders", label: "Midfield", desc: "Medium Pressure" },
+                        { val: "Development Year", label: "Development", desc: "Low Pressure, High Rookie Growth" }
+                      ].map(obj => (
+                        <button
+                          key={obj.val}
+                          type="button"
+                          onClick={() => setUpdateClubForm({ ...updateClubForm, seasonObjective: obj.val })}
+                          className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                            updateClubForm.seasonObjective === obj.val 
+                            ? 'bg-blue-50 border-blue-500 shadow-sm ring-1 ring-blue-500' 
+                            : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-500'
+                          }`}
+                        >
+                          <span className={`text-xs font-bold ${updateClubForm.seasonObjective === obj.val ? 'text-blue-900' : 'text-gray-900'}`}>{obj.label}</span>
+                          <span className="text-[9px] mt-1 opacity-80">{obj.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-2 mb-4">
+                      Sets board expectations. Failing to meet objectives hurts morale, while lower expectations accelerate young driver growth.
+                    </p>
                   </div>
 
                   <button
@@ -1238,7 +1467,41 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                         <h4 className="text-xl font-bold text-gray-900">{driver.name}</h4>
                         <p className="text-xs text-gray-400">Age: {driver.age} yrs old</p>
                       </div>
-                      <div className="py-3 px-4 rounded-xl bg-gray-50 border border-gray-100 space-y-1 text-xs font-mono">
+
+                      {/* Display Attributes & Radar for Market Drivers */}
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div className="space-y-1">
+                          {[
+                            { label: 'Pace', key: 'pace', icon: '⚡' },
+                            { label: 'Defending', key: 'defending', icon: '🛡️' },
+                            { label: 'Consist.', key: 'consistency', icon: '🎯' },
+                            { label: 'Overtake', key: 'overtaking', icon: '📈' },
+                            { label: 'Exper.', key: 'experience', icon: '📖' },
+                          ].map(attr => (
+                            <div key={attr.key} className="flex items-center justify-between text-[9px] font-mono">
+                              <span className="text-gray-500">{attr.icon} {attr.label}</span>
+                              <span className="font-bold text-gray-800">{driver[attr.key] || driver.skill || 70}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="h-24 relative flex items-center justify-center bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
+                              { subject: 'Pace', A: driver.pace || driver.skill || 70, fullMark: 100 },
+                              { subject: 'Defending', A: driver.defending || driver.skill || 70, fullMark: 100 },
+                              { subject: 'Overtaking', A: driver.overtaking || driver.skill || 70, fullMark: 100 },
+                              { subject: 'Experience', A: driver.experience || driver.skill || 50, fullMark: 100 },
+                              { subject: 'Consistency', A: driver.consistency || driver.skill || 70, fullMark: 100 },
+                            ]}>
+                              <PolarGrid stroke="#e5e7eb" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fill: '#9ca3af', fontSize: 7 }} />
+                              <Radar name={driver.name} dataKey="A" stroke="#EF1A2D" fill="#EF1A2D" fillOpacity={0.2} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      <div className="py-2 px-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1 text-[10px] font-mono mt-3">
                         <div className="flex justify-between text-gray-600">
                           <span>Transfer Fee:</span>
                           <strong className="text-gray-900">${driver.price.toLocaleString()}</strong>
@@ -1533,13 +1796,39 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Track Difficulty</label>
+                      <select
+                        value={(circuitForm as any).difficulty || "Medium"}
+                        onChange={(e) => setCircuitForm({ ...circuitForm, difficulty: e.target.value } as any)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      >
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Extreme">Extreme</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Track Type</label>
+                      <select
+                        value={(circuitForm as any).trackType || "Permanent Racing Facility"}
+                        onChange={(e) => setCircuitForm({ ...circuitForm, trackType: e.target.value } as any)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      >
+                        <option value="Permanent Racing Facility">Permanent Facility</option>
+                        <option value="Street Circuit">Street Circuit</option>
+                        <option value="Hybrid">Hybrid</option>
+                      </select>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Practice Time</label>
                       <input
-                        type="text"
+                        type="datetime-local"
                         required
-                        placeholder="e.g. Friday 14:00 UTC"
                         value={circuitForm.practiceTime}
                         onChange={(e) => setCircuitForm({ ...circuitForm, practiceTime: e.target.value })}
                         className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
@@ -1548,9 +1837,8 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Qualifying Time</label>
                       <input
-                        type="text"
+                        type="datetime-local"
                         required
-                        placeholder="e.g. Saturday 15:00 UTC"
                         value={circuitForm.qualifyingTime}
                         onChange={(e) => setCircuitForm({ ...circuitForm, qualifyingTime: e.target.value })}
                         className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
@@ -1559,9 +1847,8 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Race Time</label>
                       <input
-                        type="text"
+                        type="datetime-local"
                         required
-                        placeholder="e.g. Sunday 14:00 UTC"
                         value={circuitForm.raceTime}
                         onChange={(e) => setCircuitForm({ ...circuitForm, raceTime: e.target.value })}
                         className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
@@ -1627,6 +1914,7 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                       <th className="py-2 px-3 text-right">Budget</th>
                       <th className="py-2 px-3">Seat 1</th>
                       <th className="py-2 px-3">Seat 2</th>
+                      <th className="py-2 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1637,11 +1925,33 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                         <td className="py-2 px-3 text-sm text-emerald-400 text-right font-mono">${c.budget.toLocaleString()}</td>
                         <td className="py-2 px-3 text-sm text-gray-300">{c.driver1?.name || '-'}</td>
                         <td className="py-2 px-3 text-sm text-gray-300">{c.driver2?.name || '-'}</td>
+                        <td className="py-2 px-3 text-right">
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Are you sure you want to ban/delete club ${c.clubName}?`)) return;
+                              try {
+                                const res = await fetch('/api/admin/club-manager/delete-club', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ clubId: c.id })
+                                });
+                                if (res.ok) {
+                                  fetchData();
+                                }
+                              } catch (e: any) {
+                                setStatusMsg(e.message);
+                              }
+                            }}
+                            className="px-2 py-1 bg-red-900/50 text-red-400 hover:bg-red-800 hover:text-white rounded text-xs font-bold transition-colors"
+                          >
+                            Ban / Delete
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {clubs.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="py-4 text-center text-sm text-gray-500">No clubs registered yet.</td>
+                        <td colSpan={6} className="py-4 text-center text-sm text-gray-500">No clubs registered yet.</td>
                       </tr>
                     )}
                   </tbody>

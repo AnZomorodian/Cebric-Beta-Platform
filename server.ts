@@ -289,7 +289,9 @@ app.post("/api/admin/users/manual-score", (req, res) => {
       delete users[userIndex].manualScore;
     } else {
       users[userIndex].manualScore = Number(manualScore);
-      users[userIndex].score = Number(manualScore);
+      users[userIndex].currentRoundScore = Number(manualScore);
+      const historySum = (users[userIndex].history || []).reduce((acc: number, cur: any) => acc + (cur.score || 0), 0);
+      users[userIndex].score = historySum + Number(manualScore);
     }
     
     writeUsers(users);
@@ -453,89 +455,94 @@ function recalculateUserScores(settings: any) {
       // Actually, wait, the user asked for "admin should be able to manually enter points for any user".
       // If we recalculate here, we might overwrite a manual score!
       // Let's add a manualScore property. Or if u.manualScore !== undefined, use it.
-      if (u.manualScore !== undefined) {
-        u.score = u.manualScore;
-        return;
-      }
+      u.history = u.history || [
+        { gpName: "Bahrain GP", score: 45, date: "2026-03-02T15:00:00Z" },
+        { gpName: "Saudi Arabian GP", score: 60, date: "2026-03-16T15:00:00Z" },
+        { gpName: "Australian GP", score: 35, date: "2026-03-30T15:00:00Z" },
+        { gpName: "Japanese GP", score: 85, date: "2026-04-13T15:00:00Z" },
+        { gpName: "Chinese GP", score: 50, date: "2026-04-27T15:00:00Z" },
+        { gpName: "Miami GP", score: 70, date: "2026-05-11T15:00:00Z" }
+      ];
+      
+      const historySum = u.history.reduce((acc: number, cur: any) => acc + (cur.score || 0), 0);
 
+      let roundScore = 0;
       const pred = u.prediction;
-      if (!pred) {
-        u.score = 0;
-        return;
+      if (u.manualScore !== undefined) {
+        roundScore = u.manualScore;
+      } else if (pred) {
+        // Pole Position
+        if (pred.poleDriver && cert.poleDriver && pred.poleDriver.toLowerCase().trim() === cert.poleDriver.toLowerCase().trim()) {
+          roundScore += Number(rules.pole || 10);
+        }
+        // Qualifying P2
+        if (pred.qualifyingP2 && cert.qualifyingP2 && pred.qualifyingP2.toLowerCase().trim() === cert.qualifyingP2.toLowerCase().trim()) {
+          roundScore += Number(rules.qualifyingP2 || 5);
+        }
+        // Qualifying P3
+        if (pred.qualifyingP3 && cert.qualifyingP3 && pred.qualifyingP3.toLowerCase().trim() === cert.qualifyingP3.toLowerCase().trim()) {
+          roundScore += Number(rules.qualifyingP3 || 5);
+        }
+        // P1 Winner
+        if (pred.p1Winner && cert.p1Winner && pred.p1Winner.toLowerCase().trim() === cert.p1Winner.toLowerCase().trim()) {
+          roundScore += Number(rules.winner || 25);
+        }
+        // P2 Runner-up
+        if (pred.p2Winner && cert.p2Winner && pred.p2Winner.toLowerCase().trim() === cert.p2Winner.toLowerCase().trim()) {
+          roundScore += Number(rules.podium || 10);
+        }
+        // P3 Third Place
+        if (pred.p3Winner && cert.p3Winner && pred.p3Winner.toLowerCase().trim() === cert.p3Winner.toLowerCase().trim()) {
+          roundScore += Number(rules.podium || 10);
+        }
+        // Fastest Lap
+        if (pred.fastestLap && cert.fastestLap && pred.fastestLap.toLowerCase().trim() === cert.fastestLap.toLowerCase().trim()) {
+          roundScore += Number(rules.fastestLap || 5);
+        }
+        // Driver of the Day
+        if (pred.driverOfTheDay && cert.driverOfTheDay && pred.driverOfTheDay.toLowerCase().trim() === cert.driverOfTheDay.toLowerCase().trim()) {
+          roundScore += Number(rules.dotd || 5);
+        }
+        // First DNF
+        if (pred.firstDNF && cert.firstDNF && pred.firstDNF.toLowerCase().trim() === cert.firstDNF.toLowerCase().trim()) {
+          roundScore += Number(rules.firstDnf || 10);
+        }
+        // Number of DNFs
+        if (pred.numberOfDNFs !== undefined && cert.numberOfDNFs !== undefined && Number(pred.numberOfDNFs) === Number(cert.numberOfDNFs)) {
+          roundScore += Number(rules.numDnfs || 5);
+        }
+        // Safety Car
+        if (pred.safetyCar && cert.safetyCar && pred.safetyCar.toLowerCase().trim() === cert.safetyCar.toLowerCase().trim()) {
+          roundScore += Number(rules.safetyCar || 5);
+        }
+        // Virtual Safety Car
+        if (pred.virtualSafetyCar && cert.virtualSafetyCar && pred.virtualSafetyCar.toLowerCase().trim() === cert.virtualSafetyCar.toLowerCase().trim()) {
+          roundScore += Number(rules.vsc || 5);
+        }
+        // Red Flag Occurrence
+        if (pred.redFlag && cert.redFlag && pred.redFlag.toLowerCase().trim() === cert.redFlag.toLowerCase().trim()) {
+          roundScore += Number(rules.redFlag || 5);
+        }
+        // Driver Who Gains Most Positions
+        if (pred.mostPositionsGained && cert.mostPositionsGained && pred.mostPositionsGained.toLowerCase().trim() === cert.mostPositionsGained.toLowerCase().trim()) {
+          roundScore += Number(rules.gains || 10);
+        }
+
+        // Top 10 Finishers check
+        if (Array.isArray(pred.top10Finishers) && Array.isArray(cert.top10Finishers)) {
+          const certSet = new Set(cert.top10Finishers.filter(Boolean).map((d: string) => d.toLowerCase().trim()));
+          let correctTop10s = 0;
+          pred.top10Finishers.forEach((pdriver: string) => {
+            if (pdriver && certSet.has(pdriver.toLowerCase().trim())) {
+              correctTop10s++;
+            }
+          });
+          roundScore += correctTop10s * Number(rules.top10Multiplier || 5);
+        }
       }
 
-      let score = 0;
-
-      // Pole Position
-      if (pred.poleDriver && cert.poleDriver && pred.poleDriver.toLowerCase().trim() === cert.poleDriver.toLowerCase().trim()) {
-        score += Number(rules.pole || 10);
-      }
-      // Qualifying P2
-      if (pred.qualifyingP2 && cert.qualifyingP2 && pred.qualifyingP2.toLowerCase().trim() === cert.qualifyingP2.toLowerCase().trim()) {
-        score += Number(rules.qualifyingP2 || 5);
-      }
-      // Qualifying P3
-      if (pred.qualifyingP3 && cert.qualifyingP3 && pred.qualifyingP3.toLowerCase().trim() === cert.qualifyingP3.toLowerCase().trim()) {
-        score += Number(rules.qualifyingP3 || 5);
-      }
-      // P1 Winner
-      if (pred.p1Winner && cert.p1Winner && pred.p1Winner.toLowerCase().trim() === cert.p1Winner.toLowerCase().trim()) {
-        score += Number(rules.winner || 25);
-      }
-      // P2 Runner-up
-      if (pred.p2Winner && cert.p2Winner && pred.p2Winner.toLowerCase().trim() === cert.p2Winner.toLowerCase().trim()) {
-        score += Number(rules.podium || 10);
-      }
-      // P3 Third Place
-      if (pred.p3Winner && cert.p3Winner && pred.p3Winner.toLowerCase().trim() === cert.p3Winner.toLowerCase().trim()) {
-        score += Number(rules.podium || 10);
-      }
-      // Fastest Lap
-      if (pred.fastestLap && cert.fastestLap && pred.fastestLap.toLowerCase().trim() === cert.fastestLap.toLowerCase().trim()) {
-        score += Number(rules.fastestLap || 5);
-      }
-      // Driver of the Day
-      if (pred.driverOfTheDay && cert.driverOfTheDay && pred.driverOfTheDay.toLowerCase().trim() === cert.driverOfTheDay.toLowerCase().trim()) {
-        score += Number(rules.dotd || 5);
-      }
-      // First DNF
-      if (pred.firstDNF && cert.firstDNF && pred.firstDNF.toLowerCase().trim() === cert.firstDNF.toLowerCase().trim()) {
-        score += Number(rules.firstDnf || 10);
-      }
-      // Number of DNFs
-      if (pred.numberOfDNFs !== undefined && cert.numberOfDNFs !== undefined && Number(pred.numberOfDNFs) === Number(cert.numberOfDNFs)) {
-        score += Number(rules.numDnfs || 5);
-      }
-      // Safety Car
-      if (pred.safetyCar && cert.safetyCar && pred.safetyCar.toLowerCase().trim() === cert.safetyCar.toLowerCase().trim()) {
-        score += Number(rules.safetyCar || 5);
-      }
-      // Virtual Safety Car
-      if (pred.virtualSafetyCar && cert.virtualSafetyCar && pred.virtualSafetyCar.toLowerCase().trim() === cert.virtualSafetyCar.toLowerCase().trim()) {
-        score += Number(rules.vsc || 5);
-      }
-      // Red Flag Occurrence
-      if (pred.redFlag && cert.redFlag && pred.redFlag.toLowerCase().trim() === cert.redFlag.toLowerCase().trim()) {
-        score += Number(rules.redFlag || 5);
-      }
-      // Driver Who Gains Most Positions
-      if (pred.mostPositionsGained && cert.mostPositionsGained && pred.mostPositionsGained.toLowerCase().trim() === cert.mostPositionsGained.toLowerCase().trim()) {
-        score += Number(rules.gains || 10);
-      }
-
-      // Top 10 Finishers check
-      if (Array.isArray(pred.top10Finishers) && Array.isArray(cert.top10Finishers)) {
-        const certSet = new Set(cert.top10Finishers.filter(Boolean).map((d: string) => d.toLowerCase().trim()));
-        let correctTop10s = 0;
-        pred.top10Finishers.forEach((pdriver: string) => {
-          if (pdriver && certSet.has(pdriver.toLowerCase().trim())) {
-            correctTop10s++;
-          }
-        });
-        score += correctTop10s * Number(rules.top10Multiplier || 5);
-      }
-
-      u.score = score;
+      u.currentRoundScore = roundScore;
+      u.score = historySum + roundScore;
     });
 
     writeUsers(users);
@@ -932,7 +939,10 @@ app.post("/api/admin/delete-current-gp", (req, res) => {
     const users = readUsers();
     users.forEach(u => {
       u.prediction = null;
-      u.score = 0;
+      u.currentRoundScore = 0;
+      u.manualScore = undefined;
+      const historySum = (u.history || []).reduce((acc: number, cur: any) => acc + (cur.score || 0), 0);
+      u.score = historySum;
     });
     writeUsers(users);
 
@@ -987,14 +997,18 @@ app.post("/api/admin/archive-and-new-gp", (req, res) => {
       u.history.push({
         gpName: settings.nextGpName || "F1 Grand Prix",
         gpLocation: settings.nextGpLocation || "F1 Circuit",
-        score: u.score || 0,
+        score: u.currentRoundScore || 0,
         date: new Date().toISOString(),
         prediction: u.prediction || null
       });
 
       // 2. Clear current GP records
       u.prediction = null;
-      u.score = 0;
+      u.currentRoundScore = 0;
+      u.manualScore = undefined;
+      
+      const historySum = u.history.reduce((acc: number, cur: any) => acc + (cur.score || 0), 0);
+      u.score = historySum;
     });
 
     writeUsers(users);
@@ -3214,16 +3228,27 @@ const nations = ["🇬🇧 British", "🇯🇵 Japanese", "🇮🇹 Italian", "�
 const staffRoles = ["Chief Engineer", "Strategy Director", "Race Engineer", "Head of Mechanics"];
 const staffBonuses = ["Aero+2", "Engine+1", "Chassis+1", "Race Pace+1", "Tire Wear-5%", "Pit Time-0.2s", "Driver Focus+5", "Morale+5", "Driver Skill+1", "Pit Stop Time-0.5s", "Reliability+10%", "Setup Speed+20%"];
 
-function generateMarketDrivers(count: number = 18) {
+function generateMarketDrivers(count: number = 18, usedNames: Set<string> = new Set()) {
   return Array.from({ length: count }).map((_, i) => {
+    let fName, lName, fullName;
+    do {
+      fName = firstNames[Math.floor(Math.random() * firstNames.length)];
+      lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+      fullName = `${fName} ${lName}`;
+    } while (usedNames.has(fullName));
+    usedNames.add(fullName);
+
     const skill = Math.floor(Math.random() * 20) + 60; // 60-80
     const age = Math.floor(Math.random() * 12) + 18; // 18-30
-    const fName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lName = lastNames[Math.floor(Math.random() * lastNames.length)];
     return {
       id: `drv_m_${Date.now()}_${i}_${Math.floor(Math.random()*1000)}`,
-      name: `${fName} ${lName}`,
+      name: fullName,
       skill,
+      pace: skill + Math.floor(Math.random() * 10 - 5),
+      defending: skill + Math.floor(Math.random() * 10 - 5),
+      consistency: skill + Math.floor(Math.random() * 10 - 5),
+      overtaking: skill + Math.floor(Math.random() * 14 - 7),
+      experience: Math.max(10, Math.floor(age * 2) + Math.floor(Math.random() * 20 - 10)),
       price: skill * 5000,
       salary: skill * 500,
       age,
@@ -3235,39 +3260,30 @@ function generateMarketDrivers(count: number = 18) {
   });
 }
 
-function generateMarketStaff(count: number = 12) {
+function generateMarketStaff(count: number = 12, usedNames: Set<string> = new Set()) {
   return Array.from({ length: count }).map((_, i) => {
-    const skill = Math.floor(Math.random() * 15) + 70; // 70-85
-    const role = staffRoles[i % staffRoles.length];
-    const fName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    let fName, lName, fullName;
+    do {
+      fName = firstNames[Math.floor(Math.random() * firstNames.length)];
+      lName = lastNames[Math.floor(Math.random() * lastNames.length)];
+      fullName = `${fName} ${lName}`;
+    } while (usedNames.has(fullName));
+    usedNames.add(fullName);
+
+    const role = staffRoles[Math.floor(Math.random() * staffRoles.length)];
+    const bonus = staffBonuses[Math.floor(Math.random() * staffBonuses.length)];
+    const skill = Math.floor(Math.random() * 20) + 60; // 60-80
     return {
       id: `stf_m_${Date.now()}_${i}_${Math.floor(Math.random()*1000)}`,
-      name: `${fName} ${lName}`,
+      name: fullName,
       role,
+      bonus,
       skill,
-      price: skill * 4000,
-      salary: skill * 400,
-      bonus: staffBonuses[Math.floor(Math.random() * staffBonuses.length)]
+      price: skill * 3000,
+      salary: skill * 300
     };
   });
 }
-
-let FICTITIOUS_MARKET_DRIVERS = generateMarketDrivers(18);
-let FICTITIOUS_MARKET_STAFF = generateMarketStaff(12);
-
-const FICTITIOUS_SPONSORS = [
-  { id: "sp_1", name: "Veloce Energy Drink", tier: "Title Partner", upfrontBonus: 300000, perRacePayout: 120000, perPodiumBonus: 50000, desc: "+$300k upfront, +$120k/race" },
-  { id: "sp_2", name: "Apex AI Cloud Systems", tier: "Tech Partner", upfrontBonus: 150000, perRacePayout: 80000, perPodiumBonus: 250000, desc: "+$150k upfront, +$250k/podium" },
-  { id: "sp_3", name: "CryptoGrid Paddock", tier: "Official Sponsor", upfrontBonus: 600000, perRacePayout: 60000, perPodiumBonus: 0, desc: "+$600k instant bonus, +$60k/race" },
-  { id: "sp_4", name: "Hyperion Aero Dynamics", tier: "Performance Sponsor", upfrontBonus: 0, perRacePayout: 180000, perPodiumBonus: 100000, desc: "+$180k/race, +$100k/podium" },
-  { id: "sp_5", name: "Titanium Wheels Co.", tier: "Official Sponsor", upfrontBonus: 200000, perRacePayout: 90000, perPodiumBonus: 20000, desc: "+$200k upfront, +$90k/race" },
-  { id: "sp_6", name: "Quantum Data Comms", tier: "Tech Partner", upfrontBonus: 50000, perRacePayout: 150000, perPodiumBonus: 150000, desc: "+$50k upfront, +$150k/race, +$150k/podium" },
-  { id: "sp_7", name: "Horizon Oil & Gas", tier: "Title Partner", upfrontBonus: 500000, perRacePayout: 100000, perPodiumBonus: 50000, desc: "+$500k upfront, +$100k/race" },
-  { id: "sp_8", name: "AeroSwift Logistics", tier: "Logistics Partner", upfrontBonus: 100000, perRacePayout: 70000, perPodiumBonus: 10000, desc: "+$100k upfront, +$70k/race" },
-  { id: "sp_9", name: "Starlight Hospitality", tier: "Lifestyle Sponsor", upfrontBonus: 250000, perRacePayout: 50000, perPodiumBonus: 80000, desc: "+$250k upfront, +$50k/race, +$80k/podium" },
-  { id: "sp_10", name: "NeoBank International", tier: "Financial Partner", upfrontBonus: 400000, perRacePayout: 80000, perPodiumBonus: 30000, desc: "+$400k upfront, +$80k/race" },
-];
 
 function readClubSettings(): any {
   try {
@@ -3287,16 +3303,7 @@ function readClubSettings(): any {
     }
     return JSON.parse(fs.readFileSync(CLUB_SETTINGS_PATH, "utf8"));
   } catch (err) {
-    return {
-      seasonStart: "2026-03-01",
-      currentGpRound: "1",
-      currentGpName: "",
-      raceLaps: 0,
-      weatherConditions: "Unknown",
-      pointMultiplier: 1.0,
-      status: "Awaiting Schedule",
-      customCircuits: []
-    };
+    return {};
   }
 }
 
@@ -3307,6 +3314,18 @@ function writeClubSettings(settings: any) {
     console.error("Failed to save club settings:", err);
   }
 }
+
+let FICTITIOUS_MARKET_DRIVERS: any[] = generateMarketDrivers(18);
+let FICTITIOUS_MARKET_STAFF: any[] = generateMarketStaff(12);
+
+const FICTITIOUS_SPONSORS = [
+  { id: 'sp_1', name: 'Aero Dynamics Cloud', tier: 'Title Sponsor', desc: 'Pays $1.2M per race if team scores points.', upfrontBonus: 2000000, perRacePayout: 1200000, perPodiumBonus: 500000 },
+  { id: 'sp_2', name: 'Velocity Fuels', tier: 'Premium Partner', desc: 'Pays $800k per race. Double if podium finish.', upfrontBonus: 1000000, perRacePayout: 800000, perPodiumBonus: 800000 },
+  { id: 'sp_3', name: 'Apex Secure Group', tier: 'Official Partner', desc: 'Fixed $500k per race. No performance requirement.', upfrontBonus: 500000, perRacePayout: 500000, perPodiumBonus: 0 },
+  { id: 'sp_4', name: 'NEXA Technologies', tier: 'Premium Partner', desc: 'Pays $700k per race if both cars finish (no DNF).', upfrontBonus: 1000000, perRacePayout: 700000, perPodiumBonus: 0 },
+  { id: 'sp_5', name: 'Global Tyres Co.', tier: 'Official Partner', desc: 'Fixed $600k per race. Requires top 15 finish for driver 1.', upfrontBonus: 500000, perRacePayout: 600000, perPodiumBonus: 0 },
+  { id: 'sp_6', name: 'Quantum Energy Drinks', tier: 'Title Sponsor', desc: 'Pays $1.5M per race if a driver wins.', upfrontBonus: 1500000, perRacePayout: 1500000, perPodiumBonus: 0 }
+];
 
 function readClubs(): any[] {
   try {
@@ -3401,7 +3420,7 @@ app.post("/api/admin/club-manager/settings", (req, res) => {
 
 app.post("/api/admin/club-manager/add-circuit", (req, res) => {
   try {
-    const { name, laps, locality, practiceTime, qualifyingTime, raceTime } = req.body;
+    const { name, laps, locality, practiceTime, qualifyingTime, raceTime, difficulty, trackType } = req.body;
     if (!name) return res.status(400).json({ error: "Circuit name required" });
     const settings = readClubSettings();
     settings.customCircuits = settings.customCircuits || [];
@@ -3411,7 +3430,9 @@ app.post("/api/admin/club-manager/add-circuit", (req, res) => {
       locality: locality || "Custom Venue",
       practiceTime: practiceTime || "Friday 14:00 UTC",
       qualifyingTime: qualifyingTime || "Saturday 15:00 UTC",
-      raceTime: raceTime || "Sunday 14:00 UTC"
+      raceTime: raceTime || "Sunday 14:00 UTC",
+      difficulty: difficulty || "Medium",
+      trackType: trackType || "Permanent Racing Facility"
     };
     settings.customCircuits.push(newCircuit);
     settings.currentGpName = name;
@@ -3426,6 +3447,23 @@ app.post("/api/admin/club-manager/add-circuit", (req, res) => {
   }
 });
 
+app.post("/api/admin/club-manager/delete-club", (req, res) => {
+  try {
+    const { clubId } = req.body;
+    if (!clubId) return res.status(400).json({ error: "Club ID required" });
+    let clubs = readClubs();
+    const initialLength = clubs.length;
+    clubs = clubs.filter(c => c.id !== clubId);
+    if (clubs.length === initialLength) {
+      return res.status(404).json({ error: "Club not found" });
+    }
+    writeClubs(clubs);
+    return res.json({ success: true, message: "Club deleted successfully" });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/club-manager/clubs", (req, res) => {
   const clubs = readClubs();
   clubs.sort((a, b) => (b.totalPoints || 0) - (a.totalPoints || 0));
@@ -3434,7 +3472,7 @@ app.get("/api/club-manager/clubs", (req, res) => {
 
 app.post("/api/club-manager/update-club", (req, res) => {
   try {
-    const { username, clubName, teamColor, badgeIcon, teamPhilosophy } = req.body;
+    const { username, clubName, teamColor, badgeIcon, teamPhilosophy, headquarters, seasonObjective, teamPrincipal, liveryPattern } = req.body;
     if (!username) return res.status(400).json({ error: "Username missing" });
     const clubs = readClubs();
     const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
@@ -3443,6 +3481,11 @@ app.post("/api/club-manager/update-club", (req, res) => {
     if (clubName) club.clubName = clubName;
     if (teamColor) club.teamColor = teamColor;
     if (badgeIcon) club.badgeIcon = badgeIcon;
+    if (teamPhilosophy) club.teamPhilosophy = teamPhilosophy;
+    if (headquarters) club.headquarters = headquarters;
+    if (seasonObjective) club.seasonObjective = seasonObjective;
+    if (teamPrincipal) club.teamPrincipal = teamPrincipal;
+    if (liveryPattern) club.liveryPattern = liveryPattern;
 
     writeClubs(clubs);
     return res.json({ success: true, message: "Club settings updated successfully!" });
@@ -3498,10 +3541,16 @@ app.post("/api/club-manager/clubs", (req, res) => {
         clubName,
         teamColor: teamColor || "#EF1A2D",
         badgeIcon: badgeIcon || "Shield",
+        headquarters: "🇬🇧 United Kingdom",
+        teamPhilosophy: "Balanced",
+        seasonObjective: "Midfield Contenders",
+        teamPrincipal: username,
+        liveryPattern: "Solid",
+        fanBase: 500000,
         budget: 3000000, // Starts with $3,000,000
         salaryCap: 2500000, // $2.5m combined salary cap per race
-        driver1: { id: `drv_rk1_${Date.now()}`, name: getRandomName(), skill: Math.floor(Math.random() * 11) + 65, price: 50000, salary: 6500 },
-        driver2: { id: `drv_rk2_${Date.now()}`, name: getRandomName(), skill: Math.floor(Math.random() * 11) + 65, price: 40000, salary: 5500 },
+        driver1: { id: `drv_rk1_${Date.now()}`, name: getRandomName(), skill: Math.floor(Math.random() * 11) + 65, price: 50000, salary: 6500, pace: 70, defending: 68, consistency: 72, overtaking: 65, experience: 40 },
+        driver2: { id: `drv_rk2_${Date.now()}`, name: getRandomName(), skill: Math.floor(Math.random() * 11) + 65, price: 40000, salary: 5500, pace: 65, defending: 65, consistency: 68, overtaking: 70, experience: 35 },
         testDriver: null,
         staff: [],
         upgrades: { aero: 1, engine: 1, crew: 1, tires: 1, chassis: 1, brakes: 1, electronics: 1, simulator: 1 },
@@ -3672,7 +3721,7 @@ app.post("/api/club-manager/sell-driver", (req, res) => {
 
 app.post("/api/club-manager/train-driver", (req, res) => {
   try {
-    const { username, slot } = req.body;
+    const { username, slot, attribute = 'skill' } = req.body;
     if (!username || !slot) return res.status(400).json({ error: "Missing parameters" });
 
     const clubs = readClubs();
@@ -3690,17 +3739,48 @@ app.post("/api/club-manager/train-driver", (req, res) => {
     else if (slot === 3) driver = club.testDriver;
     if (!driver) return res.status(400).json({ error: "No driver in this slot" });
 
-    if (driver.skill >= 99) {
-      return res.status(400).json({ error: "Driver has reached maximum potential (99 OVR)!" });
+    // Check training cooldown (5 minutes)
+    if (driver.lastTrainedAt) {
+      const lastTrained = new Date(driver.lastTrainedAt).getTime();
+      const now = Date.now();
+      const cooldownMs = 5 * 60 * 1000; // 5 minutes
+      if (now - lastTrained < cooldownMs) {
+        const remainingMinutes = Math.ceil((cooldownMs - (now - lastTrained)) / 60000);
+        return res.status(400).json({ error: `Driver is exhausted! Needs ${remainingMinutes} minute(s) rest before next training.` });
+      }
+    }
+
+    // Initialize attributes if missing
+    driver.pace = driver.pace || driver.skill || 70;
+    driver.defending = driver.defending || driver.skill || 70;
+    driver.consistency = driver.consistency || driver.skill || 70;
+    driver.overtaking = driver.overtaking || driver.skill || 70;
+    driver.experience = driver.experience || driver.skill || 50;
+
+    const targetVal = attribute === 'skill' ? driver.skill : driver[attribute];
+
+    if (targetVal >= 99) {
+      return res.status(400).json({ error: `Driver has reached maximum potential in ${attribute} (99)!` });
     }
 
     club.budget -= trainCost;
-    driver.skill += 1;
+
+    if (['pace', 'defending', 'consistency', 'overtaking', 'experience'].includes(attribute)) {
+      driver[attribute] += Math.floor(Math.random() * 3) + 1; // Increase by 1 to 3
+      if (driver[attribute] > 99) driver[attribute] = 99;
+      // Recalculate skill based on average if specific attributes are present
+      const sum = driver.pace + driver.defending + driver.consistency + driver.overtaking + driver.experience;
+      driver.skill = Math.round(sum / 5);
+    } else {
+      driver.skill += 1;
+    }
+
     driver.salary += 5000;
     driver.price += 25000;
+    driver.lastTrainedAt = new Date().toISOString();
 
     writeClubs(clubs);
-    return res.json({ success: true, club, message: `${driver.name} trained successfully! Skill is now ${driver.skill} OVR.` });
+    return res.json({ success: true, club, message: `${driver.name} trained successfully! ${attribute.toUpperCase()} improved. Overall is now ${driver.skill} OVR.` });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || "Failed to train driver" });
   }
@@ -4053,6 +4133,11 @@ app.post("/api/club-manager/scout-driver", (req, res) => {
       id: `drv_scout_${Date.now()}`,
       name: `${fn} ${ln}`,
       skill,
+      pace: skill + Math.floor(Math.random() * 8),
+      defending: skill + Math.floor(Math.random() * 5 - 2),
+      consistency: skill + Math.floor(Math.random() * 10 - 5),
+      overtaking: skill + Math.floor(Math.random() * 10),
+      experience: Math.floor(age * 1.5),
       price,
       salary,
       age,

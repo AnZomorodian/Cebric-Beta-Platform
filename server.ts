@@ -3420,7 +3420,7 @@ app.post("/api/admin/club-manager/settings", (req, res) => {
 
 app.post("/api/admin/club-manager/add-circuit", (req, res) => {
   try {
-    const { name, laps, locality, practiceTime, qualifyingTime, raceTime, difficulty, trackType } = req.body;
+    const { name, laps, locality, practiceTime, qualifyingTime, raceTime, difficulty, trackType, layout, elevation, climate } = req.body;
     if (!name) return res.status(400).json({ error: "Circuit name required" });
     const settings = readClubSettings();
     settings.customCircuits = settings.customCircuits || [];
@@ -3432,7 +3432,10 @@ app.post("/api/admin/club-manager/add-circuit", (req, res) => {
       qualifyingTime: qualifyingTime || "Saturday 15:00 UTC",
       raceTime: raceTime || "Sunday 14:00 UTC",
       difficulty: difficulty || "Medium",
-      trackType: trackType || "Permanent Racing Facility"
+      trackType: trackType || "Permanent Racing Facility",
+      layout: layout || "Clockwise",
+      elevation: elevation || "Flat",
+      climate: climate || "Temperate"
     };
     settings.customCircuits.push(newCircuit);
     settings.currentGpName = name;
@@ -3440,6 +3443,27 @@ app.post("/api/admin/club-manager/add-circuit", (req, res) => {
     settings.practiceTime = newCircuit.practiceTime;
     settings.qualifyingTime = newCircuit.qualifyingTime;
     settings.raceTime = newCircuit.raceTime;
+    writeClubSettings(settings);
+    res.json({ success: true, settings });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/admin/club-manager/delete-circuit", (req, res) => {
+  try {
+    const { name } = req.body;
+    const settings = readClubSettings();
+    if (!settings.customCircuits) return res.json({ success: true });
+    
+    settings.customCircuits = settings.customCircuits.filter((c: any) => c.name !== name);
+    if (settings.currentGpName === name) {
+      settings.currentGpName = settings.customCircuits.length > 0 ? settings.customCircuits[0].name : "";
+      settings.raceLaps = settings.customCircuits.length > 0 ? settings.customCircuits[0].laps : 0;
+      settings.practiceTime = settings.customCircuits.length > 0 ? settings.customCircuits[0].practiceTime : "";
+      settings.qualifyingTime = settings.customCircuits.length > 0 ? settings.customCircuits[0].qualifyingTime : "";
+      settings.raceTime = settings.customCircuits.length > 0 ? settings.customCircuits[0].raceTime : "";
+    }
     writeClubSettings(settings);
     res.json({ success: true, settings });
   } catch (err: any) {
@@ -3649,6 +3673,8 @@ app.post("/api/club-manager/buy-staff", (req, res) => {
     if (!club) return res.status(404).json({ error: "Club not found" });
 
     const marketStaff = club.marketStaff || FICTITIOUS_MARKET_STAFF;
+    console.log(`[buy-staff] User: ${username}, Target staffId: ${staffId}`);
+    console.log(`[buy-staff] Available staff IDs: ${marketStaff.map((s: any) => s.id).join(', ')}`);
     const staffIdx = marketStaff.findIndex((s: any) => s.id === staffId);
     if (staffIdx === -1) return res.status(404).json({ error: "Staff not found on transfer market" });
     const staffMember = marketStaff[staffIdx];
@@ -3860,12 +3886,26 @@ app.post("/api/club-manager/update-driver-style", (req, res) => {
 
 app.post("/api/club-manager/upgrade-rd", (req, res) => {
   try {
-    const { username, category } = req.body; // 'aero' | 'engine' | 'crew' | 'tires'
+    const { username, category } = req.body;
     const clubs = readClubs();
     const club = clubs.find(c => c.username.toLowerCase() === username.toLowerCase());
     if (!club) return res.status(404).json({ error: "Club not found" });
 
     club.upgrades = club.upgrades || { aero: 1, engine: 1, crew: 1, tires: 1, chassis: 1, brakes: 1, electronics: 1, simulator: 1 };
+    
+    if (category === 'scoutingFacility') {
+      const currLvl = club.upgrades.scoutingFacility || 0;
+      if (currLvl >= 1) return res.status(400).json({ error: "Scouting Facility is already unlocked!" });
+      const cost = 1000000;
+      if (club.budget < cost) {
+        return res.status(400).json({ error: `Insufficient budget! Costs ${cost.toLocaleString()}` });
+      }
+      club.budget -= cost;
+      club.upgrades.scoutingFacility = 1;
+      writeClubs(clubs);
+      return res.json({ success: true, club, message: "Young Driver Scouting Program Facility Unlocked!" });
+    }
+
     const currLvl = club.upgrades[category as keyof typeof club.upgrades] || 1;
     if (currLvl >= 10) return res.status(400).json({ error: "Maximum R&D Level (10) Reached!" });
 
@@ -3947,6 +3987,8 @@ app.post("/api/admin/club-manager/simulate-race", (req, res) => {
       return res.status(400).json({ error: "No clubs registered to simulate race" });
     }
 
+    const currentCircuit = settings.customCircuits?.find((c: any) => c.name === settings.currentGpName);
+
     interface SimDriver {
       clubId: string;
       driverName: string;
@@ -3967,18 +4009,37 @@ app.post("/api/admin/club-manager/simulate-race", (req, res) => {
         if (style === 'Conservative') return -1;
         return 0; // Balanced or undefined
       };
+
+      const applyTrackModifiers = (driverInfo: any) => {
+        let modifier = 0;
+        if (currentCircuit) {
+          // Layout impacts driver stats
+          if (currentCircuit.layout === 'Anti-Clockwise') modifier += ((driverInfo.experience || 50) - 50) * 0.15;
+          if (currentCircuit.layout === 'Figure-8') modifier += ((driverInfo.consistency || 50) - 50) * 0.15;
+          
+          // Elevation impacts Engine R&D
+          if (currentCircuit.elevation === 'Hilly') modifier += ((upg.engine || 1) - 1) * 0.5;
+          if (currentCircuit.elevation === 'Mountainous') modifier += ((upg.engine || 1) - 1) * 1.0;
+
+          // Climate impacts Tire R&D
+          if (currentCircuit.climate === 'Arid' || currentCircuit.climate === 'Tropical') {
+            modifier += ((upg.tires || 1) - 1) * 0.8;
+          }
+        }
+        return modifier;
+      };
       
       drivers.push({ 
         clubId: c.id, 
         driverName: c.driver1?.name || "Driver 1", 
-        skill: (c.driver1?.skill || 70) + rdBoost + applyStylePace(c.driver1?.drivingStyle || 'Balanced'), 
+        skill: (c.driver1?.skill || 70) + rdBoost + applyStylePace(c.driver1?.drivingStyle || 'Balanced') + applyTrackModifiers(c.driver1 || {}), 
         score: 0,
         drivingStyle: c.driver1?.drivingStyle || 'Balanced'
       });
       drivers.push({ 
         clubId: c.id, 
         driverName: c.driver2?.name || "Driver 2", 
-        skill: (c.driver2?.skill || 68) + rdBoost + applyStylePace(c.driver2?.drivingStyle || 'Balanced'), 
+        skill: (c.driver2?.skill || 68) + rdBoost + applyStylePace(c.driver2?.drivingStyle || 'Balanced') + applyTrackModifiers(c.driver2 || {}), 
         score: 0,
         drivingStyle: c.driver2?.drivingStyle || 'Balanced'
       });

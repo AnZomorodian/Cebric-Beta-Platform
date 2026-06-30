@@ -36,6 +36,20 @@ export const ScoutingTab: React.FC<ScoutingTabProps> = ({ currentUser, clubRecor
     setScouting(false);
   };
 
+  if (clubRecord && (!clubRecord.upgrades || !clubRecord.upgrades.scoutingFacility)) {
+    return (
+      <div className="bg-white rounded-3xl border border-gray-200 p-12 shadow-xl text-center space-y-4">
+        <div className="mx-auto w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mb-6">
+          <Search size={40} />
+        </div>
+        <h2 className="text-2xl font-black text-gray-900">Scouting Facility Required</h2>
+        <p className="text-sm text-gray-500 max-w-md mx-auto">
+          You must build the Young Driver Scouting Program in the <span className="font-bold">Factory & Facilities</span> tab before you can scout for new talent.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-xl space-y-8">
       <div className="flex items-center gap-3 border-b border-gray-100 pb-6">

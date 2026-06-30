@@ -95,22 +95,25 @@ export default function App() {
     try {
       const res = await fetch('/api/announcements');
       if (res.ok) {
-        const d = await res.json();
-        if (d.success && Array.isArray(d.announcements) && d.announcements.length > 0) {
-          const now = Date.now();
-          const valid = d.announcements.find((a: any) => {
-            if (a.expiresAt) {
-              return new Date(a.expiresAt).getTime() > now;
-            }
-            return true;
-          });
-          setActiveAlert(valid || null);
-        } else {
-          setActiveAlert(null);
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const d = await res.json();
+          if (d.success && Array.isArray(d.announcements) && d.announcements.length > 0) {
+            const now = Date.now();
+            const valid = d.announcements.find((a: any) => {
+              if (a.expiresAt) {
+                return new Date(a.expiresAt).getTime() > now;
+              }
+              return true;
+            });
+            setActiveAlert(valid || null);
+          } else {
+            setActiveAlert(null);
+          }
         }
       }
     } catch (e) {
-      console.log('Announcements interface loaded, syncing changes...', e);
+      // Silently ignore polling errors
     }
   };
 

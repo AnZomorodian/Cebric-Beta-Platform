@@ -38,13 +38,15 @@ import {
   Triangle,
   Diamond,
   Target,
+  Headphones,
   Activity,
   Cpu,
   ThumbsUp,
   ThumbsDown,
   Sliders,
   Info,
-  Scale
+  Scale,
+  Factory
 } from 'lucide-react';
 
 interface ClubManagerTabProps {
@@ -133,7 +135,10 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
     qualifyingTime: "",
     raceTime: "",
     difficulty: "Medium",
-    trackType: "Permanent Racing Facility"
+    trackType: "Permanent Racing Facility",
+    layout: "Clockwise",
+    elevation: "Flat",
+    climate: "Temperate"
   });
 
   const isAdmin = currentUser?.username?.toLowerCase() === 'admin' || currentUser?.isAdmin === true || currentUser?.role === 'admin';
@@ -147,7 +152,7 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
     setIsLoading(true);
     try {
       const [settRes, clubRes, resRes] = await Promise.all([
-        fetch('/api/club-manager/settings'),
+        fetch(`/api/club-manager/settings?username=${currentUser?.username || ''}`),
         fetch('/api/club-manager/clubs'),
         fetch('/api/club-manager/results')
       ]);
@@ -693,13 +698,13 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
             </button>
 
             <button
-              onClick={() => setActiveSubTab('rd')}
-              title="R&D Upgrade Trees"
+              onClick={() => setActiveSubTab('factory')}
+              title="Factory & Facilities"
               className={`p-3 rounded-xl transition-all shadow-sm ${
-                activeSubTab === 'rd' ? 'bg-red-600 text-white shadow-red-500/25' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                activeSubTab === 'factory' ? 'bg-red-600 text-white shadow-red-500/25' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
               }`}
             >
-              <Wrench size={20} />
+              <Factory size={20} />
             </button>
 
             <button
@@ -1009,26 +1014,24 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
           ) : (
             <div className="space-y-8">
               {/* Club Dashboard Overview */}
-              <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+              <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                 <div className="flex items-center gap-6">
-                  <div className="relative">
-                    <div className="h-24 w-24 rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(0,0,0,0.15)] text-3xl border-4 border-white relative z-10" style={{ backgroundColor: myClubRecord.teamColor || '#EF1A2D' }}>
-                      {React.createElement(BADGE_ICONS[myClubRecord.badgeIcon] || BADGE_ICONS.Shield, { size: 48, className: "drop-shadow-md" })}
+                  <div className="relative shrink-0">
+                    <div className="h-28 w-28 rounded-full flex items-center justify-center text-white shadow-sm text-3xl border-[6px] border-white relative z-10" style={{ backgroundColor: myClubRecord.teamColor || '#EF1A2D' }}>
+                      {React.createElement(BADGE_ICONS[myClubRecord.badgeIcon] || BADGE_ICONS.Shield, { size: 56, className: "drop-shadow-sm" })}
                     </div>
-                    <div className="absolute inset-0 rounded-full border border-gray-100 scale-110 z-0"></div>
+                    <div className="absolute inset-0 rounded-full border-2 border-gray-100 scale-110 z-0"></div>
                   </div>
-                  <div className="space-y-1 flex-1">
-                    <span className="text-xs uppercase font-mono text-gray-400 font-semibold flex items-center gap-2">
-                      <Shield size={14} /> Registered Constructor Club
+                  <div className="space-y-1 flex-1 pt-1">
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-gray-500 flex items-center gap-1.5 mb-1">
+                      <Shield size={12} /> Registered Constructor Club
                     </span>
-                    <div className="flex items-center gap-4">
-                      <h2 className="text-3xl font-black text-gray-900">{myClubRecord.clubName}</h2>
-                    </div>
-                    <p className="text-sm text-gray-500 mb-1">
+                    <h2 className="text-3xl font-black text-gray-900 leading-none">{myClubRecord.clubName}</h2>
+                    <p className="text-sm text-gray-600 pb-2">
                       Team Principal: <strong className="text-gray-900">{myClubRecord.teamPrincipal || myClubRecord.username}</strong> | Account: @{myClubRecord.username}
                     </p>
-                    <div className="flex items-center gap-3 text-xs font-mono text-gray-600 mt-2">
-                      <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 text-gray-700 px-2 py-1.5 rounded-lg">
                         <img 
                           src={`https://flagcdn.com/w20/${
                             (myClubRecord.headquarters?.includes("🇬🇧") ? "gb" : 
@@ -1040,49 +1043,49 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                              myClubRecord.headquarters?.includes("🇯🇵") ? "jp" : "gb")
                           }.png`} 
                           alt="HQ" 
-                          className="w-3 rounded-sm opacity-90"
+                          className="w-4 rounded-sm"
                         />
                         {myClubRecord.headquarters?.replace(/[\u{1F1E6}-\u{1F1FF}]/gu, '').trim() || "United Kingdom"}
                       </span>
-                      <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded">
-                        <Zap size={12} /> {myClubRecord.teamPhilosophy || "Balanced"}
+                      <span className="flex items-center gap-1.5 bg-gray-50 border border-gray-100 text-gray-700 px-2 py-1.5 rounded-lg">
+                        <Zap size={14} className="text-gray-400" /> {myClubRecord.teamPhilosophy || "Balanced"}
                       </span>
-                      <span className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        <Crown size={12} /> {myClubRecord.seasonObjective || "Midfield Contenders"}
+                      <span className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 text-blue-800 px-2 py-1.5 rounded-lg">
+                        <Crown size={14} className="text-blue-500" /> {myClubRecord.seasonObjective || "Midfield Contenders"}
                       </span>
-                      <span className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                        <CheckCircle size={12} /> Livery: {myClubRecord.liveryPattern || "Solid"}
+                      <span className="flex items-center gap-1.5 bg-purple-50 border border-purple-100 text-purple-800 px-2 py-1.5 rounded-lg">
+                        <CheckCircle size={14} className="text-purple-500" /> Livery: {myClubRecord.liveryPattern || "Solid"}
                       </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Financial Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full xl:w-auto mt-6 md:mt-0">
-                  <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 min-w-[140px]">
-                    <div className="text-xs uppercase font-mono text-purple-800 font-bold flex items-center gap-1">
-                      <Star size={14} /> Global Fan Base
+                <div className="flex flex-wrap md:flex-nowrap gap-4 w-full lg:w-auto">
+                  <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 min-w-[140px] flex-1 lg:flex-none flex flex-col justify-center">
+                    <div className="text-[10px] uppercase font-bold text-purple-800 flex items-center gap-1.5 mb-2 tracking-wider">
+                      <Star size={12} /> Global Fan Base
                     </div>
-                    <div className="text-xl font-black font-mono text-purple-700 mt-1">
+                    <div className="text-xl font-black text-purple-900">
                       {(myClubRecord.fanBase || 500000).toLocaleString()}
                     </div>
                   </div>
 
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 min-w-[140px]">
-                    <div className="text-xs uppercase font-mono text-emerald-800 font-bold flex items-center gap-1">
-                      <Coins size={14} /> Available Budget
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 min-w-[140px] flex-1 lg:flex-none flex flex-col justify-center">
+                    <div className="text-[10px] uppercase font-bold text-emerald-800 flex items-center gap-1.5 mb-2 tracking-wider">
+                      <Coins size={12} /> Available Budget
                     </div>
-                    <div className="text-xl font-black font-mono text-emerald-700 mt-1">
+                    <div className="text-xl font-black text-emerald-900">
                       ${(myClubRecord.budget || 0).toLocaleString()}
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 min-w-[140px]">
-                    <div className="text-xs uppercase font-mono text-blue-800 font-bold flex items-center gap-1">
-                      <DollarSign size={14} /> Salary Cap Status
+                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 min-w-[160px] flex-1 lg:flex-none flex flex-col justify-center">
+                    <div className="text-[10px] uppercase font-bold text-blue-800 flex items-center gap-1.5 mb-2 tracking-wider">
+                      <DollarSign size={12} /> Salary Cap Status
                     </div>
-                    <div className="text-lg font-black font-mono text-blue-900 mt-1">
-                      ${((myClubRecord.driver1?.salary || 0) + (myClubRecord.driver2?.salary || 0) + (myClubRecord.testDriver?.salary || 0) + (myClubRecord.staff || []).reduce((acc: number, s: any) => acc + s.salary, 0)).toLocaleString()} <span className="text-xs text-blue-600 font-normal block sm:inline">/ ${(myClubRecord.salaryCap || 2500000).toLocaleString()}</span>
+                    <div className="text-lg font-black text-blue-900">
+                      ${((myClubRecord.driver1?.salary || 0) + (myClubRecord.driver2?.salary || 0) + (myClubRecord.testDriver?.salary || 0) + (myClubRecord.staff || []).reduce((acc: number, s: any) => acc + s.salary, 0)).toLocaleString()} <span className="text-xs text-blue-600 font-normal">/ ${(myClubRecord.salaryCap || 2500000).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -1175,10 +1178,10 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                       type="text"
                       maxLength={30}
                       value={updateClubForm.clubName}
-                      onChange={(e) => setUpdateClubForm({ ...updateClubForm, clubName: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900 font-bold"
-                      required
+                      disabled
+                      className="w-full px-4 py-3 rounded-xl bg-gray-200 border border-gray-300 text-gray-500 cursor-not-allowed font-bold"
                     />
+                    <p className="text-[10px] text-gray-500 mt-1">Club name cannot be changed after registration.</p>
                   </div>
 
                   <div>
@@ -1552,66 +1555,104 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
             </div>
 
               {/* Staff Grid */}
-              <div className="mt-12 space-y-8">
-                <h3 className="text-xl font-black text-gray-900">Available Key Personnel (Staff)</h3>
+              <div className="mt-16 space-y-8">
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900">Key Personnel Market</h3>
+                  <p className="text-sm text-gray-500">Recruit top-tier staff to unlock powerful passive bonuses and improve your team's overall capabilities.</p>
+                </div>
                 
-                {["Chief Engineer", "Strategy Director", "Race Engineer", "Head of Mechanics"].map((role) => (
-                  <div key={role} className="space-y-4">
-                    <h4 className="text-lg font-bold text-gray-700 uppercase tracking-wider text-sm border-b border-gray-100 pb-2">{role}s</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {marketStaff.filter(s => s.role === role).map((staff) => {
-                        const isHired = myClubRecord?.staff?.some((s: any) => s.id === staff.id);
-                        return (
-                          <div key={staff.id} className="border border-gray-200 rounded-2xl p-4 flex flex-col justify-between bg-white shadow-sm hover:shadow-md transition-shadow">
-                            <div>
-                              <div className="font-bold text-gray-900 text-lg">{staff.name}</div>
-                              <div className="text-xs text-gray-500 font-mono mt-1">OVR <span className="font-bold text-red-600">{staff.skill}</span></div>
-                              <div className="text-xs font-bold text-emerald-600 mt-2 bg-emerald-50 inline-block px-2 py-1 rounded">{staff.bonus}</div>
-                            </div>
-                            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                              <div className="text-sm font-black text-gray-900">${staff.price.toLocaleString()}</div>
-                              {isHired ? (
-                                <span className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl font-bold">Hired</span>
-                              ) : (
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      const res = await fetch("/api/club-manager/buy-staff", {
-                                        method: "POST",
-                                        headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify({ username: currentUser?.username, staffId: staff.id })
-                                      });
-                                      const data = await res.json();
-                                      setStatusMsg(data.error || data.message);
-                                      fetchData();
-                                    } catch (err: any) {
-                                      setStatusMsg(err.message);
-                                    }
-                                  }}
-                                  className="text-xs bg-gray-900 hover:bg-black text-white px-3 py-1.5 rounded-xl font-bold transition-colors"
-                                >
-                                  Hire Staff
-                                </button>
-                              )}
-                            </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                  {[
+                    { role: "Chief Engineer", icon: Wrench, color: "text-amber-600", bg: "bg-amber-50", desc: "Oversees car R&D and aerodynamic upgrades." },
+                    { role: "Strategy Director", icon: Target, color: "text-blue-600", bg: "bg-blue-50", desc: "Optimizes race pace, tire management, and pit stops." },
+                    { role: "Race Engineer", icon: Headphones, color: "text-purple-600", bg: "bg-purple-50", desc: "Direct link to the driver. Boosts consistency and morale." },
+                    { role: "Head of Mechanics", icon: Shield, color: "text-emerald-600", bg: "bg-emerald-50", desc: "Maintains reliability and executes flawless pit stops." }
+                  ].map((group) => {
+                    const staffList = marketStaff.filter(s => s.role === group.role);
+                    if (staffList.length === 0) return null;
+
+                    return (
+                      <div key={group.role} className="bg-gray-50 rounded-3xl border border-gray-200 p-6 space-y-6">
+                        <div className="flex items-center gap-4 border-b border-gray-200 pb-4">
+                          <div className={`h-12 w-12 rounded-2xl ${group.bg} ${group.color} flex items-center justify-center shadow-inner`}>
+                            <group.icon size={24} />
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                          <div>
+                            <h4 className="text-xl font-bold text-gray-900">{group.role}s</h4>
+                            <p className="text-xs text-gray-500">{group.desc}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          {staffList.map((staff) => {
+                            const isHired = myClubRecord?.staff?.some((s: any) => s.id === staff.id);
+                            const skillBg = staff.skill >= 78 ? 'bg-indigo-100 text-indigo-700' : staff.skill >= 70 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700';
+
+                            return (
+                              <div key={staff.id} className={`border rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition-all ${
+                                isHired ? 'bg-red-50/50 border-red-200 shadow-sm' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md'
+                              }`}>
+                                <div className="flex-1 space-y-1">
+                                  <div className="flex justify-between items-start">
+                                    <h5 className="font-bold text-gray-900 text-lg">{staff.name}</h5>
+                                    <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-full ${skillBg}`}>
+                                      OVR {staff.skill}
+                                    </span>
+                                  </div>
+                                  <div className="text-xs font-medium text-emerald-600 bg-emerald-50 inline-flex px-2 py-1 rounded-lg items-center gap-1">
+                                    <Zap size={12} /> {staff.bonus}
+                                  </div>
+                                </div>
+                                <div className="flex sm:flex-col items-center justify-between sm:items-end w-full sm:w-auto gap-3 sm:gap-2 pt-3 border-t border-gray-100 sm:pt-0 sm:border-none">
+                                  <div className="text-sm font-black text-gray-900">
+                                    ${staff.price.toLocaleString()}
+                                  </div>
+                                  {isHired ? (
+                                    <span className="text-xs bg-red-100 text-red-700 px-4 py-2 rounded-xl font-bold flex items-center gap-1">
+                                      <CheckCircle size={14} /> Signed
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          const res = await fetch("/api/club-manager/buy-staff", {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ username: currentUser?.username, staffId: staff.id })
+                                          });
+                                          const data = await res.json();
+                                          setStatusMsg(data.error || data.message);
+                                          fetchData();
+                                        } catch (err: any) {
+                                          setStatusMsg(err.message);
+                                        }
+                                      }}
+                                      className="w-full sm:w-auto text-xs bg-gray-900 hover:bg-black text-white px-4 py-2 rounded-xl font-bold transition-all shadow-md active:scale-95"
+                                    >
+                                      Offer Contract
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
           </div>
         </div>
       )}
 
-      {/* SUB-VIEW 4: R&D UPGRADE TREES */}
-      {activeSubTab === 'rd' && (
+      {/* SUB-VIEW 4: FACTORY & FACILITIES */}
+      {activeSubTab === 'factory' && (
         <div className="space-y-6">
           <div className="bg-white rounded-3xl border border-gray-200 p-8 shadow-xl space-y-6">
             <div className="border-b border-gray-100 pb-6 flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-black text-gray-900">R&D Upgrade Trees</h2>
+                <h2 className="text-2xl font-black text-gray-900">Factory & Facilities</h2>
                 <p className="text-sm text-gray-500">Invest team funds into factory departments. Each upgrade level grants a score boost during race simulations.</p>
               </div>
               {myClubRecord && (
@@ -1621,65 +1662,100 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-12">
               {[
-                { key: 'aero', title: 'Aerodynamic Package', icon: WindIcon, desc: 'Wind tunnel validation, front wing endplates & diffuser floor profile.' },
-                { key: 'engine', title: 'Power Unit Combustion', icon: Zap, desc: 'Turbocharger recovery MGU-H efficiency and battery storage yield.' },
-                { key: 'crew', title: 'Pit Stop Crew Automation', icon: Wrench, desc: 'Pneumatic wheel gun torque optimizations and choreography drills.' },
-                { key: 'tires', title: 'Tire Thermal Management', icon: Shield, desc: 'Suspension kinematics to reduce degradation in blistering high-speed corners.' },
-                { key: 'chassis', title: 'Chassis Rigidity', icon: Shield, desc: 'Carbon fiber weaves for weight reduction and stiffness.' },
-                { key: 'brakes', title: 'Brake by Wire System', icon: RefreshCw, desc: 'Optimized brake bias control and regenerative braking.' },
-                { key: 'electronics', title: 'Telemetry Electronics', icon: Zap, desc: 'Real-time data processing and control electronics.' },
-                { key: 'simulator', title: 'Driver Simulator Facility', icon: Cpu, desc: 'Virtual environment precision for driver setup training.' },
-                { key: 'materials', title: 'Advanced Materials', icon: Zap, desc: 'Lightweight composites to lower the center of gravity and improve handling.' },
-                { key: 'strategy', title: 'AI Strategy Engine', icon: Cpu, desc: 'Machine learning race pace predictions and optimal pit stop windows.' }
-              ].map((tree) => {
-                const currLvl = myClubRecord?.upgrades?.[tree.key] || 1;
-                const costsMap: Record<number, number> = { 1: 200000, 2: 350000, 3: 550000, 4: 800000, 5: 1100000, 6: 1500000, 7: 2000000, 8: 2600000, 9: 3300000 };
-                const nextCost = costsMap[currLvl];
-                const isMax = currLvl >= 10;
-
-                return (
-                  <div key={tree.key} className="bg-gray-50 rounded-2xl border border-gray-200 p-6 space-y-5 flex flex-col justify-between">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="h-12 w-12 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md">
-                          <tree.icon size={24} />
-                        </div>
-                        <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 font-black font-mono text-xs uppercase">
-                          Level {currLvl} / 10
-                        </span>
-                      </div>
-                      <h4 className="text-lg font-bold text-gray-900">{tree.title}</h4>
-                      <p className="text-xs text-gray-500 leading-relaxed">{tree.desc}</p>
-                    </div>
-
-                    <div className="space-y-4 pt-4 border-t border-gray-200/80">
-                      {/* Level Progress */}
-                      <div className="flex gap-1.5">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((l) => (
-                          <div
-                            key={l}
-                            className={`h-2 flex-1 rounded-full transition-all ${
-                              l <= currLvl ? 'bg-red-600 shadow-sm' : 'bg-gray-200'
-                            }`}
-                          />
-                        ))}
-                      </div>
-
-                      <button
-                        onClick={() => handleUpgradeRD(tree.key)}
-                        disabled={!myClubRecord || isMax}
-                        className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md ${
-                          isMax ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-gray-900 hover:bg-black text-white'
-                        }`}
-                      >
-                        {isMax ? 'Maximum Department Level Reached' : `Upgrade to L${currLvl + 1} ($${nextCost?.toLocaleString()})`}
-                      </button>
-                    </div>
+                {
+                  category: "Specialized Infrastructure",
+                  desc: "Unique facilities that unlock new features and high-level training.",
+                  items: [
+                    { key: 'scoutingFacility', title: 'Young Driver Scouting Program', icon: Search, desc: 'Unlock the ability to scout for young driver academy talent.', maxLevel: 1, baseCost: 1000000, color: 'bg-indigo-600' },
+                    { key: 'simulator', title: 'Driver Simulator Facility', icon: Cpu, desc: 'Virtual environment precision for driver setup training and morale.', maxLevel: 10, color: 'bg-indigo-600' }
+                  ]
+                },
+                {
+                  category: "Engineering & Performance",
+                  desc: "Core car development that directly impacts race simulation pace.",
+                  items: [
+                    { key: 'aero', title: 'Aerodynamic Package', icon: WindIcon, desc: 'Wind tunnel validation, front wing endplates & diffuser floor profile.', maxLevel: 10, color: 'bg-red-600' },
+                    { key: 'engine', title: 'Power Unit Combustion', icon: Zap, desc: 'Turbocharger recovery MGU-H efficiency and battery storage yield.', maxLevel: 10, color: 'bg-red-600' },
+                    { key: 'chassis', title: 'Chassis Rigidity', icon: Shield, desc: 'Carbon fiber weaves for weight reduction and stiffness.', maxLevel: 10, color: 'bg-red-600' },
+                    { key: 'materials', title: 'Advanced Materials', icon: Zap, desc: 'Lightweight composites to lower the center of gravity and improve handling.', maxLevel: 10, color: 'bg-red-600' },
+                    { key: 'tires', title: 'Tire Thermal Management', icon: Shield, desc: 'Suspension kinematics to reduce degradation in blistering high-speed corners.', maxLevel: 10, color: 'bg-red-600' }
+                  ]
+                },
+                {
+                  category: "Trackside Operations",
+                  desc: "Optimize pit stops, strategy, and real-time decision making.",
+                  items: [
+                    { key: 'crew', title: 'Pit Stop Crew Automation', icon: Wrench, desc: 'Pneumatic wheel gun torque optimizations and choreography drills.', maxLevel: 10, color: 'bg-amber-600' },
+                    { key: 'strategy', title: 'AI Strategy Engine', icon: Target, desc: 'Machine learning race pace predictions and optimal pit stop windows.', maxLevel: 10, color: 'bg-amber-600' },
+                    { key: 'brakes', title: 'Brake by Wire System', icon: RefreshCw, desc: 'Optimized brake bias control and regenerative braking.', maxLevel: 10, color: 'bg-amber-600' },
+                    { key: 'electronics', title: 'Telemetry Electronics', icon: Activity, desc: 'Real-time data processing and control electronics.', maxLevel: 10, color: 'bg-amber-600' }
+                  ]
+                }
+              ].map((section, idx) => (
+                <div key={idx} className="space-y-6">
+                  <div className="border-b border-gray-100 pb-3">
+                    <h3 className="text-xl font-bold text-gray-900">{section.category}</h3>
+                    <p className="text-sm text-gray-500">{section.desc}</p>
                   </div>
-                );
-              })}
+                  
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    {section.items.map((tree) => {
+                      const maxLevel = tree.maxLevel || 10;
+                      const currLvl = myClubRecord?.upgrades?.[tree.key] || (tree.key === 'scoutingFacility' ? 0 : 1);
+                      const costsMap: Record<number, number> = { 0: tree.baseCost || 0, 1: 200000, 2: 350000, 3: 550000, 4: 800000, 5: 1100000, 6: 1500000, 7: 2000000, 8: 2600000, 9: 3300000 };
+                      const nextCost = tree.key === 'scoutingFacility' ? tree.baseCost : costsMap[currLvl];
+                      const isMax = currLvl >= maxLevel;
+
+                      return (
+                        <div key={tree.key} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className={`h-12 w-12 rounded-xl ${tree.color} text-white flex items-center justify-center shadow-md`}>
+                                <tree.icon size={24} />
+                              </div>
+                              <span className={`px-3 py-1 rounded-full font-black font-mono text-xs uppercase ${
+                                isMax ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                {isMax ? 'MAX LEVEL' : `Level ${currLvl} / ${maxLevel}`}
+                              </span>
+                            </div>
+                            <h4 className="text-lg font-bold text-gray-900">{tree.title}</h4>
+                            <p className="text-xs text-gray-500 leading-relaxed">{tree.desc}</p>
+                          </div>
+
+                          <div className="space-y-4 pt-4 border-t border-gray-100">
+                            {/* Level Progress */}
+                            {maxLevel > 1 && (
+                              <div className="flex gap-1.5">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((l) => (
+                                  <div
+                                    key={l}
+                                    className={`h-2 flex-1 rounded-full transition-all ${
+                                      l <= currLvl ? `${tree.color} shadow-sm` : 'bg-gray-100'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            <button
+                              onClick={() => handleUpgradeRD(tree.key)}
+                              disabled={!myClubRecord || isMax}
+                              className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm ${
+                                isMax ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 cursor-not-allowed' : 'bg-gray-900 hover:bg-black text-white shadow-md active:scale-95'
+                              }`}
+                            >
+                              {isMax ? 'Maximum Department Level Reached' : `Upgrade to L${currLvl + 1} ($${nextCost?.toLocaleString()})`}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -1823,6 +1899,44 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                       </select>
                     </div>
                   </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Track Layout</label>
+                      <select
+                        value={(circuitForm as any).layout || "Clockwise"}
+                        onChange={(e) => setCircuitForm({ ...circuitForm, layout: e.target.value } as any)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      >
+                        <option value="Clockwise">Clockwise</option>
+                        <option value="Anti-Clockwise">Anti-Clockwise</option>
+                        <option value="Figure-8">Figure-8</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Elevation</label>
+                      <select
+                        value={(circuitForm as any).elevation || "Flat"}
+                        onChange={(e) => setCircuitForm({ ...circuitForm, elevation: e.target.value } as any)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      >
+                        <option value="Flat">Flat</option>
+                        <option value="Hilly">Hilly</option>
+                        <option value="Mountainous">Mountainous</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Climate</label>
+                      <select
+                        value={(circuitForm as any).climate || "Temperate"}
+                        onChange={(e) => setCircuitForm({ ...circuitForm, climate: e.target.value } as any)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      >
+                        <option value="Temperate">Temperate</option>
+                        <option value="Arid">Arid</option>
+                        <option value="Tropical">Tropical</option>
+                      </select>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
                       <label className="block text-xs font-bold uppercase text-gray-300 mb-1">Practice Time</label>
@@ -1880,6 +1994,46 @@ export const ClubManagerTab: React.FC<ClubManagerTabProps> = ({ currentUser, sea
                 </button>
               </div>
             </div>
+
+            {/* Championship Circuits */}
+            {settings.customCircuits && settings.customCircuits.length > 0 && (
+              <div className="bg-gray-800/80 rounded-2xl p-6 border border-gray-700 space-y-4">
+                <h3 className="text-lg font-bold text-white">Championship Calendar</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {settings.customCircuits.map((circuit: any, index: number) => (
+                    <div key={index} className="bg-gray-900 border border-gray-700 rounded-xl p-4 flex flex-col justify-between">
+                      <div>
+                        <h4 className="font-bold text-amber-400">{circuit.name}</h4>
+                        <div className="text-xs text-gray-400 mt-1 font-mono">
+                          {circuit.locality} • {circuit.laps} Laps
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-3">
+                          <span className="bg-gray-800 text-gray-300 text-[10px] px-2 py-1 rounded-md">{circuit.trackType}</span>
+                          <span className="bg-gray-800 text-gray-300 text-[10px] px-2 py-1 rounded-md">{circuit.difficulty}</span>
+                          <span className="bg-gray-800 text-gray-300 text-[10px] px-2 py-1 rounded-md">{circuit.layout}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Delete circuit ${circuit.name}?`)) return;
+                          try {
+                            const res = await fetch('/api/admin/club-manager/delete-circuit', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ name: circuit.name })
+                            });
+                            if (res.ok) fetchData();
+                          } catch (e: any) {}
+                        }}
+                        className="mt-4 w-full py-2 bg-red-900/40 text-red-400 hover:bg-red-900/60 font-bold text-xs uppercase rounded-lg transition"
+                      >
+                        Delete Circuit
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="bg-gray-800/80 rounded-2xl p-6 border border-gray-700 space-y-4">
               <div className="flex items-center justify-between">

@@ -27,13 +27,16 @@ export default function Sidebar({ activeTab, setActiveTab, currentUser, isOpenMo
       try {
         const res = await fetch("/api/prediction-settings");
         if (res.ok) {
-          const data = await res.json();
-          if (data.visibleTabs) {
-            setGlobalVisibility(data.visibleTabs);
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const data = await res.json();
+            if (data.visibleTabs) {
+              setGlobalVisibility(data.visibleTabs);
+            }
           }
         }
       } catch (e) {
-        console.error("Failed to fetch global visibility settings", e);
+        // Silently ignore polling errors to prevent console spam during server restarts
       }
     };
     fetchGlobalVisibility();
